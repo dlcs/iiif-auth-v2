@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /src
 COPY ["src/IIIFAuth2/IIIFAuth2.API/IIIFAuth2.API.csproj", "IIIFAuth2.API/"]
 RUN dotnet restore "IIIFAuth2.API/IIIFAuth2.API.csproj"
