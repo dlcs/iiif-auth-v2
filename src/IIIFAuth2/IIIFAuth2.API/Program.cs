@@ -21,7 +21,8 @@ try
     builder.Services
         .AddHttpContextAccessor()
         .AddAuthServicesContext(builder.Configuration)
-        .AddAuthServicesHealthChecks();
+        .AddAuthServicesHealthChecks()
+        .AddControllers();
 
     var app = builder.Build();
     app
@@ -29,7 +30,7 @@ try
         .UseRouting()
         .TryRunMigrations(app.Configuration, app.Logger);
 
-    app.MapGet("/", () => "Hello World!");
+    app.MapControllers();
     app.UseEndpoints(endpoints => { endpoints.MapHealthChecks("/health"); });
 
     app.Run();
