@@ -19,3 +19,11 @@ docker run -it --rm \
 # run via docker-compose
 docker compose up
 ```
+
+## Migrations
+
+```bash
+cd src/IIIFAuth2
+
+dotnet ef migrations add "initial" -p IIIFAuth2.API -o Data/Migrations
+```

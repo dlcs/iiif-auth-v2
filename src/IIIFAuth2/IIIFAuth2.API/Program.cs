@@ -1,3 +1,5 @@
+using IIIFAuth2.API.Data;
+using IIIFAuth2.API.Infrastructure;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -10,21 +12,32 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configure serilog
     builder.Host.UseSerilog((hostContext, loggerConfiguration)
         => loggerConfiguration
             .ReadFrom.Configuration(hostContext.Configuration)
             .Enrich.FromLogContext()
             .Enrich.WithCorrelationIdHeader());
 
-    builder.Services.AddHttpContextAccessor();
+    builder.Services
+        .AddHttpContextAccessor()
+        .AddAuthServicesContext(builder.Configuration)
+        .AddAuthServicesHealthChecks();
 
     var app = builder.Build();
-    app.UseSerilogRequestLogging();
+    app
+        .UseSerilogRequestLogging()
+        .UseRouting()
+        .TryRunMigrations(app.Configuration, app.Logger);
 
     app.MapGet("/", () => "Hello World!");
+    app.UseEndpoints(endpoints => { endpoints.MapHealthChecks("/health"); });
 
     app.Run();
+}
+catch (HostAbortedException)
+{
+    // No-op - required when adding migrations,
+    // See: https://github.com/dotnet/efcore/issues/29809#issuecomment-1345132260
 }
 catch (Exception ex)
 {
