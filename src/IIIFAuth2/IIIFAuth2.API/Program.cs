@@ -4,7 +4,7 @@ using Serilog;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .CreateBootstrapLogger();
+    .CreateLogger();
 
 Log.Information("Application starting..");
 
@@ -49,3 +49,6 @@ finally
     Log.Information("Shut down complete");
     Log.CloseAndFlush();
 }
+
+// required for WebApplicationFactory
+public partial class Program { }

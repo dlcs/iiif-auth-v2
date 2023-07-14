@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IIIFAuth2.API", "IIIFAuth2.API\IIIFAuth2.API.csproj", "{8F26DBC8-2E99-4174-9C8F-BB9264807595}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IIIFAuth2.API.Tests", "IIIFAuth2.API.Tests\IIIFAuth2.API.Tests.csproj", "{3AABE3F5-8193-4474-86BC-8ADC9A2FEBED}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{8F26DBC8-2E99-4174-9C8F-BB9264807595}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8F26DBC8-2E99-4174-9C8F-BB9264807595}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8F26DBC8-2E99-4174-9C8F-BB9264807595}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3AABE3F5-8193-4474-86BC-8ADC9A2FEBED}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3AABE3F5-8193-4474-86BC-8ADC9A2FEBED}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3AABE3F5-8193-4474-86BC-8ADC9A2FEBED}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3AABE3F5-8193-4474-86BC-8ADC9A2FEBED}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

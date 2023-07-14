@@ -10,7 +10,7 @@ namespace IIIFAuth2.API.Features.Presentation;
 public class ServicesController : Controller
 {
     [HttpGet]
-    [Route("{assetId}")]
+    [Route("{**assetId}")]
     public async Task<IActionResult> GetServicesDescription(
         [FromRoute] string assetId,
         [FromQuery] string roles)
