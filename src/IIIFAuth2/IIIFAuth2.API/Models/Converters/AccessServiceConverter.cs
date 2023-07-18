@@ -7,6 +7,23 @@ namespace IIIFAuth2.API.Models.Converters;
 
 public static class AccessServiceConverter
 {
+    public static AuthProbeService2 ToProbeService(this IReadOnlyCollection<AccessService> accessServices)
+    {
+        var probeService = new AuthProbeService2
+        {
+            Id = "todo", // TODO
+            Service = new List<IService>(accessServices.Count),
+        };
+
+        foreach (var accessService in accessServices)
+        {
+            var svc = accessService.ToIIIFModel();
+            probeService.Service.Add(svc);
+        }
+
+        return probeService;
+    }
+    
     /// <summary>
     /// Converts database entity <see cref="AccessService"/> to <see cref="AuthAccessService2"/>
     /// </summary>

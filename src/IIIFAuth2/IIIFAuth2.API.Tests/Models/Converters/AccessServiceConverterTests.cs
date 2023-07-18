@@ -94,4 +94,123 @@ public class AccessServiceConverterTests
         // Assert
         actual.Should().BeEquivalentTo(expected);
     }
+
+    [Fact]
+    public void ToProbeService_ConvertSingleService()
+    {
+        // Arrange
+        var accessServices = new List<AccessService>
+        {
+            new()
+            {
+                Id = Guid.Empty,
+                Profile = "active",
+                Customer = 99,
+                Name = "test access service",
+            }
+        };
+
+        var expected = new AuthProbeService2
+        {
+            Id = "todo",
+            Service = new List<IService>
+            {
+                new AuthAccessService2
+                {
+                    Id = "todo",
+                    Profile = "active",
+                    Service = new List<IService>
+                    {
+                        new AuthAccessTokenService2
+                        {
+                            Id = "todo",
+                        },
+                        new AuthLogoutService2
+                        {
+                            Id = "todo",
+                            Label = new LanguageMap("en", "Logout of test access service")
+                        }
+                    }
+                }
+            }
+        };
+        
+        // Act
+        var actual = accessServices.ToProbeService();
+        
+        // Assert
+        actual.Should().BeEquivalentTo(expected);
+    }
+    
+    [Fact]
+    public void ToProbeService_ConvertMultipleServices()
+    {
+        // Arrange
+        var accessServices = new List<AccessService>
+        {
+            new()
+            {
+                Id = Guid.Empty,
+                Profile = "active",
+                Customer = 99,
+                Name = "test access service",
+            },
+            new()
+            {
+                Id = Guid.Empty,
+                Profile = "active",
+                Customer = 99,
+                Name = "another service",
+            }
+        };
+
+        var expected = new AuthProbeService2
+        {
+            Id = "todo",
+            Service = new List<IService>
+            {
+                new AuthAccessService2
+                {
+                    Id = "todo",
+                    Profile = "active",
+                    Service = new List<IService>
+                    {
+                        new AuthAccessTokenService2
+                        {
+                            Id = "todo",
+                        },
+                        new AuthLogoutService2
+                        {
+                            Id = "todo",
+                            Label = new LanguageMap("en", "Logout of test access service")
+                        }
+                    }
+                },
+                new AuthAccessService2
+                {
+                    Id = "todo",
+                    Profile = "active",
+                    Service = new List<IService>
+                    {
+                        new AuthAccessTokenService2
+                        {
+                            Id = "todo",
+                        },
+                        new AuthLogoutService2
+                        {
+                            Id = "todo",
+                            Label = new LanguageMap("en", "Logout of another service")
+                        }
+                    }
+                }
+            }
+        };
+        
+        // Act
+        var actual = accessServices.ToProbeService();
+        
+        // Assert
+        actual.Should().BeEquivalentTo(expected);
+
+    }
 }
