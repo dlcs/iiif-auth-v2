@@ -7,7 +7,7 @@ namespace IIIFAuth2.API.Models.Converters;
 
 public static class AccessServiceConverter
 {
-    public static AuthProbeService2 ToProbeService(this IReadOnlyCollection<AccessService> accessServices)
+    public static AuthProbeService2 ToProbeService(this ICollection<AccessService> accessServices)
     {
         var probeService = new AuthProbeService2
         {

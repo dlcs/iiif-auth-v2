@@ -1,5 +1,6 @@
 using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Infrastructure;
+using MediatR;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
@@ -22,6 +23,7 @@ try
         .AddHttpContextAccessor()
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
+        .AddMediatR(typeof(Program))
         .AddControllers();
 
     var app = builder.Build();
