@@ -85,7 +85,7 @@ public class LanguageMapConverter : ValueConverter<LanguageMap, string>
     }
 }
 
-public class LanguageMapComparer : ValueComparer<Dictionary<string, List<string>>>
+public class LanguageMapComparer : ValueComparer<LanguageMap>
 {
     public LanguageMapComparer()
         : base(
