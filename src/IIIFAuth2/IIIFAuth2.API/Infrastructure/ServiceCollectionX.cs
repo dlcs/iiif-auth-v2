@@ -2,7 +2,7 @@
 
 namespace IIIFAuth2.API.Infrastructure;
 
-public static class HealthCheckConfiguration
+public static class ServiceCollectionX
 {
     /// <summary>
     /// Add required health checks
@@ -12,4 +12,4 @@ public static class HealthCheckConfiguration
         services.AddHealthChecks().AddDbContextCheck<AuthServicesContext>();
         return services;
     }
-} 
+}

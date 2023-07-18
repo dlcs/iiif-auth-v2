@@ -1,5 +1,6 @@
 using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Infrastructure;
+using IIIFAuth2.API.Settings;
 using MediatR;
 using Serilog;
 
@@ -20,15 +21,21 @@ try
             .Enrich.WithCorrelationIdHeader());
 
     builder.Services
+        .AddOptions<ApiSettings>().Bind(builder.Configuration);
+
+    builder.Services
         .AddHttpContextAccessor()
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
         .AddMediatR(typeof(Program))
         .AddControllers();
 
+    var apiSettings = builder.Configuration.Get<ApiSettings>();
+    
     var app = builder.Build();
     app
         .UseSerilogRequestLogging()
+        .HandlePathBase(apiSettings.PathBase, app.Logger)
         .UseRouting()
         .TryRunMigrations(app.Configuration, app.Logger);
 
