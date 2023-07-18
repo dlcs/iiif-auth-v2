@@ -21,5 +21,11 @@ public record AssetId(int Customer, int Space, string Asset)
                 $"AssetId '{assetImageId}' is invalid. Must be in format customer/space/asset",
                 fmEx);
         }
+        catch (IndexOutOfRangeException idxEx)
+        {
+            throw new FormatException(
+                $"AssetId '{assetImageId}' is invalid. Must be in format customer/space/asset",
+                idxEx);
+        }
     }
 }

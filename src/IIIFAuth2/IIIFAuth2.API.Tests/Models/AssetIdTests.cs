@@ -25,6 +25,18 @@ public class AssetIdTests
         assetImageId.Asset.Should().Be("my-first-image");
     }
 
+    [Theory]
+    [InlineData("foo")]
+    [InlineData("foo/bar")]
+    [InlineData("foo/bar/baz")]
+    public void FromString_Throws_IfInvalidFormat(string candidate)
+    {
+        Action action = () => AssetId.FromString(candidate);
+        action.Should()
+            .Throw<FormatException>()
+            .WithMessage($"AssetId '{candidate}' is invalid. Must be in format customer/space/asset");
+    }
+
     [Fact]
     public void CanDeconstruct()
     {
