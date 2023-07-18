@@ -34,4 +34,17 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
+    
+    [Fact]
+    public async Task GetServicesDescription_Returns400_IfAssetIdInvalid()
+    {
+        // Arrange
+        const string path = "services/12345?roles=hello";
+            
+        // Act
+        var response = await httpClient.GetAsync(path);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
 }

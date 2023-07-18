@@ -1,5 +1,5 @@
-﻿using IIIF.Serialisation;
-using IIIFAuth2.API.Features.Presentation.Requests;
+﻿using IIIFAuth2.API.Features.Presentation.Requests;
+using IIIFAuth2.API.Infrastructure;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,13 +10,10 @@ namespace IIIFAuth2.API.Features.Presentation;
 /// </summary>
 [ApiController]
 [Route("[controller]")]
-public class ServicesController : Controller
+public class ServicesController : AuthBaseController
 {
-    private readonly IMediator mediator;
-
-    public ServicesController(IMediator mediator)
+    public ServicesController(IMediator mediator) : base(mediator)
     {
-        this.mediator = mediator;
     }
     
     /// <summary>
@@ -28,13 +25,13 @@ public class ServicesController : Controller
     /// <returns>IIIF Service Description for specified asset</returns>
     [HttpGet]
     [Route("{**assetId}")]
-    public async Task<IActionResult> GetServicesDescription(
+    public Task<IActionResult> GetServicesDescription(
         [FromRoute] string assetId,
         [FromQuery] string roles,
         CancellationToken cancellationToken)
     {
-        var request = new GetServicesDescription(assetId, roles);
-        var response = await mediator.Send(request, cancellationToken);
-        return Ok(response.DescriptionResource!.AsJson());
+        return HandleRequest(() => new GetServicesDescription(assetId, roles),
+            errorTitle: "Error getting IIIF services",
+            cancellationToken: cancellationToken);
     }
 }
