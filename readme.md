@@ -20,10 +20,20 @@ docker run -it --rm \
 docker compose up
 ```
 
+For local debugging the `docker-compose.local.yml` file can be used, this will start an empty Postgres instance.
+
+```bash
+docker compose -f docker-compose.local.yml up
+```
+
 ## Migrations
+
+Migrations can be added by running the following:
 
 ```bash
 cd src/IIIFAuth2
 
 dotnet ef migrations add "initial" -p IIIFAuth2.API -o Data/Migrations
 ```
+
+Migrations are applied on startup, regardless of environment, if `"RunMigrations" = "true"`.
