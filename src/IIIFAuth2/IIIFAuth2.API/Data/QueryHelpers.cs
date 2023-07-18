@@ -6,7 +6,7 @@ namespace IIIFAuth2.API.Data;
 
 public static class QueryHelpers
 {
-    public static Task<IEnumerable<T>> GetCustomerRecords<T>(this DbSet<T> entity, int customerId,
+    public static Task<IEnumerable<T>> GetCachedCustomerRecords<T>(this DbSet<T> entity, int customerId,
         params string[] cacheKeys)
         where T : class, IHaveCustomer
         => entity

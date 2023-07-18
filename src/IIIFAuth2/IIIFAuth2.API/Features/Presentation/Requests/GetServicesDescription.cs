@@ -71,7 +71,7 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
     
     private async Task<ICollection<Guid>> GetAccessServiceIdsForRoles(GetServicesDescription request, int customerId)
     {
-        var customerRoles = await dbContext.Roles.GetCustomerRecords(customerId, CacheKeys.Roles);
+        var customerRoles = await dbContext.Roles.GetCachedCustomerRecords(customerId, CacheKeys.Roles);
 
         var accessServiceIds = customerRoles
             .Where(r => request.Roles.Contains(r.Id))
@@ -81,7 +81,7 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
 
     private async Task<ICollection<AccessService>> GetAccessServices(int customerId, ICollection<Guid> accessServiceIds)
     {
-        var customerServices = await dbContext.AccessServices.GetCustomerRecords(customerId, CacheKeys.AccessService);
+        var customerServices = await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService);
         
         var accessServices = customerServices
             .Where(s => accessServiceIds.Contains(s.Id))
