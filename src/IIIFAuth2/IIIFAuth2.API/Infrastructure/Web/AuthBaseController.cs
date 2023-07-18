@@ -1,9 +1,9 @@
 ﻿using IIIF.Serialisation;
-using IIIFAuth2.API.Models;
+using IIIFAuth2.API.Models.Result;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
-namespace IIIFAuth2.API.Infrastructure;
+namespace IIIFAuth2.API.Infrastructure.Web;
 
 public abstract class AuthBaseController : Controller
 {

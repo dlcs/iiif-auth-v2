@@ -109,19 +109,19 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
 
         var expected = new AuthProbeService2
         {
-            Id = "todo",
+            Id = "https://orchestrator.testing/auth/v2/probe/99/2/asset",
             Service = new List<IService>
             {
                 new AuthAccessService2
                 {
-                    Id = "todo",
+                    Id = "http://localhost/auth/v2/99/clickthrough",
                     Profile = "active",
                     Service = new List<IService>
                     {
-                        new AuthAccessTokenService2 { Id = "todo", },
+                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/99/token", },
                         new AuthLogoutService2
                         {
-                            Id = "todo",
+                            Id = "http://localhost/auth/v2/99/clickthrough/logout",
                             Label = new LanguageMap("en", $"Logout of {DatabaseFixture.ClickthroughService}")
                         }
                     }
@@ -147,19 +147,19 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
 
         var expected = new AuthProbeService2
         {
-            Id = "todo",
+            Id = "https://orchestrator.testing/auth/v2/probe/99/2/asset",
             Service = new List<IService>
             {
                 new AuthAccessService2
                 {
-                    Id = "todo",
+                    Id = "http://localhost/auth/v2/99/clickthrough",
                     Profile = "active",
                     Service = new List<IService>
                     {
-                        new AuthAccessTokenService2 { Id = "todo", },
+                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/99/token", },
                         new AuthLogoutService2
                         {
-                            Id = "todo",
+                            Id = "http://localhost/auth/v2/99/clickthrough/logout",
                             Label = new LanguageMap("en", $"Logout of {DatabaseFixture.ClickthroughService}")
                         }
                     }

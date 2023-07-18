@@ -1,6 +1,6 @@
 ﻿using IIIF;
 
-namespace IIIFAuth2.API.Models;
+namespace IIIFAuth2.API.Models.Result;
 
 /// <summary>
 /// Represents the results of a call to get a IIIF DescriptionResource

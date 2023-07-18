@@ -1,5 +1,6 @@
 ﻿using IIIF.Auth.V2;
 using IIIFAuth2.API.Models;
+using IIIFAuth2.API.Models.Result;
 
 namespace IIIFAuth2.API.Tests.Models;
 

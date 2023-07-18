@@ -1,5 +1,6 @@
 using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Infrastructure;
+using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Settings;
 using MediatR;
 using Serilog;
@@ -25,12 +26,13 @@ try
 
     builder.Services
         .AddHttpContextAccessor()
+        .AddScoped<IUrlPathProvider, UrlPathProvider>()
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
         .AddMediatR(typeof(Program))
         .AddControllers();
 
-    var apiSettings = builder.Configuration.Get<ApiSettings>();
+    var apiSettings = builder.Configuration.Get<ApiSettings>()!;
     
     var app = builder.Build();
     app
@@ -38,6 +40,11 @@ try
         .HandlePathBase(apiSettings.PathBase, app.Logger)
         .UseRouting()
         .TryRunMigrations(app.Configuration, app.Logger);
+
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseDeveloperExceptionPage();
+    }
 
     app.MapControllers();
     app.UseEndpoints(endpoints => { endpoints.MapHealthChecks("/health"); });

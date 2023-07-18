@@ -1,4 +1,4 @@
-﻿namespace IIIFAuth2.API.Models;
+﻿namespace IIIFAuth2.API.Models.Domain;
 
 /// <summary>
 /// A record that represents an identifier for a DLCS Asset.

@@ -1,4 +1,5 @@
 ﻿using IIIFAuth2.API.Models;
+using IIIFAuth2.API.Models.Domain;
 
 namespace IIIFAuth2.API.Tests.Models;
 

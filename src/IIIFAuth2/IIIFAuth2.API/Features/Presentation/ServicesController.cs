@@ -1,5 +1,6 @@
 ﻿using IIIFAuth2.API.Features.Presentation.Requests;
 using IIIFAuth2.API.Infrastructure;
+using IIIFAuth2.API.Infrastructure.Web;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

@@ -1,7 +1,9 @@
 ﻿using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Data.Entities;
-using IIIFAuth2.API.Models;
+using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Converters;
+using IIIFAuth2.API.Models.Domain;
+using IIIFAuth2.API.Models.Result;
 using IIIFAuth2.API.Utils;
 using MediatR;
 
@@ -27,10 +29,15 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
 {
     private readonly AuthServicesContext dbContext;
     private readonly ILogger<GetServicesDescriptionHandler> logger;
+    private readonly IUrlPathProvider urlPathProvider;
 
-    public GetServicesDescriptionHandler(AuthServicesContext dbContext, ILogger<GetServicesDescriptionHandler> logger)
+    public GetServicesDescriptionHandler(
+        AuthServicesContext dbContext,
+        IUrlPathProvider urlPathProvider,
+        ILogger<GetServicesDescriptionHandler> logger)
     {
         this.dbContext = dbContext;
+        this.urlPathProvider = urlPathProvider;
         this.logger = logger;
     }
     
@@ -59,7 +66,7 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
 
         try
         {
-            var probeService = accessServices.ToProbeService();
+            var probeService = accessServices.ToProbeService(urlPathProvider, request.AssetId);
             return IIIFResourceResponse.Success(probeService);
         }
         catch (Exception ex)
@@ -82,8 +89,6 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
     private async Task<ICollection<AccessService>> GetAccessServices(int customerId, ICollection<Guid> accessServiceIds)
     {
         var customerServices = await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService);
-
-        var xx = dbContext.AccessServices.ToList();
         
         var accessServices = customerServices
             .Where(s => accessServiceIds.Contains(s.Id))
