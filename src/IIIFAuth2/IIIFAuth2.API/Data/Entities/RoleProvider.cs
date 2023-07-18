@@ -8,5 +8,6 @@ public class RoleProvider
     public Guid Id { get; set; }
     public string Configuration { get; set; } = null!;
 
+    // ReSharper disable once CollectionNeverUpdated.Global
     public List<AccessService> AccessServices = new();
 }

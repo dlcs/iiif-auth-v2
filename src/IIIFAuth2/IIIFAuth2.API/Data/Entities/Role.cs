@@ -3,7 +3,7 @@ namespace IIIFAuth2.API.Data.Entities;
 /// <summary>
 /// Maps a DLCS Role to AccessService
 /// </summary>
-public class Role
+public class Role : IHaveCustomer
 {
     /// <summary>
     /// The URI of the role, e.g. https://api.dlcs.io/customers/99/roles/secret

@@ -3,7 +3,7 @@
     "IIIFAuth2.API": {
       "commandName": "Project",
       "dotnetRunMessages": true,
-      "launchBrowser": true,
+      "launchBrowser": false,
       "applicationUrl": "https://localhost:7049;http://localhost:7149",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development"

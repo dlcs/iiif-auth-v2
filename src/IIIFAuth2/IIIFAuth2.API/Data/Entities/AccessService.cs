@@ -5,7 +5,7 @@ namespace IIIFAuth2.API.Data.Entities;
 /// <summary>
 /// Contains relevant details to render IIIF AccessService
 /// </summary>
-public class AccessService
+public class AccessService : IHaveCustomer
 {
     public Guid Id { get; set; }
     public int Customer { get; set; } 
