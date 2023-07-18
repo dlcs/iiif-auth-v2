@@ -1,4 +1,5 @@
 ﻿using IIIFAuth2.API.Data;
+using IIIFAuth2.API.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
@@ -13,7 +14,12 @@ public class DatabaseFixture : IAsyncLifetime
 
     public AuthServicesContext DbContext { get; private set; } = null!;
     public string ConnectionString { get; private set; } = null!;
-        
+    
+    public const int Customer = 99;
+    public const string ClickthroughService = "clickthrough";
+    public Guid AccessId;
+    public const string ClickthroughRoleUri = "http://dlcs.test/99/clickthrough";
+
     public DatabaseFixture()
     {
         var postgresBuilder = new PostgreSqlBuilder()
@@ -35,12 +41,43 @@ public class DatabaseFixture : IAsyncLifetime
             await postgresContainer.StartAsync();
             SetPropertiesFromContainer();
             await DbContext.Database.MigrateAsync();
+            SeedData();
         }
         catch (Exception ex)
         {
             var m = ex.Message;
             throw;
         }
+    }
+
+    public void CleanUp()
+    {
+        DbContext.Database.ExecuteSqlRaw("DELETE FROM session_users;");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM roles WHERE access_service_id != '{AccessId.ToString()}';");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM access_services WHERE id != '{AccessId.ToString()}';");
+        DbContext.Database.ExecuteSqlRaw("DELETE FROM role_providers;");
+    }
+
+    private void SeedData()
+    {
+        var accessService = new AccessService
+        {
+            Customer = Customer,
+            Id = AccessId,
+            Name = ClickthroughService,
+            Profile = "active",
+        };
+        DbContext.AccessServices.Add(accessService);
+
+        DbContext.Roles.Add(new Role
+        {
+            Customer = Customer,
+            Id = ClickthroughRoleUri,
+            Name = "clickthrough-role",
+            AccessServiceId = accessService.Id
+        });
+        AccessId = accessService.Id;
+        DbContext.SaveChanges();
     }
 
     public Task DisposeAsync() => postgresContainer.StopAsync();

@@ -38,12 +38,12 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
     protected override IHost CreateHost(IHostBuilder builder)
     {
         var projectDir = Directory.GetCurrentDirectory();
-        //var configPath = Path.Combine(projectDir, "appsettings.Testing.json");
+        var configPath = Path.Combine(projectDir, "appsettings.Testing.json");
 
         builder
             .ConfigureAppConfiguration((context, conf) =>
             {
-          //      conf.AddJsonFile(configPath);
+                conf.AddJsonFile(configPath);
                 conf.AddInMemoryCollection(configuration);
             })
             .ConfigureServices(services =>

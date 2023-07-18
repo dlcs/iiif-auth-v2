@@ -82,6 +82,8 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
     private async Task<ICollection<AccessService>> GetAccessServices(int customerId, ICollection<Guid> accessServiceIds)
     {
         var customerServices = await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService);
+
+        var xx = dbContext.AccessServices.ToList();
         
         var accessServices = customerServices
             .Where(s => accessServiceIds.Contains(s.Id))

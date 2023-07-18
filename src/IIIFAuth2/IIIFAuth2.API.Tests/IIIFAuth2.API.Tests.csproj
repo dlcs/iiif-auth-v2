@@ -29,4 +29,10 @@
       <ProjectReference Include="..\IIIFAuth2.API\IIIFAuth2.API.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="appsettings.Testing.json">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>

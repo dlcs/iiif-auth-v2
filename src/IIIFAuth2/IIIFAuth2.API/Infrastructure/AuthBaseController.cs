@@ -36,8 +36,7 @@ public abstract class AuthBaseController : Controller
                 return Problem(detail: result.ErrorMessage ?? "Entity not found", statusCode: 404, title: errorTitle);
             }
 
-            HttpContext.Response.Headers.ContentType = contentType;
-            return Ok(result.DescriptionResource.AsJson());
+            return Content(result.DescriptionResource.AsJson(), contentType);
         }
         catch (FormatException fmtEx)
         {
