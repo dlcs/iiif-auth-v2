@@ -1,8 +1,13 @@
+using IIIFAuth2.API.Data;
+using IIIFAuth2.API.Infrastructure;
+using IIIFAuth2.API.Infrastructure.Web;
+using IIIFAuth2.API.Settings;
+using MediatR;
 using Serilog;
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
-    .CreateBootstrapLogger();
+    .CreateLogger();
 
 Log.Information("Application starting..");
 
@@ -10,21 +15,46 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    // Configure serilog
     builder.Host.UseSerilog((hostContext, loggerConfiguration)
         => loggerConfiguration
             .ReadFrom.Configuration(hostContext.Configuration)
             .Enrich.FromLogContext()
             .Enrich.WithCorrelationIdHeader());
 
-    builder.Services.AddHttpContextAccessor();
+    builder.Services
+        .AddOptions<ApiSettings>().Bind(builder.Configuration);
 
+    builder.Services
+        .AddHttpContextAccessor()
+        .AddScoped<IUrlPathProvider, UrlPathProvider>()
+        .AddAuthServicesContext(builder.Configuration)
+        .AddAuthServicesHealthChecks()
+        .AddMediatR(typeof(Program))
+        .AddControllers();
+
+    var apiSettings = builder.Configuration.Get<ApiSettings>()!;
+    
     var app = builder.Build();
-    app.UseSerilogRequestLogging();
+    app
+        .UseSerilogRequestLogging()
+        .HandlePathBase(apiSettings.PathBase, app.Logger)
+        .UseRouting()
+        .TryRunMigrations(app.Configuration, app.Logger);
 
-    app.MapGet("/", () => "Hello World!");
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseDeveloperExceptionPage();
+    }
+
+    app.MapControllers();
+    app.UseEndpoints(endpoints => { endpoints.MapHealthChecks("/health"); });
 
     app.Run();
+}
+catch (HostAbortedException)
+{
+    // No-op - required when adding migrations,
+    // See: https://github.com/dotnet/efcore/issues/29809#issuecomment-1345132260
 }
 catch (Exception ex)
 {
@@ -35,3 +65,6 @@ finally
     Log.Information("Shut down complete");
     Log.CloseAndFlush();
 }
+
+// required for WebApplicationFactory
+public partial class Program { }
