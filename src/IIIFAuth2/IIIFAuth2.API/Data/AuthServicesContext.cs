@@ -85,6 +85,9 @@ public class LanguageMapConverter : ValueConverter<LanguageMap, string>
     }
 }
 
+/// <summary>
+/// Comparison logic for LanguageMap values. Used by EF internals for determining when a field has changed 
+/// </summary>
 public class LanguageMapComparer : ValueComparer<LanguageMap>
 {
     public LanguageMapComparer()

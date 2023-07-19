@@ -33,7 +33,7 @@ Migrations can be added by running the following:
 ```bash
 cd src/IIIFAuth2
 
-dotnet ef migrations add "initial" -p IIIFAuth2.API -o Data/Migrations
+dotnet ef migrations add "{migration-name}" -p IIIFAuth2.API -o Data/Migrations
 ```
 
 Migrations are applied on startup, regardless of environment, if `"RunMigrations" = "true"`.
