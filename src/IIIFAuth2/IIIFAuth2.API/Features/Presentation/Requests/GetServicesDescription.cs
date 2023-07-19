@@ -46,11 +46,10 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
         var customerId = request.AssetId.Customer;
         var rolesAccessServiceIds = await GetAccessServiceIdsForRoles(request, customerId);
         
-        if (rolesAccessServiceIds.IsNullOrEmpty()) return IIIFResourceResponse.NotFound("Request roles not found");
+        if (rolesAccessServiceIds.IsNullOrEmpty()) return IIIFResourceResponse.NotFound("Requested roles not found");
         
         var accessServices = await GetAccessServices(customerId, rolesAccessServiceIds);
         
-        // Roles not found
         if (accessServices.IsNullOrEmpty())
         {
             logger.LogError("Access services not found, roles {Roles}", request.Roles);
