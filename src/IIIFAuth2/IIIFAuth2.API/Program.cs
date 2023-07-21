@@ -2,8 +2,12 @@ using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Infrastructure;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Settings;
+using JetBrains.Annotations;
 using MediatR;
 using Serilog;
+
+// Prevent R# flagging View() as not found
+[assembly: AspMvcViewLocationFormat(@"~\Features\Auth\Views\{0}.cshtml")]
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
@@ -30,7 +34,7 @@ try
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
         .AddMediatR(typeof(Program))
-        .AddControllers();
+        .ConfigureAspnetMvc();
 
     var apiSettings = builder.Configuration.Get<ApiSettings>()!;
     
@@ -46,6 +50,7 @@ try
         app.UseDeveloperExceptionPage();
     }
 
+    app.MapRazorPages();
     app.MapControllers();
     app.UseEndpoints(endpoints => { endpoints.MapHealthChecks("/health"); });
 
