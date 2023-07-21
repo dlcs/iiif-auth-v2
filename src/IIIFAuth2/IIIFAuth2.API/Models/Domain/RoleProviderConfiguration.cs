@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using System.Reflection.Metadata.Ecma335;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 namespace IIIFAuth2.API.Models.Domain;
@@ -12,6 +13,10 @@ namespace IIIFAuth2.API.Models.Domain;
 /// </remarks>
 public class RoleProviderConfiguration : Dictionary<string, IProviderConfiguration>
 {
+    public const string DefaultKey = "default";
+
+    public IProviderConfiguration GetDefaultConfiguration()
+        => this[DefaultKey];
 }
 
 /// <summary>
