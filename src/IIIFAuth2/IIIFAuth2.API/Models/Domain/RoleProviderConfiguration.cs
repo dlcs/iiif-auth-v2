@@ -1,5 +1,4 @@
-﻿using System.Reflection.Metadata.Ecma335;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 namespace IIIFAuth2.API.Models.Domain;
@@ -143,9 +142,3 @@ public enum RoleProviderType
     Clickthrough,
     Oidc
 }
-
-/*
-"default": {
-  "config": "clickthrough"
-}
-*/
