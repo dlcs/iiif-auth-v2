@@ -24,13 +24,12 @@ try
             .ReadFrom.Configuration(hostContext.Configuration)
             .Enrich.FromLogContext()
             .Enrich.WithCorrelationIdHeader());
-
+    
     builder.Services
-        .AddOptions<ApiSettings>().Bind(builder.Configuration);
-
-    builder.Services
+        .ConfigureOptions(builder.Configuration)
         .AddHttpContextAccessor()
         .AddScoped<IUrlPathProvider, UrlPathProvider>()
+        .AddAuthServices()
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
         .AddMediatR(typeof(Program))

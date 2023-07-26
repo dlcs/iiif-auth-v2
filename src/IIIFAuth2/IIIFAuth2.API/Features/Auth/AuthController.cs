@@ -1,6 +1,5 @@
 ﻿using IIIFAuth2.API.Features.Auth.Requests;
 using IIIFAuth2.API.Infrastructure.Web;
-using IIIFAuth2.API.Utils;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,32 +26,35 @@ public class AuthController : AuthBaseController
         [FromQuery] Uri origin,
         CancellationToken cancellationToken)
     {
-        if (IsSignificantGestureRequired(origin))
-        {
-            var getSignificantGestureModel = new GetSignificantGestureModel(customerId, accessServiceName);
-            var significantGestureModel = await Mediator.Send(getSignificantGestureModel, cancellationToken);
+        var initiate = new InitiateRoleProvisionRequest(customerId, accessServiceName, origin);
+        var provisionRoleResponse = await Mediator.Send(initiate, cancellationToken);
 
-            if (significantGestureModel == null)
-            {
-                return NotFound($"AccessService {accessServiceName} not found");
-            }
-            
-            return View("SignificantGesture", significantGestureModel);
+        if (provisionRoleResponse == null)
+        {
+            return NotFound($"AccessService {accessServiceName} not found");
         }
 
-        throw new NotImplementedException();
+        if (provisionRoleResponse.SignificantGestureRequired)
+        {
+            return View("SignificantGesture", provisionRoleResponse.SignificantGestureModel);   
+        }
+
+        if (provisionRoleResponse.RoleProvisionHandled)
+        {
+            return View("CloseWindow");
+        }
+        
+        return StatusCode(500, "Unexpected error encountered");
     }
-    
+
     /// <summary>
     /// Handle post back for page that is required to users to perform a 'significant gesture' on DLCS domain.
     /// This is required for us to issue a cookie to user. 
     /// </summary>
     [HttpPost]
-    [Route("{customerId}/{accessServiceName}")]
+    [Route("gesture")]
     public Task<IActionResult> SignificantGesture(
-        [FromRoute] int customerId,
-        [FromRoute] string accessServiceName,
-        [FromQuery] string origin,
+        [FromBody] string singleUseToken,
         CancellationToken cancellationToken)
     {
         // StartRoleProviderLogic();
@@ -60,18 +62,4 @@ public class AuthController : AuthBaseController
         // return HandleRoleProvision()
         throw new NotImplementedException();
     }
-
-    private Task<IActionResult> HandleRoleProvision(
-        [FromRoute] int customerId,
-        [FromRoute] string accessServiceName,
-        [FromQuery] string origin,
-        CancellationToken cancellationToken)
-    {
-        // StartRoleProviderLogic();
-        // Window.Close()
-        throw new NotImplementedException();
-    }
-
-    private bool IsSignificantGestureRequired(Uri origin)
-        => !Request.IsSameOrigin(origin);
 }

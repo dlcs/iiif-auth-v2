@@ -1,4 +1,8 @@
 ﻿using IIIFAuth2.API.Data;
+using IIIFAuth2.API.Infrastructure.Auth;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
+using IIIFAuth2.API.Models.Domain;
+using IIIFAuth2.API.Settings;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
@@ -48,6 +52,30 @@ public static class ServiceCollectionX
         services.AddRazorPages();
         return services;
     }
+
+    /// <summary>
+    /// Configure IOptions bindings
+    /// </summary>
+    public static IServiceCollection ConfigureOptions(this IServiceCollection services,
+        ConfigurationManager configuration)
+        => services
+            .Configure<ApiSettings>(configuration)
+            .Configure<AuthSettings>(configuration.GetSection("Auth"));
+
+    /// <summary>
+    /// Add dependencies for handling auth requests
+    /// </summary>
+    public static IServiceCollection AddAuthServices(this IServiceCollection services)
+        => services.AddScoped<AuthCookieManager>()
+            .AddScoped<RoleProviderService>()
+            .AddScoped<IRoleProviderHandler, ClickthroughRoleProviderHandler>()
+            .AddScoped<SessionAuthRepository>()
+            .AddSingleton<RoleProviderHandlerResolver>(provider => roleProviderType => roleProviderType switch
+            {
+                RoleProviderType.Clickthrough => provider.GetRequiredService<ClickthroughRoleProviderHandler>(),
+                _ => throw new ArgumentOutOfRangeException(nameof(roleProviderType), roleProviderType, null)
+            });
+
 }
 
 /// <summary>
