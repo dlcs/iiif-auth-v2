@@ -10,4 +10,13 @@ public static class CollectionX
     /// <returns>true if null or empty, else false</returns>
     public static bool IsNullOrEmpty<T>([NotNullWhen(false)] this ICollection<T>? collection)
         => collection == null || collection.Count == 0;
+    
+    /// <summary>
+    /// Return a List{T} containing single item.
+    /// </summary>
+    /// <param name="item">Item to add to list</param>
+    /// <typeparam name="T">Type of item</typeparam>
+    /// <returns>List of one item</returns>
+    public static List<T> AsList<T>(this T item)
+        => new() { item };
 }

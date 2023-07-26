@@ -27,4 +27,14 @@ public class CollectionXTests
 
         coll.IsNullOrEmpty().Should().BeFalse();
     }
+    
+    [Fact]
+    public void AsList_ReturnsExpected()
+    {
+        var item = DateTime.Now;
+
+        var list = item.AsList();
+
+        list.Should().ContainSingle(i => i == item);
+    }
 }

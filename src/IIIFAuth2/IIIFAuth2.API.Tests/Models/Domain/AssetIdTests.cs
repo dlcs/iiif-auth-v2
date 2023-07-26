@@ -1,7 +1,6 @@
-﻿using IIIFAuth2.API.Models;
-using IIIFAuth2.API.Models.Domain;
+﻿using IIIFAuth2.API.Models.Domain;
 
-namespace IIIFAuth2.API.Tests.Models;
+namespace IIIFAuth2.API.Tests.Models.Domain;
 
 public class AssetIdTests
 {
