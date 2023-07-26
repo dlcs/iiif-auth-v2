@@ -1,12 +1,12 @@
 ﻿#nullable disable
 
 using IIIF.Presentation.V3.Strings;
+using IIIFAuth2.API.Data.Converters;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Models.Converters;
 using IIIFAuth2.API.Models.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 
@@ -20,6 +20,8 @@ public class AuthServicesContext : DbContext
     public DbSet<Role> Roles { get; set; }
     public DbSet<AccessService> AccessServices { get; set; }
     public DbSet<SessionUser> SessionUsers { get; set; }
+    
+    public DbSet<RoleProvisionToken> RoleProvisionTokens { get; set; }
     
     private static readonly JsonSerializerSettings JsonSettings = new()
     {
@@ -38,15 +40,14 @@ public class AuthServicesContext : DbContext
         configurationBuilder
             .Properties<LanguageMap>()
             .HaveConversion<LanguageMapConverter, LanguageMapComparer>();
+        
+        configurationBuilder
+            .Properties<string[]>()
+            .HaveConversion<StringArrayConverter, StringArrayComparer>();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        var stringArrayComparer = new ValueComparer<string[]>(
-            (c1, c2) => c1.SequenceEqual(c2),
-            c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-            c => c.ToArray());
-
         modelBuilder
             .Entity<Role>()
             .HasKey(r => new { r.Id, r.Customer });
@@ -81,41 +82,6 @@ public class AuthServicesContext : DbContext
             builder
                 .Property(su => su.Created)
                 .HasDefaultValueSql("now()");
-            
-            builder
-                .Property(su => su.Roles)
-                .HasConversion(
-                    v => string.Join(",", v),
-                    v => v.Split(",", StringSplitOptions.RemoveEmptyEntries).ToArray(),
-                    stringArrayComparer);
         });
-    }
-}
-
-/// <summary>
-/// Conversion logic for LanguageMap (on model) -> string (in db)
-/// </summary>
-public class LanguageMapConverter : ValueConverter<LanguageMap, string>
-{
-    public LanguageMapConverter()
-        : base(
-            v => JsonConvert.SerializeObject(v),
-            v => JsonConvert.DeserializeObject<LanguageMap>(v))
-    {
-    }
-}
-
-/// <summary>
-/// Comparison logic for LanguageMap values. Used by EF internals for determining when a field has changed 
-/// </summary>
-public class LanguageMapComparer : ValueComparer<LanguageMap>
-{
-    public LanguageMapComparer()
-        : base(
-            (c1, c2) => c1.SequenceEqual(c2),
-            c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-            c => c
-        )
-    {
     }
 }
