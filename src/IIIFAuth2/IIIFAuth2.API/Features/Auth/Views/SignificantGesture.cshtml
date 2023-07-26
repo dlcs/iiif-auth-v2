@@ -1,13 +1,17 @@
-@model IIIFAuth2.API.Features.Auth.Requests.SignificantGestureModel
+@model IIIFAuth2.API.Infrastructure.Auth.Models.SignificantGestureModel
 
 <!DOCTYPE html>
 
-<html>
+<html lang="en">
 <head>
     <title>@Model.SignificantGestureTitle</title>
 </head>
 <body>
 <p>@Model.SignificantGestureMessage</p>
-<form></form>
+@using (Html.BeginForm("SignificantGesture", "Auth"))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.SingleUseToken)
+}
 </body>
 </html>
