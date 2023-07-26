@@ -1,6 +1,4 @@
-﻿using IIIFAuth2.API.Models.Domain;
-
-namespace IIIFAuth2.API.Settings;
+﻿namespace IIIFAuth2.API.Settings;
 
 public class ApiSettings
 {
@@ -21,4 +19,28 @@ public class ApiSettings
     /// Fallback message for Significant Gesture view, if none specified by RoleProvider
     /// </summary>
     public string DefaultSignificantGestureMessage = "You will now be redirected to DLCS to login";
+}
+
+public class AuthSettings
+{
+    /// <summary>
+    /// Format of authToken, used to generate token id.
+    /// {0} is replaced with customer id
+    /// </summary>
+    public string CookieNameFormat { get; set; } = "dlcs-token-{0}";
+
+    /// <summary>
+    /// Default TTL for sessions + cookies
+    /// </summary>
+    public int SessionTtl { get; set; } = 600;
+
+    /// <summary>
+    /// A list of domains to set on auth cookie.
+    /// </summary>
+    public List<string> CookieDomains { get; set; } = new();
+
+    /// <summary>
+    /// If true the current domain is automatically added to auth token domains.
+    /// </summary>
+    public bool UseCurrentDomainForCookie { get; set; } = true;
 }
