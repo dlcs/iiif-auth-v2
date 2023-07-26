@@ -1,9 +1,10 @@
 ﻿using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Data.Entities;
+using IIIFAuth2.API.Models.Domain;
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
 
-namespace IIIFAuth2.API.Tests.Infrastructure;
+namespace IIIFAuth2.API.Tests.TestingInfrastructure;
 
 /// <summary>
 /// Xunit fixture that manages lifecycle for Postgres 13 container with migrations applied.
@@ -18,6 +19,7 @@ public class DatabaseFixture : IAsyncLifetime
     public const int Customer = 99;
     public const string ClickthroughService = "clickthrough";
     public Guid AccessId;
+    public Guid RoleProviderId; 
     public const string ClickthroughRoleUri = "http://dlcs.test/99/clickthrough";
 
     public DatabaseFixture()
@@ -55,17 +57,30 @@ public class DatabaseFixture : IAsyncLifetime
         DbContext.Database.ExecuteSqlRaw("DELETE FROM session_users;");
         DbContext.Database.ExecuteSqlRaw($"DELETE FROM roles WHERE access_service_id != '{AccessId.ToString()}';");
         DbContext.Database.ExecuteSqlRaw($"DELETE FROM access_services WHERE id != '{AccessId.ToString()}';");
-        DbContext.Database.ExecuteSqlRaw("DELETE FROM role_providers;");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM role_providers WHERE id != '{RoleProviderId.ToString()}';");
     }
 
     private void SeedData()
     {
+        var roleProvider = new RoleProvider
+        {
+            Configuration = new RoleProviderConfiguration
+            {
+                [RoleProviderConfiguration.DefaultKey] = new ClickthroughConfiguration
+                {
+                    Config = RoleProviderType.Clickthrough, GestureMessage = "Test-Message", GestureTitle = "Test-Title"
+                }
+            }
+        };
+        DbContext.RoleProviders.Add(roleProvider);
+        
         var accessService = new AccessService
         {
             Customer = Customer,
             Id = AccessId,
             Name = ClickthroughService,
             Profile = "active",
+            RoleProvider = roleProvider
         };
         DbContext.AccessServices.Add(accessService);
 
@@ -77,6 +92,7 @@ public class DatabaseFixture : IAsyncLifetime
             AccessServiceId = accessService.Id
         });
         AccessId = accessService.Id;
+        RoleProviderId = accessService.RoleProviderId.Value;
         DbContext.SaveChanges();
     }
 

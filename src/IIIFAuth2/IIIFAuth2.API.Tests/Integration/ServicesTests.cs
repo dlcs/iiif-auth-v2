@@ -6,6 +6,7 @@ using IIIF.Serialisation;
 using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Tests.Infrastructure;
+using IIIFAuth2.API.Tests.TestingInfrastructure;
 
 namespace IIIFAuth2.API.Tests.Integration;
 

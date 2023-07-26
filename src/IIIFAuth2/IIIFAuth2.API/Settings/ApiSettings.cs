@@ -27,7 +27,7 @@ public class AuthSettings
     /// Format of authToken, used to generate token id.
     /// {0} is replaced with customer id
     /// </summary>
-    public string CookieNameFormat { get; set; } = "dlcs-token-{0}";
+    public string CookieNameFormat { get; set; } = "dlcs-auth2-{0}";
 
     /// <summary>
     /// Default TTL for sessions + cookies

@@ -72,10 +72,11 @@ public class AuthCookieManagerTests
         var cookie = contextAccessor.HttpContext.Response.Headers["Set-Cookie"].ToString();
 
         // Assert
-        cookie.Should().Contain($"id%3D{cookieId}");
-        cookie.Should().Contain("domain=test.example;");
-        cookie.Should().Contain("secure;");
-        cookie.Should().Contain("samesite=none");
+        cookie.Should()
+            .Contain($"id%3D{cookieId}")
+            .And.Contain("domain=test.example;")
+            .And.Contain("secure;")
+            .And.Contain("samesite=none");
     }
     
     [Fact]
@@ -95,10 +96,11 @@ public class AuthCookieManagerTests
         var cookie = contextAccessor.HttpContext.Response.Headers["Set-Cookie"].ToString();
 
         // Assert
-        cookie.Should().Contain($"id%3D{cookieId}");
-        cookie.Should().Contain("domain=another.example;");
-        cookie.Should().Contain("secure;");
-        cookie.Should().Contain("samesite=none");
+        cookie.Should()
+            .Contain($"id%3D{cookieId}")
+            .And.Contain("domain=another.example;")
+            .And.Contain("secure;")
+            .And.Contain("samesite=none");
     }
     
     [Fact]
@@ -120,10 +122,11 @@ public class AuthCookieManagerTests
         void ValidateCookie(string host, string cookie)
         {
             // Assert
-            cookie.Should().Contain($"id%3D{cookieId}");
-            cookie.Should().Contain($"domain={host};");
-            cookie.Should().Contain("secure;");
-            cookie.Should().Contain("samesite=none");                
+            cookie.Should()
+                .Contain($"id%3D{cookieId}")
+                .And.Contain($"domain={host};")
+                .And.Contain("secure;")
+                .And.Contain("samesite=none");
         }
         
         ValidateCookie("another.example", cookies[0]);
