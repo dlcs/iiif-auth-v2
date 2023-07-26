@@ -68,9 +68,9 @@ public static class ServiceCollectionX
     public static IServiceCollection AddAuthServices(this IServiceCollection services)
         => services.AddScoped<AuthCookieManager>()
             .AddScoped<RoleProviderService>()
-            .AddScoped<IRoleProviderHandler, ClickthroughRoleProviderHandler>()
+            .AddScoped<ClickthroughRoleProviderHandler>()
             .AddScoped<SessionAuthRepository>()
-            .AddSingleton<RoleProviderHandlerResolver>(provider => roleProviderType => roleProviderType switch
+            .AddScoped<RoleProviderHandlerResolver>(provider => roleProviderType => roleProviderType switch
             {
                 RoleProviderType.Clickthrough => provider.GetRequiredService<ClickthroughRoleProviderHandler>(),
                 _ => throw new ArgumentOutOfRangeException(nameof(roleProviderType), roleProviderType, null)
@@ -90,7 +90,7 @@ public class FeatureControllerModelConvention : IControllerModelConvention
     
     private string DeriveFeatureFolderName(ControllerModel model)
     {
-        var controllerNamespace = model.ControllerType.Namespace;
+        var controllerNamespace = model.ControllerType.Namespace ?? string.Empty;
         var result = controllerNamespace.Split('.')
             .SkipWhile(s => s != "Features")
             .Aggregate(string.Empty, Path.Combine);

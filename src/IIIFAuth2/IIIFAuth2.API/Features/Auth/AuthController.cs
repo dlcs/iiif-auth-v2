@@ -54,7 +54,7 @@ public class AuthController : AuthBaseController
     [HttpPost]
     [Route("gesture")]
     public Task<IActionResult> SignificantGesture(
-        [FromBody] string singleUseToken,
+        [FromForm] string singleUseToken,
         CancellationToken cancellationToken)
     {
         // StartRoleProviderLogic();

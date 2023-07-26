@@ -37,4 +37,12 @@ public class ExpiringTokenTests
 
         ExpiringToken.HasExpired(token, 90).Should().BeTrue();
     }
+    
+    [Fact]
+    public void HasExpired_True_ForUnknownFormatToken()
+    {
+        const string token = "foo";
+
+        ExpiringToken.HasExpired(token).Should().BeTrue();
+    }
 }

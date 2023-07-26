@@ -33,9 +33,17 @@ public static class ExpiringToken
     /// <returns>True if token has not expired, else False</returns>
     public static bool HasExpired(string token, int validForSecs = 300)
     {
-        var bytes = Convert.FromBase64String(token);
-        // Guid.NewGuid().ToByteArray(); is 16-element array so start at 16 to get dateTime part
-        var datePart = DateTime.FromBinary(BitConverter.ToInt64(bytes, 16));
-        return datePart < DateTime.UtcNow.AddSeconds(-validForSecs);
+        try
+        {
+            var bytes = Convert.FromBase64String(token);
+            // Guid.NewGuid().ToByteArray(); is 16-element array so start at 16 to get dateTime part
+            var datePart = DateTime.FromBinary(BitConverter.ToInt64(bytes, 16));
+            return datePart < DateTime.UtcNow.AddSeconds(-validForSecs);
+        }
+        catch (FormatException)
+        {
+            // If we can't parse it, reject it
+            return true;
+        }
     }
 }
