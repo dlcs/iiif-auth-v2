@@ -7,7 +7,7 @@ using MediatR;
 using Serilog;
 
 // Prevent R# flagging View() as not found
-[assembly: AspMvcViewLocationFormat(@"~\Features\Auth\Views\{0}.cshtml")]
+[assembly: AspMvcViewLocationFormat(@"~\Features\Access\Views\{0}.cshtml")]
 
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()

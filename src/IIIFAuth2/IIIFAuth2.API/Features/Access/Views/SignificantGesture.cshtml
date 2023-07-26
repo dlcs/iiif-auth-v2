@@ -8,7 +8,7 @@
 </head>
 <body>
 <p>@Model.SignificantGestureMessage</p>
-@using (Html.BeginForm("SignificantGesture", "Auth"))
+@using (Html.BeginForm("SignificantGesture", "Access"))
 {
     @Html.AntiForgeryToken()
     @Html.HiddenFor(m => m.SingleUseToken)

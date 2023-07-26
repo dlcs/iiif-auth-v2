@@ -3,14 +3,15 @@ using IIIFAuth2.API.Infrastructure.Web;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
-namespace IIIFAuth2.API.Features.Auth;
+namespace IIIFAuth2.API.Features.Access;
 
 /// <summary>
 /// Controller for IIIF Authorization Flow 2.0 endpoints
 /// </summary>
-public class AuthController : AuthBaseController
+[Route("[controller]")]
+public class AccessController : AuthBaseController
 {
-    public AuthController(IMediator mediator) : base(mediator)
+    public AccessController(IMediator mediator) : base(mediator)
     {
     }
 
