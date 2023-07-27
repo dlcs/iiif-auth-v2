@@ -83,5 +83,9 @@ public class AuthServicesContext : DbContext
                 .Property(su => su.Created)
                 .HasDefaultValueSql("now()");
         });
+        
+        modelBuilder.Entity<RoleProvisionToken>()
+            .Property(b => b.Version)
+            .IsRowVersion();
     }
 }

@@ -13,19 +13,16 @@ namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 public class ClickthroughRoleProviderHandler : IRoleProviderHandler
 {
     private readonly AuthServicesContext dbContext;
-    private readonly SessionAuthRepository sessionAuthRepository;
-    private readonly AuthCookieManager authCookieManager;
+    private readonly SessionManagementService sessionManagementService;
     private readonly ApiSettings apiSettings;
 
     public ClickthroughRoleProviderHandler(
         AuthServicesContext dbContext,
-        SessionAuthRepository sessionAuthRepository,
-        AuthCookieManager authCookieManager,
+        SessionManagementService sessionManagementService,
         IOptions<ApiSettings> apiOptions)
     {
         this.dbContext = dbContext;
-        this.sessionAuthRepository = sessionAuthRepository;
-        this.authCookieManager = authCookieManager;
+        this.sessionManagementService = sessionManagementService;
         apiSettings = apiOptions.Value;
     }
 
@@ -45,12 +42,12 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
 
         if (hostIsOrigin)
         {
-            await CreateSessionAndIssueCookie(customerId, roles, cancellationToken);
+            await sessionManagementService.CreateSessionForRoles(customerId, roles, cancellationToken);
             return HandleRoleProvisionResponse.Handled();
         }
 
         // We need to capture a significant gesture on this domain before we can issue a cookie
-        var expiringToken = await sessionAuthRepository.CreateToken(customerId, roles, cancellationToken); 
+        var expiringToken = await sessionManagementService.CreateRoleProvisionToken(customerId, roles, cancellationToken); 
         var gestureModel = new SignificantGestureModel(
             configuration.GestureTitle ?? apiSettings.DefaultSignificantGestureTitle,
             configuration.GestureMessage ?? apiSettings.DefaultSignificantGestureMessage,
@@ -67,11 +64,5 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
             .Select(r => r.Id)
             .ToArray();
         return roles;
-    }
-
-    private async Task CreateSessionAndIssueCookie(int customerId, string[] roles, CancellationToken cancellationToken)
-    {
-        var sessionUser = await sessionAuthRepository.CreateSessionForRoles(customerId, roles, cancellationToken);
-        authCookieManager.IssueCookie(sessionUser);
     }
 }

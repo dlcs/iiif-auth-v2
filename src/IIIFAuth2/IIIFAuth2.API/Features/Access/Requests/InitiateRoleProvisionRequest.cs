@@ -2,7 +2,7 @@ using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 using IIIFAuth2.API.Utils;
 using MediatR;
 
-namespace IIIFAuth2.API.Features.Auth.Requests;
+namespace IIIFAuth2.API.Features.Access.Requests;
 
 /// <summary>
 /// Initiate a role-provision request, this can either initiate calls to determine roles, create user session and issue

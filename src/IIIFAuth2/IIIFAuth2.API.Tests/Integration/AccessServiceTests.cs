@@ -2,8 +2,8 @@
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using IIIFAuth2.API.Data;
+using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Models.Domain;
-using IIIFAuth2.API.Tests.Infrastructure;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -137,7 +137,141 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         
         var htmlParser = new HtmlParser();
         var document = htmlParser.ParseDocument(await response.Content.ReadAsStreamAsync());
-        var label = document.QuerySelector("p") as IHtmlParagraphElement;
+        var label = document.QuerySelector("p:nth-child(2)") as IHtmlParagraphElement;
         label.TextContent.Should().Be("This window should close automatically...");
     }
+
+    [Fact]
+    public async Task SignificantGesture_Returns400_IfNoSingleUseToken()
+    {
+        // Arrange
+        const string path = "/access/gesture";
+            
+        // Act
+        var formContent = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>()
+        });
+        var response = await httpClient.PostAsync(path, formContent);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task SignificantGesture_RendersWindowClose_WithError_IfTokenExpired()
+    {
+        // Arrange
+        const string path = "/access/gesture";
+        var expiredToken = ExpiringToken.GenerateNewToken(DateTime.UtcNow.AddHours(-1));
+            
+        // Act
+        var formContent = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("singleUseToken", expiredToken)
+        });
+        var response = await httpClient.PostAsync(path, formContent);
+        
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        await ValidateWindowCloseWithError(response);
+    }
+    
+    [Fact]
+    public async Task SignificantGesture_RendersWindowClose_WithError_IfTokenValidButNotInDatabase()
+    {
+        // Arrange
+        const string path = "/access/gesture";
+        var expiredToken = ExpiringToken.GenerateNewToken(DateTime.UtcNow.AddHours(1));
+            
+        // Act
+        var formContent = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("singleUseToken", expiredToken)
+        });
+        var response = await httpClient.PostAsync(path, formContent);
+        
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        await ValidateWindowCloseWithError(response);
+    }
+    
+    [Fact]
+    public async Task SignificantGesture_RendersWindowClose_WithError_IfTokenValidButUsed()
+    {
+        // Arrange
+        const string path = "/access/gesture";
+        var validToken = ExpiringToken.GenerateNewToken(DateTime.UtcNow.AddHours(1));
+        await dbContext.RoleProvisionTokens.AddAsync(CreateToken(validToken, true, Array.Empty<string>()));
+        await dbContext.SaveChangesAsync();
+            
+        // Act
+        var formContent = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("singleUseToken", validToken)
+        });
+        var response = await httpClient.PostAsync(path, formContent);
+        
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        await ValidateWindowCloseWithError(response);
+    }
+    
+    [Fact]
+    public async Task SignificantGesture_CreatesSession_AndSetsCookie_AndMarksTokenAsUsed()
+    {
+        // Arrange
+        const string path = "/access/gesture";
+        var validToken = ExpiringToken.GenerateNewToken(DateTime.UtcNow.AddHours(1));
+        var roles = new string[] { DatabaseFixture.ClickthroughRoleUri };
+        var tokenEntity = await dbContext.RoleProvisionTokens.AddAsync(CreateToken(validToken, false, roles));
+        var beforeVersion = tokenEntity.Entity.Version;
+        await dbContext.SaveChangesAsync();
+        
+        // Act
+        var formContent = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("singleUseToken", validToken)
+        });
+        var response = await httpClient.PostAsync(path, formContent);
+        
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        response.Headers.Should().ContainKey("Set-Cookie");
+        var cookie = response.Headers.Single(header => header.Key == "Set-Cookie").Value.First();
+        cookie.Should()
+            .StartWith("dlcs-auth2-99")
+            .And.Contain("samesite=none")
+            .And.Contain("secure;");
+        
+        // E.g. dlcs-token-99=id%3D76e7d9fb-99ab-4b4f-87b0-f2e3f0e9664e; expires=Tue, 14 Sep 2021 16:53:53 GMT; domain=localhost; path=/; secure; samesite=none
+        var toRemoveLength = "dlcs-auth2-99id%3D".Length;
+        var cookieId = cookie.Substring(toRemoveLength + 1, cookie.IndexOf(';') - toRemoveLength - 1);
+        
+        var authToken = await dbContext.SessionUsers.SingleAsync(at => at.CookieId == cookieId);
+        authToken.Expires.Should().NotBeBefore(DateTime.UtcNow);
+        authToken.Customer.Should().Be(99);
+        authToken.Roles.Should().BeEquivalentTo(roles);
+        
+        await dbContext.Entry(tokenEntity.Entity).ReloadAsync();
+        tokenEntity.Entity.Used.Should().BeTrue("token is now used");
+        tokenEntity.Entity.Version.Should().NotBe(beforeVersion);
+    }
+
+    private static async Task ValidateWindowCloseWithError(HttpResponseMessage response)
+    {
+        var htmlParser = new HtmlParser();
+        var document = htmlParser.ParseDocument(await response.Content.ReadAsStreamAsync());
+        var err = document.QuerySelector("p") as IHtmlParagraphElement;
+        err.TextContent.Should().Be("Token invalid or expired");
+        var label = document.QuerySelector("p:nth-child(2)") as IHtmlParagraphElement;
+        label.TextContent.Should().Be("This window should close automatically...");
+    }
+
+    private static RoleProvisionToken CreateToken(string token, bool used, string[] roles)
+        => new() { Id = token, Created = DateTime.UtcNow, Customer = 99, Roles = roles, Used = used };
 }

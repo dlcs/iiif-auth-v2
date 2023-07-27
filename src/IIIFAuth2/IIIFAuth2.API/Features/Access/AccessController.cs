@@ -1,8 +1,7 @@
-﻿using IIIFAuth2.API.Features.Auth.Requests;
+﻿using IIIFAuth2.API.Features.Access.Requests;
 using IIIFAuth2.API.Infrastructure.Web;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 
 namespace IIIFAuth2.API.Features.Access;
 
@@ -59,13 +58,16 @@ public class AccessController : AuthBaseController
     /// </summary>
     [HttpPost]
     [Route("gesture")]
-    public Task<IActionResult> SignificantGesture(
+    public async Task<IActionResult> SignificantGesture(
         [FromForm] string singleUseToken,
         CancellationToken cancellationToken)
     {
-        // StartRoleProviderLogic();
-        // Window.Close()
-        // return HandleRoleProvision()
-        throw new NotImplementedException();
+        return await HandleRequest(async () =>
+        {
+            var initiate = new HandleRoleProvisionToken(singleUseToken);
+            var errorMessage = await Mediator.Send(initiate, cancellationToken);
+
+            return View("CloseWindow", errorMessage);
+        });
     }
 }

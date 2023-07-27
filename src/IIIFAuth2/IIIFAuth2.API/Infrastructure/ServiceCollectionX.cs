@@ -69,7 +69,7 @@ public static class ServiceCollectionX
         => services.AddScoped<AuthCookieManager>()
             .AddScoped<RoleProviderService>()
             .AddScoped<ClickthroughRoleProviderHandler>()
-            .AddScoped<SessionAuthRepository>()
+            .AddScoped<SessionManagementService>()
             .AddScoped<RoleProviderHandlerResolver>(provider => roleProviderType => roleProviderType switch
             {
                 RoleProviderType.Clickthrough => provider.GetRequiredService<ClickthroughRoleProviderHandler>(),
