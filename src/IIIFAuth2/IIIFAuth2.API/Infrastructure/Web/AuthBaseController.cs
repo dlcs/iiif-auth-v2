@@ -21,7 +21,7 @@ public abstract class AuthBaseController : Controller
         string errorTitle = "Unhandled Exception",
         CancellationToken cancellationToken = default)
     {
-        try
+        return await HandleRequest(async () =>
         {
             var request = requestBuilder();
             var result = await Mediator.Send(request, cancellationToken);
@@ -37,14 +37,23 @@ public abstract class AuthBaseController : Controller
             }
 
             return Content(result.DescriptionResource.AsJson(), contentType);
+        });
+    }
+
+    protected async Task<IActionResult> HandleRequest(Func<Task<IActionResult>> handler,
+        string? errorTitle = "Request failed")
+    {
+        try
+        {
+            return await handler();
         }
         catch (FormatException fmtEx)
         {
-            return Problem(detail: fmtEx.Message, statusCode: 400, title: "Bad Request");
+            return Problem(detail: fmtEx.Message, statusCode: 400, title: errorTitle ?? "Bad Request");
         }
         catch (Exception ex)
         {
-            return Problem(detail: ex.Message, statusCode: 500, title: errorTitle);
+            return Problem(detail: ex.Message, statusCode: 500, title: errorTitle ?? "Unexpected error");
         }
     }
 }

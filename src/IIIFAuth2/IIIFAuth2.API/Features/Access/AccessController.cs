@@ -29,25 +29,28 @@ public class AccessController : AuthBaseController
         [FromQuery] Uri origin,
         CancellationToken cancellationToken)
     {
-        var initiate = new InitiateRoleProvisionRequest(customerId, accessServiceName, origin);
-        var provisionRoleResponse = await Mediator.Send(initiate, cancellationToken);
-
-        if (provisionRoleResponse == null)
+        return await HandleRequest(async () =>
         {
-            return NotFound($"AccessService {accessServiceName} not found");
-        }
+            var initiate = new InitiateRoleProvisionRequest(customerId, accessServiceName, origin);
+            var provisionRoleResponse = await Mediator.Send(initiate, cancellationToken);
 
-        if (provisionRoleResponse.SignificantGestureRequired)
-        {
-            return View("SignificantGesture", provisionRoleResponse.SignificantGestureModel);   
-        }
+            if (provisionRoleResponse == null)
+            {
+                return NotFound($"AccessService {accessServiceName} not found");
+            }
 
-        if (provisionRoleResponse.RoleProvisionHandled)
-        {
-            return View("CloseWindow");
-        }
-        
-        return StatusCode(500, "Unexpected error encountered");
+            if (provisionRoleResponse.SignificantGestureRequired)
+            {
+                return View("SignificantGesture", provisionRoleResponse.SignificantGestureModel);
+            }
+
+            if (provisionRoleResponse.RoleProvisionHandled)
+            {
+                return View("CloseWindow");
+            }
+
+            return StatusCode(500, "Unexpected error encountered");
+        });
     }
 
     /// <summary>
