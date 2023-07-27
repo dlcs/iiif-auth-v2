@@ -27,7 +27,6 @@ public class RoleProviderService
         var accessService = await GetAccessServices(customerId, accessServiceName);
         if (accessService == null) return null;
         
-        // TODO Log if this has been sent back via significantGesture as that should never happen
         var roleProvider = accessService.RoleProvider;
         if (roleProvider == null)
         {

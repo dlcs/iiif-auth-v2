@@ -8,6 +8,9 @@ namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 /// </summary>
 public delegate IRoleProviderHandler RoleProviderHandlerResolver(RoleProviderType roleProviderType);
 
+/// <summary>
+/// Base interface for RoleProvider implementations
+/// </summary>
 public interface IRoleProviderHandler
 {
     /// <summary>
@@ -17,7 +20,4 @@ public interface IRoleProviderHandler
     /// </summary>
     Task<HandleRoleProvisionResponse> HandleRequest(int customerId, AccessService accessService,
         IProviderConfiguration providerConfiguration, bool hostIsOrigin, CancellationToken cancellationToken = default);
-
-
-    //Task<bool> HandleSignificantGesture(int customerId, string accessServiceName);
 }

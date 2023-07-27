@@ -14,15 +14,18 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
 {
     private readonly AuthServicesContext dbContext;
     private readonly SessionManagementService sessionManagementService;
+    private readonly ILogger<ClickthroughRoleProviderHandler> logger;
     private readonly ApiSettings apiSettings;
 
     public ClickthroughRoleProviderHandler(
         AuthServicesContext dbContext,
         SessionManagementService sessionManagementService,
-        IOptions<ApiSettings> apiOptions)
+        IOptions<ApiSettings> apiOptions,
+        ILogger<ClickthroughRoleProviderHandler> logger)
     {
         this.dbContext = dbContext;
         this.sessionManagementService = sessionManagementService;
+        this.logger = logger;
         apiSettings = apiOptions.Value;
     }
 
@@ -32,10 +35,11 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
         bool hostIsOrigin,
         CancellationToken cancellationToken = default)
     {
-        // TODO - can this be avoided with generics
         if (providerConfiguration is not ClickthroughConfiguration configuration)
         {
-            throw new ArgumentException("TODO - suitable error that could go on base class");
+            logger.LogError("ClickthroughRoleProviderHandler given non-clickthrough configuration {@Configuration}",
+                providerConfiguration);
+            throw new ArgumentException("Unable to handle provided configuration", nameof(providerConfiguration));
         }
 
         var roles = await GetRolesToBeGranted(customerId, accessService);
@@ -47,12 +51,7 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
         }
 
         // We need to capture a significant gesture on this domain before we can issue a cookie
-        var expiringToken = await sessionManagementService.CreateRoleProvisionToken(customerId, roles, cancellationToken); 
-        var gestureModel = new SignificantGestureModel(
-            configuration.GestureTitle ?? apiSettings.DefaultSignificantGestureTitle,
-            configuration.GestureMessage ?? apiSettings.DefaultSignificantGestureMessage,
-            expiringToken);
-
+        var gestureModel = await GetSignificantGestureModel(customerId, roles, configuration, cancellationToken);
         return HandleRoleProvisionResponse.SignificantGesture(gestureModel);
     }
 
@@ -63,6 +62,24 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
             .Where(r => r.AccessServiceId == accessService.Id)
             .Select(r => r.Id)
             .ToArray();
+
+        if (roles.Length == 0)
+        {
+            logger.LogWarning("AccessService {CustomerId}:{AccessServiceName} grants no roles", customerId,
+                accessService.Name);
+        }
         return roles;
+    }
+
+    private async Task<SignificantGestureModel> GetSignificantGestureModel(int customerId, string[] roles,
+        ClickthroughConfiguration configuration, CancellationToken cancellationToken)
+    {
+        var expiringToken =
+            await sessionManagementService.CreateRoleProvisionToken(customerId, roles, cancellationToken);
+        var gestureModel = new SignificantGestureModel(
+            configuration.GestureTitle ?? apiSettings.DefaultSignificantGestureTitle,
+            configuration.GestureMessage ?? apiSettings.DefaultSignificantGestureMessage,
+            expiringToken);
+        return gestureModel;
     }
 }

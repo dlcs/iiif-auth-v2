@@ -5,7 +5,7 @@ namespace IIIFAuth2.API.Tests.Models.Domain;
 public class ExpiringTokenTests
 {
     [Fact]
-    public void GenerateNewNonce_Throws_IfNonUtcDatePassed()
+    public void GenerateNewToken_Throws_IfNonUtcDatePassed()
     {
         Action action = () => ExpiringToken.GenerateNewToken(DateTime.Now);
         action.Should().Throw<ArgumentException>()
@@ -13,7 +13,7 @@ public class ExpiringTokenTests
     }
     
     [Fact]
-    public void GenerateNewNonce_CreatesDifferentTokens_ForSametime()
+    public void GenerateNewToken_CreatesDifferentTokens_ForSametime()
     {
         var datetime = DateTime.UtcNow;
         var token1 = ExpiringToken.GenerateNewToken(datetime);
