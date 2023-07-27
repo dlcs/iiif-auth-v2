@@ -25,5 +25,8 @@ public class RoleProvisionToken : IHaveCustomer
     
     public int Customer { get; set; }
     
+    /// <summary>
+    /// For optimistic-concurrency, see https://www.npgsql.org/efcore/modeling/concurrency.html
+    /// </summary>
     public uint Version { get; set; }
 }
