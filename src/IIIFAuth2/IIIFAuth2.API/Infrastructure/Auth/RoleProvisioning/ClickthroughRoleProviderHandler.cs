@@ -55,15 +55,15 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
         return HandleRoleProvisionResponse.SignificantGesture(gestureModel);
     }
 
-    private async Task<string[]> GetRolesToBeGranted(int customerId, AccessService accessService)
+    private async Task<IReadOnlyCollection<string>> GetRolesToBeGranted(int customerId, AccessService accessService)
     {
         var customerRoles = await dbContext.Roles.GetCachedCustomerRecords(customerId, CacheKeys.Roles);
         var roles = customerRoles
             .Where(r => r.AccessServiceId == accessService.Id)
             .Select(r => r.Id)
-            .ToArray();
+            .ToList();
 
-        if (roles.Length == 0)
+        if (roles.Count == 0)
         {
             logger.LogWarning("AccessService {CustomerId}:{AccessServiceName} grants no roles", customerId,
                 accessService.Name);
@@ -71,7 +71,7 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
         return roles;
     }
 
-    private async Task<SignificantGestureModel> GetSignificantGestureModel(int customerId, string[] roles,
+    private async Task<SignificantGestureModel> GetSignificantGestureModel(int customerId, IReadOnlyCollection<string> roles,
         ClickthroughConfiguration configuration, CancellationToken cancellationToken)
     {
         var expiringToken =

@@ -36,7 +36,7 @@ public static class ExpiringToken
         try
         {
             var bytes = Convert.FromBase64String(token);
-            // Guid.NewGuid().ToByteArray(); is 16-element array so start at 16 to get dateTime part
+            // Guid byte array is 16-element array so start at 16 to get dateTime part
             var datePart = DateTime.FromBinary(BitConverter.ToInt64(bytes, 16));
             return datePart < DateTime.UtcNow.AddSeconds(-validForSecs);
         }

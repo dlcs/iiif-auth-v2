@@ -19,7 +19,7 @@ public class RoleProvisionToken : IHaveCustomer
     /// <summary>
     /// The list of roles that this token is for
     /// </summary>
-    public string[] Roles { get; set; } = Array.Empty<string>();
+    public List<string> Roles { get; set; } = new();
     
     public DateTime Created { get; set; }
     

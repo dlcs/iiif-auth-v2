@@ -273,5 +273,5 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     }
 
     private static RoleProvisionToken CreateToken(string token, bool used, string[] roles)
-        => new() { Id = token, Created = DateTime.UtcNow, Customer = 99, Roles = roles, Used = used };
+        => new() { Id = token, Created = DateTime.UtcNow, Customer = 99, Roles = roles.ToList(), Used = used };
 }

@@ -7,11 +7,11 @@ namespace IIIFAuth2.API.Data.Converters;
 /// <summary>
 /// Conversion logic for string[] (on model) -> string (in db)
 /// </summary>
-public class StringArrayConverter : ValueConverter<string[], string>
+public class StringListConverter : ValueConverter<List<string>, string>
 {
-    public StringArrayConverter()
+    public StringListConverter()
         :base(v => string.Join(",", v),
-            v => v.Split(",", StringSplitOptions.RemoveEmptyEntries).ToArray())
+            v => v.Split(",", StringSplitOptions.RemoveEmptyEntries).ToList())
     {
     }
 }
@@ -19,13 +19,13 @@ public class StringArrayConverter : ValueConverter<string[], string>
 /// <summary>
 /// Comparison logic for LanguageMap values. Used by EF internals for determining when a field has changed 
 /// </summary>
-public class StringArrayComparer : ValueComparer<string[]>
+public class StringListComparer : ValueComparer<List<string>>
 {
-    public StringArrayComparer()
+    public StringListComparer()
         : base(
             (c1, c2) => c1.SequenceEqual(c2),
             c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-            c => c.ToArray()
+            c => c.ToList()
         )
     {
     }

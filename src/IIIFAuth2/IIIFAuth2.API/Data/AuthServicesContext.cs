@@ -42,8 +42,8 @@ public class AuthServicesContext : DbContext
             .HaveConversion<LanguageMapConverter, LanguageMapComparer>();
         
         configurationBuilder
-            .Properties<string[]>()
-            .HaveConversion<StringArrayConverter, StringArrayComparer>();
+            .Properties<List<string>>()
+            .HaveConversion<StringListConverter, StringListComparer>();
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

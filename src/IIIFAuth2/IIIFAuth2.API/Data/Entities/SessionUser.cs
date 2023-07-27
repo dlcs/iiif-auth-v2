@@ -13,5 +13,5 @@ public class SessionUser : IHaveCustomer
     public DateTime Expires { get; set; }
     public DateTime Created { get; set; }
     public DateTime? LastChecked { get; set; }
-    public string[] Roles { get; set; } = Array.Empty<string>();
+    public List<string> Roles { get; set; } = new();
 }
