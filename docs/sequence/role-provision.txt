@@ -1,0 +1,36 @@
+title Role Provision
+
+participant Client
+participant GET /svc/name
+participant POST /svc/name
+participant GET /svc/callback
+
+Client->GET /svc/name:initial request
+GET /svc/name->GET /svc/name:Get role-provider
+
+alt clickthrough, diff host
+GET /svc/name-->GET /svc/name:Create role-provision-token
+GET /svc/name-->Client:Render sig-gesture
+Client-->POST /svc/name:confirm w/ role-provision-token
+POST /svc/name-->POST /svc/name:Create user-session\nadd cookie\nwindow.close()
+POST /svc/name-->Client:Cookie (aspect)
+
+else clickthrough, same host
+GET /svc/name-->GET /svc/name:Create user-session\nadd cookie\nwindow.close()
+GET /svc/name-->Client:Cookie (aspect)
+
+else oidc, diff host
+GET /svc/name-->GET /svc/name:<oidc dance>
+oidc-provider-->(2)GET /svc/callback:callback
+GET /svc/callback-->GET /svc/callback:Create role-provision-token
+GET /svc/callback-->Client:Render sig-gesture
+Client-->POST /svc/name:confirm w/ role-provision-token
+POST /svc/name-->POST /svc/name:Create user-session\nadd cookie\nwindow.close()
+POST /svc/name-->Client:Cookie (aspect)
+
+else oidc, same host
+GET /svc/name-->GET /svc/name:<oidc dance>
+oidc-provider-->(2)GET /svc/callback:callback
+GET /svc/callback-->GET /svc/callback:Create user-session\nadd cookie\nwindow.close()
+GET /svc/callback-->Client:Cookie (aspect)
+end
