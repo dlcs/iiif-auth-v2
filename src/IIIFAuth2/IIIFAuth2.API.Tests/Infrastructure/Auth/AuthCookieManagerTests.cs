@@ -133,6 +133,78 @@ public class AuthCookieManagerTests
         ValidateCookie("test.example", cookies[1]);
     }
     
+    [Fact]
+    public void GetCookieValueForCustomer_Null_IfNoCookies()
+    {
+        // Arrange
+        var sut = GetSut();
+        
+        // Act
+        var cookieValue = sut.GetCookieValueForCustomer(123);
+        
+        // Assert
+        cookieValue.Should().BeNull();
+    }
+    
+    [Fact]
+    public void GetCookieValueForCustomer_Null_IfNoCookieForDifferentCustomer()
+    {
+        // Arrange
+        var sut = GetSut();
+        request.Headers.Append("Cookie", "auth-token-999=whatever");
+
+        // Act
+        var cookieValue = sut.GetCookieValueForCustomer(123);
+        
+        // Assert
+        cookieValue.Should().BeNull();
+    }
+    
+    [Fact]
+    public void GetCookieValueForCustomer_ReturnsCookieValue_IfFound()
+    {
+        // Arrange
+        var sut = GetSut();
+        request.Headers.Append("Cookie", "auth-token-123=whatever");
+
+        // Act
+        var cookieValue = sut.GetCookieValueForCustomer(123);
+        
+        // Assert
+        cookieValue.Should().Be("whatever");
+    }
+    
+    [Fact]
+    public void GetCookieIdFromValue_ReturnsExpected()
+    {
+        // Arrange
+        const string cookieValue = "id=1212121212";
+        const string expected = "1212121212";
+        
+        var sut = GetSut();
+
+        // Act
+        var actual = sut.GetCookieIdFromValue(cookieValue);
+
+        // Assert
+        actual.Should().Be(expected);
+    }
+    
+    [Fact]
+    public void GetCookieIdFromValue_Null_IfCookiesDoesNotStartAsExpected()
+    {
+        // Arrange
+        const string cookieValue = "121id=2121212";
+
+        var sut = GetSut();
+
+        // Act
+        var actual = sut.GetCookieIdFromValue(cookieValue);
+
+        // Assert
+        actual.Should().BeNull();
+    }
+    
     private AuthCookieManager GetSut(bool useCurrentDomainForCookie = true, params string[] additionalDomains)
     {
         var options = Options.Create(new AuthSettings
