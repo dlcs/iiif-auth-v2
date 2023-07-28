@@ -1,0 +1,17 @@
+@model IIIFAuth2.API.Infrastructure.Auth.Models.SignificantGestureModel
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>@Model.SignificantGestureTitle</title>
+</head>
+<body>
+<p>@Model.SignificantGestureMessage</p>
+@using (Html.BeginForm("SignificantGesture", "Access"))
+{
+    @Html.HiddenFor(m => m.SingleUseToken)
+    <input type="submit">
+}
+</body>
+</html>

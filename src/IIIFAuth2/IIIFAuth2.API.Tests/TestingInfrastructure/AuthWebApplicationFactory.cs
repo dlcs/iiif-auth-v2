@@ -1,11 +1,9 @@
-﻿using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
+﻿using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
-namespace IIIFAuth2.API.Tests.Infrastructure;
+namespace IIIFAuth2.API.Tests.TestingInfrastructure;
 
 public class AuthWebApplicationFactory : WebApplicationFactory<Program>
 {

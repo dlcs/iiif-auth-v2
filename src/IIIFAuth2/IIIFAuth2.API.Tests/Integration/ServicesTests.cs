@@ -6,6 +6,7 @@ using IIIF.Serialisation;
 using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Tests.Infrastructure;
+using IIIFAuth2.API.Tests.TestingInfrastructure;
 
 namespace IIIFAuth2.API.Tests.Integration;
 
@@ -114,11 +115,11 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
             {
                 new AuthAccessService2
                 {
-                    Id = "http://localhost/auth/v2/99/clickthrough",
+                    Id = "http://localhost/auth/v2/access/99/clickthrough",
                     Profile = "active",
                     Service = new List<IService>
                     {
-                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/99/token", },
+                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/access/99/token", },
                         new AuthLogoutService2
                         {
                             Id = "http://localhost/auth/v2/99/clickthrough/logout",
@@ -152,11 +153,11 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
             {
                 new AuthAccessService2
                 {
-                    Id = "http://localhost/auth/v2/99/clickthrough",
+                    Id = "http://localhost/auth/v2/access/99/clickthrough",
                     Profile = "active",
                     Service = new List<IService>
                     {
-                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/99/token", },
+                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/access/99/token", },
                         new AuthLogoutService2
                         {
                             Id = "http://localhost/auth/v2/99/clickthrough/logout",

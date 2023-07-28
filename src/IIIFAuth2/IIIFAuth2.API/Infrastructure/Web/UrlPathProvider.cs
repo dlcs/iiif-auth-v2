@@ -57,7 +57,7 @@ public class UrlPathProvider : IUrlPathProvider
     public Uri GetAccessServicePath(AccessService accessService)
     {
         var baseUrl = GetCurrentBaseUrl();
-        var path = $"/auth/v2/{accessService.Customer}/{accessService.Name}";
+        var path = $"/auth/v2/access/{accessService.Customer}/{accessService.Name}";
         var builder = new UriBuilder(baseUrl)
         {
             Path = path
@@ -70,7 +70,7 @@ public class UrlPathProvider : IUrlPathProvider
     public Uri GetAccessServiceLogoutPath(AccessService accessService)
     {
         var baseUrl = GetCurrentBaseUrl();
-        var path = $"/auth/v2/{accessService.Customer}/{accessService.Name}/logout";
+        var path = $"/auth/v2/access/{accessService.Customer}/{accessService.Name}/logout";
         var builder = new UriBuilder(baseUrl)
         {
             Path = path
@@ -83,7 +83,7 @@ public class UrlPathProvider : IUrlPathProvider
     public Uri GetAccessTokenServicePath(int customer)
     {
         var baseUrl = GetCurrentBaseUrl();
-        var path = $"/auth/v2/{customer}/token";
+        var path = $"/auth/v2/access/{customer}/token";
         var builder = new UriBuilder(baseUrl)
         {
             Path = path
