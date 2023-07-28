@@ -49,6 +49,7 @@ try
         app.UseDeveloperExceptionPage();
     }
 
+    app.UseForwardedHeaders();
     app.MapRazorPages();
     app.MapControllers();
     app.UseEndpoints(endpoints => { endpoints.MapHealthChecks("/health"); });
