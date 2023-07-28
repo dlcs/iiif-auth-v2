@@ -26,13 +26,16 @@ public class InitiateRoleProvisionRequestHandler : IRequestHandler<InitiateRoleP
 {
     private readonly RoleProviderService roleProviderService;
     private readonly IHttpContextAccessor httpContextAccessor;
-    
+    private readonly ILogger<InitiateRoleProvisionRequestHandler> logger;
+
     public InitiateRoleProvisionRequestHandler(
         RoleProviderService roleProviderService,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        ILogger<InitiateRoleProvisionRequestHandler> logger)
     {
         this.roleProviderService = roleProviderService;
         this.httpContextAccessor = httpContextAccessor;
+        this.logger = logger;
     }
     
     public async Task<HandleRoleProvisionResponse?> Handle(InitiateRoleProvisionRequest request, CancellationToken cancellationToken)
@@ -44,5 +47,11 @@ public class InitiateRoleProvisionRequestHandler : IRequestHandler<InitiateRoleP
     }
 
     private bool OriginMatchesHost(InitiateRoleProvisionRequest request)
-        => httpContextAccessor.HttpContext?.Request.IsSameOrigin(request.Origin) ?? false;
+    {
+        var httpContext = httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
+        var originMatchesHost = httpContext.Request.IsSameOrigin(request.Origin);
+        logger.LogTrace("Test Origin {RequestOrigin} with Host {Scheme}://{Host} result: {OriginMatchesHost}", request.Origin,
+            httpContext.Request.Scheme, httpContext.Request.Host, originMatchesHost);
+        return originMatchesHost;
+    }
 }
