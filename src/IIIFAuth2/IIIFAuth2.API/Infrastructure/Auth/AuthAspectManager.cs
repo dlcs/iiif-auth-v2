@@ -1,4 +1,5 @@
-﻿using IIIFAuth2.API.Data.Entities;
+﻿using System.Net.Http.Headers;
+using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Settings;
 using IIIFAuth2.API.Utils;
 using Microsoft.Extensions.Options;
@@ -76,6 +77,21 @@ public class AuthAspectManager
                     Secure = true
                 });
         }
+    }
+
+    /// <summary>
+    /// Get the Id of provided access-token from Bearer token header
+    /// </summary>
+    public string? GetAccessToken()
+    {
+        const string bearerTokenScheme = "bearer";
+
+        var requestHeaders = httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext))
+            .Request.Headers;
+        return AuthenticationHeaderValue.TryParse(requestHeaders.Authorization, out var parsed) &&
+               parsed.Scheme.Equals(bearerTokenScheme, StringComparison.InvariantCultureIgnoreCase)
+            ? parsed.Parameter
+            : null;
     }
 
     private IEnumerable<string> GetCookieDomainList(HttpContext httpContext)

@@ -204,6 +204,53 @@ public class AuthAspectManagerTests
         // Assert
         actual.Should().BeNull();
     }
+
+    [Fact]
+    public void GetAccessToken_Null_IfNoAuthHeader()
+    {
+        // Arrange
+        var sut = GetSut();
+        
+        // Act
+        var bearerToken = sut.GetAccessToken();
+        
+        // Assert
+        bearerToken.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("basic Zm9vOmJhcg==")]
+    [InlineData("digest username=\"Test\" algorithm=MD5")]
+    [InlineData("negotiate foo")]
+    [InlineData("random bar")]
+    public void GetAccessToken_Null_IfAuthHeaderProvided_ButNotBearer(string authHeaderValue)
+    {
+        // Arrange
+        var sut = GetSut();
+        request.Headers.Append("Authorization", authHeaderValue);
+        
+        // Act
+        var bearerToken = sut.GetAccessToken();
+        
+        // Assert
+        bearerToken.Should().BeNull();
+    }
+    
+    [Theory]
+    [InlineData("bearer foo-bar")]
+    [InlineData("Bearer foo-bar")]
+    public void GetAccessToken_ReturnsValue_IfProvided(string authHeaderValue)
+    {
+        // Arrange
+        var sut = GetSut();
+        request.Headers.Append("Authorization", authHeaderValue);
+        
+        // Act
+        var bearerToken = sut.GetAccessToken();
+        
+        // Assert
+        bearerToken.Should().Be("foo-bar");
+    }
     
     private AuthAspectManager GetSut(bool useCurrentDomainForCookie = true, params string[] additionalDomains)
     {
