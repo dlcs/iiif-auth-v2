@@ -8,11 +8,13 @@ namespace IIIFAuth2.API.Infrastructure.Web;
 public abstract class AuthBaseController : Controller
 {
     protected readonly IMediator Mediator;
+    protected readonly ILogger Logger;
 
     /// <inheritdoc />
-    protected AuthBaseController(IMediator mediator)
+    protected AuthBaseController(IMediator mediator, ILogger logger)
     {
         Mediator = mediator;
+        Logger = logger;
     }
     
     protected async Task<IActionResult> HandleRequest(
@@ -49,10 +51,12 @@ public abstract class AuthBaseController : Controller
         }
         catch (FormatException fmtEx)
         {
+            Logger.LogDebug(fmtEx, "Format exception processing request");
             return Problem(detail: fmtEx.Message, statusCode: 400, title: errorTitle ?? "Bad Request");
         }
         catch (Exception ex)
         {
+            Logger.LogDebug(ex, "Unexpected exception processing request");
             return Problem(detail: ex.Message, statusCode: 500, title: errorTitle ?? "Unexpected error");
         }
     }

@@ -12,7 +12,7 @@ namespace IIIFAuth2.API.Features.Presentation;
 [Route("[controller]")]
 public class ServicesController : AuthBaseController
 {
-    public ServicesController(IMediator mediator) : base(mediator)
+    public ServicesController(IMediator mediator, ILogger<ServicesController> logger) : base(mediator, logger)
     {
     }
     
