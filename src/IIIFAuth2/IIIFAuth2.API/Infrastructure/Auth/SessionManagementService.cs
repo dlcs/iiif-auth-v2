@@ -1,5 +1,6 @@
 ﻿using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Data.Entities;
+using IIIFAuth2.API.Infrastructure.Auth.Models;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Models.Result;
 using IIIFAuth2.API.Settings;
@@ -104,7 +105,36 @@ public class SessionManagementService
         
         return ResultStatus<SessionUser>.Unsuccessful();
     }
-    
+
+    /// <summary>
+    /// Attempt to load <see cref="SessionUser"/> for provided CookieId. If found it may have expiry extended in
+    /// database and will issue cookie
+    /// </summary>
+    public async Task<TryGetSessionResponse> TryGetSessionUserForCookie(int customerId, string origin, CancellationToken cancellationToken)
+    {
+        var cookieValue = authCookieManager.GetCookieValueForCustomer(customerId);
+        if (string.IsNullOrEmpty(cookieValue))
+        {
+            logger.LogDebug("Attempt to get cookie value for customer {CustomerId} but cookie not found", customerId);
+            return new TryGetSessionResponse(GetSessionStatus.MissingCookie);
+        }
+
+        var cookieId = authCookieManager.GetCookieIdFromValue(cookieValue);
+        if (string.IsNullOrEmpty(cookieId))
+        {
+            logger.LogDebug("Id not found in cookie '{CookieValue}' for customer {CustomerId}",
+                cookieValue, customerId);
+            return new TryGetSessionResponse(GetSessionStatus.InvalidCookie);
+        }
+
+        var findSessionResponse = await GetRefreshedSession(customerId, cookieId, origin, cancellationToken);
+        if (findSessionResponse.Status != GetSessionStatus.Success) return findSessionResponse;
+        
+        // Re-issue the cookie to extend ttl
+        authCookieManager.IssueCookie(findSessionResponse.SessionUser!);
+        return findSessionResponse;
+    }
+
     private async Task<SessionUser> CreateAndAddSessionUser(int customerId, IReadOnlyCollection<string> roles,
         CancellationToken cancellationToken)
     {
@@ -145,4 +175,53 @@ public class SessionManagementService
             throw new ApplicationException($"Error committing {operation}");
         }
     }
+
+    private async Task<TryGetSessionResponse> GetRefreshedSession(int customerId, string cookieId, string origin,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var session = await dbContext.SessionUsers
+                .SingleOrDefaultAsync(c => c.CookieId == cookieId && c.Customer == customerId, cancellationToken);
+
+            if (session == null)
+            {
+                logger.LogInformation("UserSession for CookieId '{CookieId}' not found for customer {CustomerId}",
+                    cookieId, customerId);
+                return new TryGetSessionResponse(GetSessionStatus.MissingSession);
+            }
+
+            if (session.Expires <= DateTime.UtcNow)
+            {
+                logger.LogTrace("UserSession for CookieId '{CookieId}' for customer {Customer} expired", cookieId,
+                    customerId);
+                return new TryGetSessionResponse(GetSessionStatus.ExpiredSession);
+            }
+
+            if (session.Origin != origin)
+            {
+                logger.LogDebug(
+                    "UserSession for CookieId '{CookieId}' for customer {Customer} was for origin '{OriginalOrigin} but requested for '{NewOrigin}'",
+                    cookieId, customerId, session.Origin, origin);
+                return new TryGetSessionResponse(GetSessionStatus.DifferentOrigin);
+            }
+
+            // Token has never been checked, or was last checked in the past and threshold has passed
+            if (!session.LastChecked.HasValue ||
+                session.LastChecked.Value.AddSeconds(authSettings.RefreshThreshold) < DateTime.UtcNow)
+            {
+                logger.LogDebug("Extending session {SessionId}", session.Id);
+                session.LastChecked = DateTime.UtcNow;
+                session.Expires = DateTime.UtcNow.AddSeconds(authSettings.SessionTtl);
+                await SaveChangesWithRowCountCheck("Extend user session", cancellationToken: cancellationToken);
+            }
+
+            return new TryGetSessionResponse(GetSessionStatus.Success, session);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Unexpected error getting refresh token");
+            return new TryGetSessionResponse(GetSessionStatus.UnknownError);
+        }
+    } 
 }
