@@ -30,9 +30,15 @@ public class AuthSettings
     public string CookieNameFormat { get; set; } = "dlcs-auth2-{0}";
 
     /// <summary>
-    /// Default TTL for sessions + cookies
+    /// Default TTL for sessions + cookies in secs
     /// </summary>
     public int SessionTtl { get; set; } = 600;
+
+    /// <summary>
+    /// UserSession expiry not refreshed if LastChecked within this number of secs
+    /// </summary>
+    /// <remarks>This avoids constant churn in db</remarks>
+    public int RefreshThreshold { get; set; } = 120;
 
     /// <summary>
     /// A list of domains to set on auth cookie.

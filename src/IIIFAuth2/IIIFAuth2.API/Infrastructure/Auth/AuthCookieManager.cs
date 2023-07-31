@@ -37,6 +37,24 @@ public class AuthCookieManager
         => $"{CookiePrefix}{cookieId}";
     
     /// <summary>
+    /// Get the CookieId from cookieValue
+    /// </summary>
+    public string? GetCookieIdFromValue(string cookieValue)
+        => cookieValue.StartsWith(CookiePrefix) ? cookieValue[3..] : null;
+    
+    /// <summary>
+    /// Get Cookie for specified customer
+    /// </summary>
+    public string? GetCookieValueForCustomer(int customer)
+    {
+        var httpContext = httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
+        var cookieKey = GetAuthCookieKey(authSettings.CookieNameFormat, customer);
+        return httpContext.Request.Cookies.TryGetValue(cookieKey, out var cookieValue)
+            ? cookieValue
+            : null;
+    }
+    
+    /// <summary>
     /// Add cookie to current Response object, using details from specified <see cref="SessionUser"/>
     /// </summary>
     public void IssueCookie(SessionUser sessionUser)

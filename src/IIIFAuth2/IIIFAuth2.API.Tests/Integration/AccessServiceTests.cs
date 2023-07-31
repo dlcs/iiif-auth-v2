@@ -92,6 +92,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
 
         var token = await dbContext.RoleProvisionTokens.SingleAsync(t => t.Id == hiddenValue);
         token.Roles.Should().ContainSingle(DatabaseFixture.ClickthroughRoleUri);
+        token.Origin.Should().Be("http://whatever.here/");
         token.Used.Should().BeFalse();
     }
     
@@ -287,6 +288,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         authToken.Expires.Should().NotBeBefore(DateTime.UtcNow);
         authToken.Customer.Should().Be(99);
         authToken.Roles.Should().BeEquivalentTo(roles);
+        authToken.Origin.Should().Be("http://localhost");
         
         await dbContext.Entry(tokenEntity.Entity).ReloadAsync();
         tokenEntity.Entity.Used.Should().BeTrue("token is now used");
@@ -304,5 +306,9 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     }
 
     private static RoleProvisionToken CreateToken(string token, bool used, string[] roles)
-        => new() { Id = token, Created = DateTime.UtcNow, Customer = 99, Roles = roles.ToList(), Used = used };
+        => new()
+        {
+            Id = token, Created = DateTime.UtcNow, Customer = 99, Roles = roles.ToList(), Used = used,
+            Origin = "http://localhost"
+        };
 }

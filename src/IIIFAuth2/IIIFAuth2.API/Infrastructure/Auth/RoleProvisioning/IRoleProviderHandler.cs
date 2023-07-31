@@ -18,6 +18,6 @@ public interface IRoleProviderHandler
     /// create a session + issue a cookie (if authorizing aspect present) or request the user carry out a significant
     /// gesture in order that a cookie may be issues for that domain
     /// </summary>
-    Task<HandleRoleProvisionResponse> HandleRequest(int customerId, AccessService accessService,
+    Task<HandleRoleProvisionResponse> HandleRequest(int customerId, string requestOrigin, AccessService accessService,
         IProviderConfiguration providerConfiguration, bool hostIsOrigin, CancellationToken cancellationToken = default);
 }

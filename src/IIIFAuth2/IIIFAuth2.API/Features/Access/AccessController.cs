@@ -12,7 +12,7 @@ namespace IIIFAuth2.API.Features.Access;
 [Route("[controller]")]
 public class AccessController : AuthBaseController
 {
-    public AccessController(IMediator mediator) : base(mediator)
+    public AccessController(IMediator mediator, ILogger<AccessController> logger) : base(mediator, logger)
     {
     }
 

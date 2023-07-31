@@ -42,7 +42,7 @@ public class InitiateRoleProvisionRequestHandler : IRequestHandler<InitiateRoleP
     {
         var originMatchesHost = OriginMatchesHost(request);
         var handled = await roleProviderService.HandleRequest(request.CustomerId, request.AccessServiceName,
-            originMatchesHost, cancellationToken);
+            originMatchesHost, request.Origin, cancellationToken);
         return handled;
     }
 
