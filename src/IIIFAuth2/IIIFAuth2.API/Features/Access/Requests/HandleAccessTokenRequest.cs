@@ -55,7 +55,7 @@ public class HandleAccessTokenRequestHandler : IRequestHandler<HandleAccessToken
         {
             MessageId = messageId,
             AccessToken = sessionUser.AccessToken,
-            ExpiresIn = (int)(DateTime.UtcNow - sessionUser.Expires).TotalSeconds,
+            ExpiresIn = (int)(sessionUser.Expires - DateTime.UtcNow).TotalSeconds,
         };
 
     private static AuthAccessTokenError2 BuildAccessTokenError(GetSessionStatus getSessionStatus, string messageId)
