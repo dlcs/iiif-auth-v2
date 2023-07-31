@@ -48,7 +48,7 @@ public class AuthAspectManager
     /// </summary>
     public string? GetCookieValueForCustomer(int customer)
     {
-        var httpContext = httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
+        var httpContext = GetContext();
         var cookieKey = GetAuthCookieKey(authSettings.CookieNameFormat, customer);
         return httpContext.Request.Cookies.TryGetValue(cookieKey, out var cookieValue)
             ? cookieValue
@@ -60,7 +60,7 @@ public class AuthAspectManager
     /// </summary>
     public void IssueCookie(SessionUser sessionUser)
     {
-        var httpContext = httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
+        var httpContext = GetContext();
         var domains = GetCookieDomainList(httpContext);
 
         var cookieValue = GetCookieValueForId(sessionUser.CookieId);
@@ -86,13 +86,15 @@ public class AuthAspectManager
     {
         const string bearerTokenScheme = "bearer";
 
-        var requestHeaders = httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext))
-            .Request.Headers;
+        var requestHeaders = GetContext().Request.Headers;
         return AuthenticationHeaderValue.TryParse(requestHeaders.Authorization, out var parsed) &&
                parsed.Scheme.Equals(bearerTokenScheme, StringComparison.InvariantCultureIgnoreCase)
             ? parsed.Parameter
             : null;
     }
+
+    private HttpContext GetContext() =>
+        httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
 
     private IEnumerable<string> GetCookieDomainList(HttpContext httpContext)
     {
