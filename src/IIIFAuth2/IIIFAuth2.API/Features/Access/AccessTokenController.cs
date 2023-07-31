@@ -34,7 +34,6 @@ public class AccessTokenController : Controller
         [FromQuery] Uri? origin,
         CancellationToken cancellationToken)
     {
-        
         ViewResult GenerateErrorResult(string profile, string heading, string note)
         {
             var accessTokenError = AuthServiceBuilder.CreateAuthAccessTokenError2(profile, messageId, heading, note);
@@ -55,8 +54,8 @@ public class AccessTokenController : Controller
                     "Required origin query parameter not provided or invalid");
             }
             
-            var initiate = new HandleAccessTokenRequest(customerId, origin, messageId);
-            var accessTokenResponse = await mediator.Send(initiate, cancellationToken);
+            var accessTokenRequest = new HandleAccessTokenRequest(customerId, origin, messageId);
+            var accessTokenResponse = await mediator.Send(accessTokenRequest, cancellationToken);
 
             return View("AccessTokenResponse", (accessTokenResponse, origin));
         }
