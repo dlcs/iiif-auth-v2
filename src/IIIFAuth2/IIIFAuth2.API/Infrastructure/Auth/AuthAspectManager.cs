@@ -9,13 +9,13 @@ namespace IIIFAuth2.API.Infrastructure.Auth;
 /// A collection of helper utils for dealing with auth cookies.
 /// </summary>
 /// <remarks>This is based on the original implementation for iiif auth 1.0 in Protagonist</remarks>
-public class AuthCookieManager
+public class AuthAspectManager
 {
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly AuthSettings authSettings;
     private const string CookiePrefix = "id=";
     
-    public AuthCookieManager(
+    public AuthAspectManager(
         IHttpContextAccessor httpContextAccessor,
         IOptions<AuthSettings> authSettings
         )

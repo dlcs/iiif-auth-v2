@@ -7,12 +7,12 @@ using Microsoft.Extensions.Options;
 
 namespace IIIFAuth2.API.Tests.Infrastructure.Auth;
 
-public class AuthCookieManagerTests
+public class AuthAspectManagerTests
 {
     private readonly IHttpContextAccessor contextAccessor;
     private readonly HttpRequest request;
 
-    public AuthCookieManagerTests()
+    public AuthAspectManagerTests()
     {
         var context = new DefaultHttpContext();
         request = context.Request;
@@ -205,7 +205,7 @@ public class AuthCookieManagerTests
         actual.Should().BeNull();
     }
     
-    private AuthCookieManager GetSut(bool useCurrentDomainForCookie = true, params string[] additionalDomains)
+    private AuthAspectManager GetSut(bool useCurrentDomainForCookie = true, params string[] additionalDomains)
     {
         var options = Options.Create(new AuthSettings
         {
@@ -213,6 +213,6 @@ public class AuthCookieManagerTests
             CookieNameFormat = "auth-token-{0}",
             UseCurrentDomainForCookie = useCurrentDomainForCookie
         });
-        return new AuthCookieManager(contextAccessor, options);
+        return new AuthAspectManager(contextAccessor, options);
     }
 }

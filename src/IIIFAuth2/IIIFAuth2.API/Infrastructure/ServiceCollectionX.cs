@@ -66,7 +66,7 @@ public static class ServiceCollectionX
     /// Add dependencies for handling auth requests
     /// </summary>
     public static IServiceCollection AddAuthServices(this IServiceCollection services)
-        => services.AddScoped<AuthCookieManager>()
+        => services.AddScoped<AuthAspectManager>()
             .AddScoped<RoleProviderService>()
             .AddScoped<ClickthroughRoleProviderHandler>()
             .AddScoped<SessionManagementService>()

@@ -1,7 +1,6 @@
 ﻿using IIIF;
 using IIIF.Auth.V2;
 using IIIFAuth2.API.Features.Access.Requests;
-using IIIFAuth2.API.Infrastructure.Web;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 

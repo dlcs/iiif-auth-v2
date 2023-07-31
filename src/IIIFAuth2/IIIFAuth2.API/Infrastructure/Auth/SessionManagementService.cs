@@ -15,18 +15,18 @@ namespace IIIFAuth2.API.Infrastructure.Auth;
 public class SessionManagementService
 {
     private readonly AuthServicesContext dbContext;
-    private readonly AuthCookieManager authCookieManager;
+    private readonly AuthAspectManager authAspectManager;
     private readonly ILogger<SessionManagementService> logger;
     private readonly AuthSettings authSettings;
 
     public SessionManagementService(
         AuthServicesContext dbContext,
-        AuthCookieManager authCookieManager,
+        AuthAspectManager authAspectManager,
         IOptions<AuthSettings> authSettings,
         ILogger<SessionManagementService> logger)
     {
         this.dbContext = dbContext;
-        this.authCookieManager = authCookieManager;
+        this.authAspectManager = authAspectManager;
         this.logger = logger;
         this.authSettings = authSettings.Value;
     }
@@ -114,14 +114,14 @@ public class SessionManagementService
     /// </summary>
     public async Task<TryGetSessionResponse> TryGetSessionUserForCookie(int customerId, string origin, CancellationToken cancellationToken)
     {
-        var cookieValue = authCookieManager.GetCookieValueForCustomer(customerId);
+        var cookieValue = authAspectManager.GetCookieValueForCustomer(customerId);
         if (string.IsNullOrEmpty(cookieValue))
         {
             logger.LogDebug("Attempt to get cookie value for customer {CustomerId} but cookie not found", customerId);
             return new TryGetSessionResponse(GetSessionStatus.MissingCookie);
         }
 
-        var cookieId = authCookieManager.GetCookieIdFromValue(cookieValue);
+        var cookieId = authAspectManager.GetCookieIdFromValue(cookieValue);
         if (string.IsNullOrEmpty(cookieId))
         {
             logger.LogDebug("Id not found in cookie '{CookieValue}' for customer {CustomerId}",
@@ -133,7 +133,7 @@ public class SessionManagementService
         if (findSessionResponse.Status != GetSessionStatus.Success) return findSessionResponse;
         
         // Re-issue the cookie to extend ttl
-        authCookieManager.IssueCookie(findSessionResponse.SessionUser!);
+        authAspectManager.IssueCookie(findSessionResponse.SessionUser!);
         return findSessionResponse;
     }
 
@@ -162,7 +162,7 @@ public class SessionManagementService
         var sessionUser = await CreateAndAddSessionUser(customerId, roles, origin, cancellationToken);
         await SaveChangesWithRowCountCheck(operation, expectedRowCount, cancellationToken: cancellationToken);
 
-        authCookieManager.IssueCookie(sessionUser);
+        authAspectManager.IssueCookie(sessionUser);
         return sessionUser;
     }
 
