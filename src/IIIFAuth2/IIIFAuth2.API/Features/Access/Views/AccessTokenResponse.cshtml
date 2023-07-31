@@ -1,0 +1,17 @@
+@using IIIF.Serialisation
+@model (IIIF.JsonLdBase TokenResponse, Uri Origin)
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+  <title>Access Token Response</title>
+</head>
+<body>
+<script>
+    window.parent.postMessage(
+      @Html.Raw(Model.TokenResponse.AsJson()),
+      @Model.Origin
+    );
+</script>
+</body>
+</html>
