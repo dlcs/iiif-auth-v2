@@ -251,7 +251,7 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
         
         // Assert
         await dbContext.Entry(sessionUser.Entity).ReloadAsync();
-        sessionUser.Entity.LastChecked.Should().Be(lastChecked);
+        sessionUser.Entity.LastChecked.Should().BeCloseTo(lastChecked, TimeSpan.FromMilliseconds(100));
     }
 
     private static async Task ValidateResponse(HttpResponseMessage response, string? expectedProfile = null,

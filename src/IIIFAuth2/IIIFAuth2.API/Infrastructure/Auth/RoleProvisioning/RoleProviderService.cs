@@ -22,7 +22,8 @@ public class RoleProviderService
         this.logger = logger;
     }
 
-    public async Task<HandleRoleProvisionResponse?> HandleRequest(int customerId, string accessServiceName, bool hostIsOrigin, CancellationToken cancellationToken = default)
+    public async Task<HandleRoleProvisionResponse?> HandleRequest(int customerId, string accessServiceName,
+        bool hostIsOrigin, Uri requestOrigin, CancellationToken cancellationToken = default)
     {
         var accessService = await GetAccessServices(customerId, accessServiceName);
         if (accessService == null) return null;
@@ -40,8 +41,8 @@ public class RoleProviderService
         var providerConfiguration = roleProvider.Configuration.GetDefaultConfiguration();
         var handler = handlerResolver(providerConfiguration.Config);
 
-        var result = await handler.HandleRequest(customerId, accessService, providerConfiguration, hostIsOrigin,
-            cancellationToken);
+        var result = await handler.HandleRequest(customerId, requestOrigin.ToString(), accessService,
+            providerConfiguration, hostIsOrigin, cancellationToken);
         return result;
     }
 

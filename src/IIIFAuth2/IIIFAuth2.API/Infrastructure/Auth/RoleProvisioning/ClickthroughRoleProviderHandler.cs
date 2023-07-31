@@ -30,6 +30,7 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
     }
 
     public async Task<HandleRoleProvisionResponse> HandleRequest(int customerId,
+        string requestOrigin,
         AccessService accessService,
         IProviderConfiguration providerConfiguration,
         bool hostIsOrigin,
@@ -46,12 +47,12 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
 
         if (hostIsOrigin)
         {
-            await sessionManagementService.CreateSessionForRoles(customerId, roles, cancellationToken);
+            await sessionManagementService.CreateSessionForRoles(customerId, roles, requestOrigin, cancellationToken);
             return HandleRoleProvisionResponse.Handled();
         }
 
         // We need to capture a significant gesture on this domain before we can issue a cookie
-        var gestureModel = await GetSignificantGestureModel(customerId, roles, configuration, cancellationToken);
+        var gestureModel = await GetSignificantGestureModel(customerId, roles, requestOrigin, configuration, cancellationToken);
         return HandleRoleProvisionResponse.SignificantGesture(gestureModel);
     }
 
@@ -72,10 +73,10 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
     }
 
     private async Task<SignificantGestureModel> GetSignificantGestureModel(int customerId, IReadOnlyCollection<string> roles,
-        ClickthroughConfiguration configuration, CancellationToken cancellationToken)
+        string origin, ClickthroughConfiguration configuration, CancellationToken cancellationToken)
     {
         var expiringToken =
-            await sessionManagementService.CreateRoleProvisionToken(customerId, roles, cancellationToken);
+            await sessionManagementService.CreateRoleProvisionToken(customerId, roles, origin, cancellationToken);
         var gestureModel = new SignificantGestureModel(
             configuration.GestureTitle ?? apiSettings.DefaultSignificantGestureTitle,
             configuration.GestureMessage ?? apiSettings.DefaultSignificantGestureMessage,

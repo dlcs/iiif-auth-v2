@@ -34,7 +34,8 @@ public class SessionManagementService
     /// <summary>
     /// Create a new RoleProvisionToken for specified roles + customer
     /// </summary>
-    public async Task<string> CreateRoleProvisionToken(int customerId, IReadOnlyCollection<string> roles, CancellationToken cancellationToken)
+    public async Task<string> CreateRoleProvisionToken(int customerId, IReadOnlyCollection<string> roles, string origin,
+        CancellationToken cancellationToken)
     {
         var time = DateTime.UtcNow;
         var token = new RoleProvisionToken
@@ -44,6 +45,7 @@ public class SessionManagementService
             Customer = customerId,
             Roles = roles.ToList(),
             Used = false,
+            Origin = origin
         };
 
         await dbContext.RoleProvisionTokens.AddAsync(token, cancellationToken);
@@ -55,8 +57,8 @@ public class SessionManagementService
     /// <summary>
     /// Create a new session for customer + roles. Creates DB record and issues cookie to response.
     /// </summary>
-    public Task<SessionUser> CreateSessionForRoles(int customerId, IReadOnlyCollection<string> roles, CancellationToken cancellationToken)
-        => CreateSessionAndIssueCookie(customerId, roles, "Create session-user", 1, cancellationToken);
+    public Task<SessionUser> CreateSessionForRoles(int customerId, IReadOnlyCollection<string> roles, string origin, CancellationToken cancellationToken)
+        => CreateSessionAndIssueCookie(customerId, roles, origin, "Create session-user", 1, cancellationToken);
 
     /// <summary>
     /// Attempt to create a new session using provided token. This can fail if token has been used, is expired or not
@@ -90,7 +92,7 @@ public class SessionManagementService
 
             token.Used = true;
             const int expectedRowCount = 2;
-            var sessionUser = await CreateSessionAndIssueCookie(token.Customer, token.Roles,
+            var sessionUser = await CreateSessionAndIssueCookie(token.Customer, token.Roles, token.Origin,
                 "Create session from token", expectedRowCount, cancellationToken);
             return ResultStatus<SessionUser>.Successful(sessionUser);
         }
@@ -135,8 +137,8 @@ public class SessionManagementService
         return findSessionResponse;
     }
 
-    private async Task<SessionUser> CreateAndAddSessionUser(int customerId, IReadOnlyCollection<string> roles,
-        CancellationToken cancellationToken)
+    private async Task<SessionUser> CreateAndAddSessionUser(int customerId, IReadOnlyCollection<string> roles, 
+        string origin, CancellationToken cancellationToken)
     {
         var sessionUser = new SessionUser
         {
@@ -146,17 +148,18 @@ public class SessionManagementService
             AccessToken = Guid.NewGuid().ToString("N"),
             Roles = roles.ToList(),
             Customer = customerId,
-            CookieId = Guid.NewGuid().ToString()
+            CookieId = Guid.NewGuid().ToString(),
+            Origin = origin
         };
         await dbContext.SessionUsers.AddAsync(sessionUser, cancellationToken);
         return sessionUser;
     }
 
-    private async Task<SessionUser> CreateSessionAndIssueCookie(int customerId, IReadOnlyCollection<string> roles, string operation,
-        int expectedRowCount, CancellationToken cancellationToken)
+    private async Task<SessionUser> CreateSessionAndIssueCookie(int customerId, IReadOnlyCollection<string> roles,
+        string origin, string operation, int expectedRowCount, CancellationToken cancellationToken)
     {
         // TODO - handle user already having a session 
-        var sessionUser = await CreateAndAddSessionUser(customerId, roles, cancellationToken);
+        var sessionUser = await CreateAndAddSessionUser(customerId, roles, origin, cancellationToken);
         await SaveChangesWithRowCountCheck(operation, expectedRowCount, cancellationToken: cancellationToken);
 
         authCookieManager.IssueCookie(sessionUser);

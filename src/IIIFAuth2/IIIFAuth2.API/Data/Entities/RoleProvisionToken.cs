@@ -24,6 +24,8 @@ public class RoleProvisionToken : IHaveCustomer
     public DateTime Created { get; set; }
     
     public int Customer { get; set; }
+
+    public string Origin { get; set; } = null!;
     
     /// <summary>
     /// For optimistic-concurrency, see https://www.npgsql.org/efcore/modeling/concurrency.html
