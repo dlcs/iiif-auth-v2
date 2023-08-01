@@ -189,6 +189,32 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
 
         await ValidateResponse(response, expectedAccessToken: "found-access-token");
     }
+    
+    [Fact]
+    public async Task AccessService_ExtendsCookie_IfCookieValid()
+    {
+        // Arrange
+        const string cookieId = nameof(AccessService_ExtendsCookie_IfCookieValid);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(cookieId));
+        await dbContext.SaveChangesAsync();
+        
+        const string path = "/access/99/token?messageId=12345&origin=http://localhost";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+        
+        // Act
+        var response = await httpClient.SendAsync(request);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        response.Headers.Should().ContainKey("Set-Cookie");
+        var cookie = response.Headers.SingleOrDefault(header => header.Key == "Set-Cookie").Value.First();
+        cookie.Should()
+            .StartWith("dlcs-auth2-99")
+            .And.Contain("samesite=none")
+            .And.Contain("secure;");
+    }
 
     [Fact]
     public async Task AccessService_Returns200_ExtendsExpires_IfCookieValid_AndLastCheckedNull()

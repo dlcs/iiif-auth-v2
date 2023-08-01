@@ -1,4 +1,5 @@
-﻿using IIIF.Serialisation;
+﻿using IIIF;
+using IIIF.Serialisation;
 using IIIFAuth2.API.Models.Result;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -38,7 +39,7 @@ public abstract class AuthBaseController : Controller
                 return Problem(detail: result.ErrorMessage ?? "Entity not found", statusCode: 404, title: errorTitle);
             }
 
-            return Content(result.DescriptionResource.AsJson(), contentType);
+            return IIIFContent(result.DescriptionResource, contentType);
         });
     }
 
@@ -60,4 +61,7 @@ public abstract class AuthBaseController : Controller
             return Problem(detail: ex.Message, statusCode: 500, title: errorTitle ?? "Unexpected error");
         }
     }
+
+    protected ContentResult IIIFContent(JsonLdBase iiifModel, string contentType = "application/json")
+        => Content(iiifModel.AsJson(), contentType);
 }
