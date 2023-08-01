@@ -119,7 +119,7 @@ public class SessionManagementService
     /// Attempt to load <see cref="SessionUser"/> for provided CookieId. If found it may have expiry extended in
     /// database and will issue cookie
     /// </summary>
-    public async Task<TryGetSessionResponse> TryGetSessionUserForCookie(int customerId, string origin, CancellationToken cancellationToken)
+    public async Task<TryGetSessionResponse> TryGetSessionUserForCookie(int customerId, string? origin, CancellationToken cancellationToken)
     {
         var cookieValue = authAspectManager.GetCookieValueForCustomer(customerId);
         if (string.IsNullOrEmpty(cookieValue))
