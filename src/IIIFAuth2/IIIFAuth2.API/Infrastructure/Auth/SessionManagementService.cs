@@ -9,7 +9,6 @@ using LazyCache;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
-using Z.EntityFramework.Plus;
 
 namespace IIIFAuth2.API.Infrastructure.Auth;
 
@@ -281,7 +280,6 @@ public class SessionManagementService
                 session.LastChecked = DateTime.UtcNow;
                 session.Expires = DateTime.UtcNow.AddSeconds(authSettings.SessionTtl);
                 await SaveChangesWithRowCountCheck("Extend user session", cancellationToken: cancellationToken);
-                QueryCacheManager.ExpireTag(CacheKeys.AuthAspect(aspectValue));
             }
 
             // Re-issue the cookie to extend ttl
