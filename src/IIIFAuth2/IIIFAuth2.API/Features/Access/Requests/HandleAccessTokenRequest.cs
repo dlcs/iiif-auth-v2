@@ -1,6 +1,5 @@
 ﻿using IIIF;
 using IIIF.Auth.V2;
-using IIIF.Presentation.V3.Strings;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.Models;
@@ -46,8 +45,8 @@ public class HandleAccessTokenRequestHandler : IRequestHandler<HandleAccessToken
     }
 
     private static JsonLdBase BuildResponse(TryGetSessionResponse tryGetSessionResponse, string messageId)
-        => tryGetSessionResponse.Status == GetSessionStatus.Success && tryGetSessionResponse.SessionUser != null
-            ? BuildAccessTokenResponse(tryGetSessionResponse.SessionUser, messageId)
+        => tryGetSessionResponse.IsSuccessWithSession()
+            ? BuildAccessTokenResponse(tryGetSessionResponse.SessionUser!, messageId)
             : BuildAccessTokenError(tryGetSessionResponse.Status, messageId);
 
     private static AuthAccessToken2 BuildAccessTokenResponse(SessionUser sessionUser, string messageId)
@@ -71,7 +70,7 @@ public class HandleAccessTokenRequestHandler : IRequestHandler<HandleAccessToken
                 "Authorising cookie invalid"),
             GetSessionStatus.DifferentOrigin => (AuthAccessTokenError2.InvalidOrigin, "Origin invalid",
                 "Requested origin differs from access service request"),
-            GetSessionStatus.MissingCookie => (AuthAccessTokenError2.MissingAspect, "Missing cookie",
+            GetSessionStatus.MissingCredentials => (AuthAccessTokenError2.MissingAspect, "Missing cookie",
                 "Authorising cookie not found"),
             GetSessionStatus.InvalidCookie => (AuthAccessTokenError2.InvalidAspect, "Invalid cookie",
                 "Authorising cookie invalid"),

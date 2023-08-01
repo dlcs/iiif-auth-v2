@@ -29,9 +29,9 @@ public enum GetSessionStatus
     DifferentOrigin,
     
     /// <summary>
-    /// Cookie not found
+    /// Cookie or AccessToken not found
     /// </summary>
-    MissingCookie,
+    MissingCredentials,
     
     /// <summary>
     /// Cookie found but invalid
