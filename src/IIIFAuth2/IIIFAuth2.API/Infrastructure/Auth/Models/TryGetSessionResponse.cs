@@ -7,6 +7,15 @@ namespace IIIFAuth2.API.Infrastructure.Auth.Models;
 /// </summary>
 public record TryGetSessionResponse(GetSessionStatus Status, SessionUser? SessionUser = null);
 
+public static class TryGetSessionResponseX
+{
+    /// <summary>
+    /// Check if status is 'Success' and SessionUser is present
+    /// </summary>
+    public static bool IsSuccessWithSession(this TryGetSessionResponse response)
+        => response.Status == GetSessionStatus.Success && response.SessionUser != null;
+}
+
 public enum GetSessionStatus
 {
     /// <summary>
