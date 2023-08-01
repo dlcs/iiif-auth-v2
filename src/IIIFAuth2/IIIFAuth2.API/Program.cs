@@ -33,6 +33,7 @@ try
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
         .AddMediatR(typeof(Program))
+        .AddCaching()
         .ConfigureAspnetMvc();
 
     var apiSettings = builder.Configuration.Get<ApiSettings>()!;
