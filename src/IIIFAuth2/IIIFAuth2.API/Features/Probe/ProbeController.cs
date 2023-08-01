@@ -43,12 +43,12 @@ public class ProbeController : AuthBaseController
         }
         catch (FormatException fmtEx)
         {
-            Logger.LogDebug(fmtEx, "Format exception processing request");
+            Logger.LogDebug(fmtEx, "Format exception processing probe service request");
             return GenerateErrorResult(HttpStatusCode.BadRequest, "Provided AssetId is invalid format");
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Unexpected error handling ProbeService request");
+            Logger.LogError(ex, "Unexpected error handling probe service request");
             return GenerateErrorResult(HttpStatusCode.InternalServerError, "Unexpected error");
         }
     }

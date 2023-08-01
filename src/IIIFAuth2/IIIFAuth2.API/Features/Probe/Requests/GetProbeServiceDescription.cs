@@ -44,7 +44,7 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetProbeServiceDesc
 
     private static AuthProbeResult2 BuildProbeResultResponse(TryGetSessionResponse tryGetSessionResponse, IReadOnlyCollection<string> roles)
     {
-        var statusCode = GetStatusCode(tryGetSessionResponse, roles);
+        var statusCode = AccessStatusCodeHelpers.GetStatusCode(tryGetSessionResponse, roles);
         var probeService = new AuthProbeResult2
         { 
             Status = (int)statusCode, 
@@ -57,13 +57,6 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetProbeServiceDesc
         if (note != null) probeService.Note = new LanguageMap("en", note);
 
         return probeService;
-    }
-
-    private static HttpStatusCode GetStatusCode(TryGetSessionResponse getSessionResponse, IReadOnlyCollection<string> roles)
-    {
-        if (!getSessionResponse.IsSuccessWithSession()) return HttpStatusCode.Unauthorized;
-        
-        return getSessionResponse.CanUserAccessAtLeastOneRole(roles) ? HttpStatusCode.OK : HttpStatusCode.Forbidden;
     }
 
     private static (string? Heading, string? Note) GetProperties(GetSessionStatus getSessionStatus, HttpStatusCode statusCode)
