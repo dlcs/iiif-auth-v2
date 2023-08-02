@@ -12,6 +12,7 @@ namespace IIIFAuth2.API.Infrastructure.Auth;
 /// <remarks>This is based on the original implementation for iiif auth 1.0 in Protagonist</remarks>
 public class AuthAspectManager
 {
+    private delegate void DomainCookieHandler(HttpContext httpContext, string cookieId, string domain);
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly AuthSettings authSettings;
     private const string CookiePrefix = "id=";
@@ -54,30 +55,32 @@ public class AuthAspectManager
             ? cookieValue
             : null;
     }
-    
+
     /// <summary>
     /// Add cookie to current Response object, using details from specified <see cref="SessionUser"/>
     /// </summary>
     public void IssueCookie(SessionUser sessionUser)
-    {
-        var httpContext = GetContext();
-        var domains = GetCookieDomainList(httpContext);
+        => HandleCookieDomain(sessionUser.Customer,
+            (httpContext, cookieId, domain) =>
+            {
+                var cookieValue = GetCookieValueForId(sessionUser.CookieId);
+                httpContext.Response.Cookies.Append(cookieId, cookieValue,
+                    new CookieOptions
+                    {
+                        Domain = domain,
+                        Expires = DateTimeOffset.UtcNow.AddSeconds(authSettings.SessionTtl),
+                        SameSite = SameSiteMode.None,
+                        Secure = true
+                    });
+            });
 
-        var cookieValue = GetCookieValueForId(sessionUser.CookieId);
-        var cookieId = GetAuthCookieKey(authSettings.CookieNameFormat, sessionUser.Customer);
-
-        foreach (var domain in domains)
-        {
-            httpContext.Response.Cookies.Append(cookieId, cookieValue,
-                new CookieOptions
-                {
-                    Domain = domain,
-                    Expires = DateTimeOffset.UtcNow.AddSeconds(authSettings.SessionTtl),
-                    SameSite = SameSiteMode.None,
-                    Secure = true
-                });
-        }
-    }
+    /// <summary>
+    /// Remove cookie for customer from current Response object 
+    /// </summary>
+    public void RemoveCookieFromResponse(int customerId)
+        => HandleCookieDomain(customerId,
+            (httpContext, cookieId, domain) =>
+                httpContext.Response.Cookies.Delete(cookieId, new CookieOptions { Domain = domain }));
 
     /// <summary>
     /// Get the Id of provided access-token from Bearer token header
@@ -91,6 +94,19 @@ public class AuthAspectManager
                parsed.Scheme.Equals(bearerTokenScheme, StringComparison.InvariantCultureIgnoreCase)
             ? parsed.Parameter
             : null;
+    }
+    
+    private void HandleCookieDomain(int customer, DomainCookieHandler domainCookieHandler)
+    {
+        var httpContext = GetContext();
+        var domains = GetCookieDomainList(httpContext);
+
+        var cookieId = GetAuthCookieKey(authSettings.CookieNameFormat, customer);
+
+        foreach (var domain in domains)
+        {
+            domainCookieHandler(httpContext, cookieId, domain);
+        }
     }
 
     private HttpContext GetContext() =>
