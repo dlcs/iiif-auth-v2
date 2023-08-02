@@ -36,7 +36,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
-        authProbeResult.Status.Should().Be(400);
+        authProbeResult.Status.Should().Be(400, "BadRequest (400) expected");
     }
     
     [Fact]
@@ -51,7 +51,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
-        authProbeResult.Status.Should().Be(400);
+        authProbeResult.Status.Should().Be(400, "BadRequest (400) expected");
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
-        authProbeResult.Status.Should().Be(401);
+        authProbeResult.Status.Should().Be(401, "Unauthorized (401) expected");
         authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Missing credentials");
         authProbeResult.Note["en"].Should().ContainSingle(s => s == "Authorising credentials not found");
     }
@@ -85,7 +85,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
-        authProbeResult.Status.Should().Be(401);
+        authProbeResult.Status.Should().Be(401, "Unauthorized (401) expected");
         authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Missing credentials");
         authProbeResult.Note["en"].Should().ContainSingle(s => s == "Authorising credentials not found");
     }
@@ -104,7 +104,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
-        authProbeResult.Status.Should().Be(401);
+        authProbeResult.Status.Should().Be(401, "Unauthorized (401) expected");
         authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Invalid credentials");
         authProbeResult.Note["en"].Should().ContainSingle(s => s == "Authorising credentials invalid");
     }
@@ -128,7 +128,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
-        authProbeResult.Status.Should().Be(401);
+        authProbeResult.Status.Should().Be(401, "Unauthorized (401) expected");
         authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Invalid credentials");
         authProbeResult.Note["en"].Should().ContainSingle(s => s == "Authorising credentials invalid");
     }
@@ -152,7 +152,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
-        authProbeResult.Status.Should().Be(401);
+        authProbeResult.Status.Should().Be(401, "Unauthorized (401) expected");
         authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Expired session");
         authProbeResult.Note["en"].Should().ContainSingle(s => s == "Session has expired");
     }
@@ -176,7 +176,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
-        authProbeResult.Status.Should().Be(403);
+        authProbeResult.Status.Should().Be(403, "Forbidden (403) expected");
         authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Forbidden");
         authProbeResult.Note["en"].Should().ContainSingle(s => s == "Session does not have required roles");
     }
@@ -200,7 +200,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
-        authProbeResult.Status.Should().Be(200);
+        authProbeResult.Status.Should().Be(200, "OK (200) expected");
         authProbeResult.Heading.Should().BeNull();
         authProbeResult.Note.Should().BeNull();
     }
