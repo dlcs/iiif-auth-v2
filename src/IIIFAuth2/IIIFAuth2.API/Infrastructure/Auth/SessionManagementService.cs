@@ -94,6 +94,7 @@ public class SessionManagementService : SessionManagerBase
             const int expectedRowCount = 2;
             var sessionUser = await CreateSessionAndIssueCookie(token.Customer, token.Roles, token.Origin,
                 "Create session from token", expectedRowCount, cancellationToken);
+            Logger.LogDebug("Successfully created Session for token: {Token}", roleProvisionToken);
             return ResultStatus<SessionUser>.Successful(sessionUser);
         }
         catch (DbUpdateConcurrencyException dbEx)
