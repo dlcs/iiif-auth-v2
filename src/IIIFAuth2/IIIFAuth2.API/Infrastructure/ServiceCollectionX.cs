@@ -70,6 +70,7 @@ public static class ServiceCollectionX
             .AddScoped<RoleProviderService>()
             .AddScoped<ClickthroughRoleProviderHandler>()
             .AddScoped<SessionManagementService>()
+            .AddScoped<SessionCleaner>()
             .AddScoped<RoleProviderHandlerResolver>(provider => roleProviderType => roleProviderType switch
             {
                 RoleProviderType.Clickthrough => provider.GetRequiredService<ClickthroughRoleProviderHandler>(),
