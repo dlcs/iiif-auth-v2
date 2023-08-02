@@ -13,14 +13,11 @@ using Microsoft.Extensions.Options;
 namespace IIIFAuth2.API.Infrastructure.Auth;
 
 /// <summary>
-/// Repository for operations involving session management
+/// Service for operations involving session management (creation and validation)
 /// </summary>
-public class SessionManagementService
+public class SessionManagementService : SessionManagerBase
 {
-    private readonly AuthServicesContext dbContext;
-    private readonly AuthAspectManager authAspectManager;
     private readonly IAppCache appCache;
-    private readonly ILogger<SessionManagementService> logger;
     private readonly AuthSettings authSettings;
 
     public SessionManagementService(
@@ -28,12 +25,9 @@ public class SessionManagementService
         AuthAspectManager authAspectManager,
         IAppCache appCache,
         IOptions<AuthSettings> authSettings,
-        ILogger<SessionManagementService> logger)
+        ILogger<SessionManagementService> logger): base(dbContext, authAspectManager, logger)
     {
-        this.dbContext = dbContext;
-        this.authAspectManager = authAspectManager;
         this.appCache = appCache;
-        this.logger = logger;
         this.authSettings = authSettings.Value;
     }
 
@@ -54,7 +48,7 @@ public class SessionManagementService
             Origin = origin
         };
 
-        await dbContext.RoleProvisionTokens.AddAsync(token, cancellationToken);
+        await DbContext.RoleProvisionTokens.AddAsync(token, cancellationToken);
         await SaveChangesWithRowCountCheck("Create role-provision", cancellationToken: cancellationToken);
        
         return token.Id;
@@ -77,22 +71,22 @@ public class SessionManagementService
         {
             if (ExpiringToken.HasExpired(roleProvisionToken))
             {
-                logger.LogInformation("Received an invalid or expired token: {Token}", roleProvisionToken);
+                Logger.LogInformation("Received an invalid or expired token: {Token}", roleProvisionToken);
                 return ResultStatus<SessionUser>.Unsuccessful();
             }
 
-            var token = await dbContext.RoleProvisionTokens.SingleOrDefaultAsync(r => r.Id == roleProvisionToken,
+            var token = await DbContext.RoleProvisionTokens.SingleOrDefaultAsync(r => r.Id == roleProvisionToken,
                 cancellationToken);
             if (token == null)
             {
-                logger.LogWarning("Received a valid, unexpired token that could not be found in db: {Token}",
+                Logger.LogWarning("Received a valid, unexpired token that could not be found in db: {Token}",
                     roleProvisionToken);
                 return ResultStatus<SessionUser>.Unsuccessful();
             }
 
             if (token.Used)
             {
-                logger.LogDebug("Received a used token: {Token}", roleProvisionToken);
+                Logger.LogDebug("Received a used token: {Token}", roleProvisionToken);
                 return ResultStatus<SessionUser>.Unsuccessful();
             }
 
@@ -104,11 +98,11 @@ public class SessionManagementService
         }
         catch (DbUpdateConcurrencyException dbEx)
         {
-            logger.LogError(dbEx, "Concurrency failure marking token {Token} as used", roleProvisionToken);
+            Logger.LogError(dbEx, "Concurrency failure marking token {Token} as used", roleProvisionToken);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unexpected error creating session user from token {Token}", roleProvisionToken);
+            Logger.LogError(ex, "Unexpected error creating session user from token {Token}", roleProvisionToken);
         }
         
         return ResultStatus<SessionUser>.Unsuccessful();
@@ -120,20 +114,8 @@ public class SessionManagementService
     /// </summary>
     public async Task<TryGetSessionResponse> TryGetSessionUserForCookie(int customerId, string? origin, CancellationToken cancellationToken)
     {
-        var cookieValue = authAspectManager.GetCookieValueForCustomer(customerId);
-        if (string.IsNullOrEmpty(cookieValue))
-        {
-            logger.LogDebug("Attempt to get cookie value for customer {CustomerId} but cookie not found", customerId);
-            return new TryGetSessionResponse(GetSessionStatus.MissingCredentials);
-        }
-
-        var cookieId = authAspectManager.GetCookieIdFromValue(cookieValue);
-        if (string.IsNullOrEmpty(cookieId))
-        {
-            logger.LogDebug("Id not found in cookie '{CookieValue}' for customer {CustomerId}",
-                cookieValue, customerId);
-            return new TryGetSessionResponse(GetSessionStatus.InvalidCookie);
-        }
+        if (!TryGetCookieId(customerId, out var cookieId, out var status))
+            return new TryGetSessionResponse(status.Value);
 
         var findSessionResponse = await GetRefreshedSession(
             su => su.CookieId == cookieId && su.Customer == customerId,
@@ -152,10 +134,10 @@ public class SessionManagementService
     public async Task<TryGetSessionResponse> TryGetSessionUserForAccessToken(int customerId,
         CancellationToken cancellationToken)
     {
-        var accessToken = authAspectManager.GetAccessToken();
+        var accessToken = AuthAspectManager.GetAccessToken();
         if (string.IsNullOrEmpty(accessToken))
         {
-            logger.LogDebug("Attempt to get session for customer {CustomerId} access-token but none found", customerId);
+            Logger.LogDebug("Attempt to get session for customer {CustomerId} access-token but none found", customerId);
             return new TryGetSessionResponse(GetSessionStatus.MissingCredentials);
         }
 
@@ -182,7 +164,7 @@ public class SessionManagementService
             CookieId = Guid.NewGuid().ToString(),
             Origin = origin
         };
-        await dbContext.SessionUsers.AddAsync(sessionUser, cancellationToken);
+        await DbContext.SessionUsers.AddAsync(sessionUser, cancellationToken);
         return sessionUser;
     }
 
@@ -193,23 +175,23 @@ public class SessionManagementService
         var sessionUser = await CreateAndAddSessionUser(customerId, roles, origin, cancellationToken);
         await SaveChangesWithRowCountCheck(operation, expectedRowCount, cancellationToken: cancellationToken);
 
-        authAspectManager.IssueCookie(sessionUser);
+        AuthAspectManager.IssueCookie(sessionUser);
         return sessionUser;
     }
 
     private async Task SaveChangesWithRowCountCheck(string operation, int expectedCount = 1,
         CancellationToken cancellationToken = default)
     {
-        var rows = await dbContext.SaveChangesAsync(cancellationToken);
+        var rows = await DbContext.SaveChangesAsync(cancellationToken);
         if (rows != expectedCount)
         {
-            logger.LogError(
+            Logger.LogError(
                 "Unexpected database rows written committing '{Message}', expected {ExpectedCount} but got {ActualCount}",
                 operation, expectedCount, rows);
             throw new ApplicationException($"Error committing {operation}");
         }
     }
-
+    
     private async Task<TryGetSessionResponse> GetRefreshedSession(
         Expression<Func<SessionUser, bool>> predicate,
         int customerId,
@@ -220,7 +202,7 @@ public class SessionManagementService
         var cacheKey = CacheKeys.AuthAspect(aspectValue, origin);
         return await appCache.GetOrAddAsync(cacheKey, async entry =>
         {
-            logger.LogTrace("Refreshing cached session for {AuthAspect} for {CustomerId}", aspectValue, customerId);
+            Logger.LogTrace("Refreshing cached session for {AuthAspect} for {CustomerId}", aspectValue, customerId);
             var tryGetSessionResponse =
                 await GetRefreshedSessionInternal(predicate, customerId, aspectValue, origin, cancellationToken);
 
@@ -229,7 +211,7 @@ public class SessionManagementService
                 // Cache successful checks until just before next check time - overwriting default
                 var lastChecked = tryGetSessionResponse.SessionUser!.LastChecked ?? DateTime.UtcNow;
                 var entryAbsoluteExpiration = lastChecked.AddSeconds(authSettings.RefreshThreshold * 0.9);
-                logger.LogTrace("{AuthAspect} for {CustomerId} successfully fetched, caching until {CacheExpiry}",
+                Logger.LogTrace("{AuthAspect} for {CustomerId} successfully fetched, caching until {CacheExpiry}",
                     aspectValue, customerId, entryAbsoluteExpiration);
                 entry.AbsoluteExpiration = entryAbsoluteExpiration;
             }
@@ -248,47 +230,29 @@ public class SessionManagementService
     {
         try
         {
-            var session = await dbContext.SessionUsers.SingleOrDefaultAsync(predicate, cancellationToken);
+            var tryGetSessionResponse = await GetSessionUser(predicate, customerId, aspectValue, origin, cancellationToken);
 
-            if (session == null)
-            {
-                logger.LogInformation("UserSession for aspect '{AuthAspect}' not found for customer {CustomerId}",
-                    aspectValue, customerId);
-                return new TryGetSessionResponse(GetSessionStatus.MissingSession);
-            }
+            if (!tryGetSessionResponse.IsSuccessWithSession()) return tryGetSessionResponse;
 
-            if (session.Expires <= DateTime.UtcNow)
-            {
-                logger.LogTrace("UserSession for aspect '{AuthAspect}' for customer {Customer} expired", aspectValue,
-                    customerId);
-                return new TryGetSessionResponse(GetSessionStatus.ExpiredSession);
-            }
-
-            if (!string.IsNullOrEmpty(origin) && session.Origin != origin)
-            {
-                logger.LogDebug(
-                    "UserSession for aspect '{AuthAspect}' for customer {Customer} was for origin '{OriginalOrigin} but requested for '{NewOrigin}'",
-                    aspectValue, customerId, session.Origin, origin);
-                return new TryGetSessionResponse(GetSessionStatus.DifferentOrigin);
-            }
-
+            var session = tryGetSessionResponse.SessionUser!;
+            
             // Token has never been checked, or was last checked in the past and threshold has passed
             if (!session.LastChecked.HasValue ||
                 session.LastChecked.Value.AddSeconds(authSettings.RefreshThreshold) < DateTime.UtcNow)
             {
-                logger.LogDebug("Extending session {SessionId}", session.Id);
+                Logger.LogDebug("Extending session {SessionId}", session.Id);
                 session.LastChecked = DateTime.UtcNow;
                 session.Expires = DateTime.UtcNow.AddSeconds(authSettings.SessionTtl);
                 await SaveChangesWithRowCountCheck("Extend user session", cancellationToken: cancellationToken);
             }
 
             // Re-issue the cookie to extend ttl
-            authAspectManager.IssueCookie(session);
+            AuthAspectManager.IssueCookie(session);
             return new TryGetSessionResponse(GetSessionStatus.Success, session);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unexpected error getting refresh token");
+            Logger.LogError(ex, "Unexpected error getting refresh token");
             return new TryGetSessionResponse(GetSessionStatus.UnknownError);
         }
     }
