@@ -66,7 +66,7 @@ public static class ServiceCollectionX
     /// Add dependencies for handling auth requests
     /// </summary>
     public static IServiceCollection AddAuthServices(this IServiceCollection services)
-        => services.AddScoped<AuthCookieManager>()
+        => services.AddScoped<AuthAspectManager>()
             .AddScoped<RoleProviderService>()
             .AddScoped<ClickthroughRoleProviderHandler>()
             .AddScoped<SessionManagementService>()
@@ -76,6 +76,14 @@ public static class ServiceCollectionX
                 _ => throw new ArgumentOutOfRangeException(nameof(roleProviderType), roleProviderType, null)
             });
 
+    /// <summary>
+    /// Add caching dependencies
+    /// </summary>
+    /// <remarks>
+    /// This adds LazyCache, Z.EntityFramework.Plus.EFCore caching is also used but there is no setup as default
+    /// MemoryCache is enough
+    /// </remarks>
+    public static IServiceCollection AddCaching(this IServiceCollection services) => services.AddLazyCache();
 }
 
 /// <summary>

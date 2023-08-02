@@ -7,12 +7,12 @@ using Microsoft.Extensions.Options;
 
 namespace IIIFAuth2.API.Tests.Infrastructure.Auth;
 
-public class AuthCookieManagerTests
+public class AuthAspectManagerTests
 {
     private readonly IHttpContextAccessor contextAccessor;
     private readonly HttpRequest request;
 
-    public AuthCookieManagerTests()
+    public AuthAspectManagerTests()
     {
         var context = new DefaultHttpContext();
         request = context.Request;
@@ -204,8 +204,55 @@ public class AuthCookieManagerTests
         // Assert
         actual.Should().BeNull();
     }
+
+    [Fact]
+    public void GetAccessToken_Null_IfNoAuthHeader()
+    {
+        // Arrange
+        var sut = GetSut();
+        
+        // Act
+        var bearerToken = sut.GetAccessToken();
+        
+        // Assert
+        bearerToken.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("basic Zm9vOmJhcg==")]
+    [InlineData("digest username=\"Test\" algorithm=MD5")]
+    [InlineData("negotiate foo")]
+    [InlineData("random bar")]
+    public void GetAccessToken_Null_IfAuthHeaderProvided_ButNotBearer(string authHeaderValue)
+    {
+        // Arrange
+        var sut = GetSut();
+        request.Headers.Append("Authorization", authHeaderValue);
+        
+        // Act
+        var bearerToken = sut.GetAccessToken();
+        
+        // Assert
+        bearerToken.Should().BeNull();
+    }
     
-    private AuthCookieManager GetSut(bool useCurrentDomainForCookie = true, params string[] additionalDomains)
+    [Theory]
+    [InlineData("bearer foo-bar")]
+    [InlineData("Bearer foo-bar")]
+    public void GetAccessToken_ReturnsValue_IfProvided(string authHeaderValue)
+    {
+        // Arrange
+        var sut = GetSut();
+        request.Headers.Append("Authorization", authHeaderValue);
+        
+        // Act
+        var bearerToken = sut.GetAccessToken();
+        
+        // Assert
+        bearerToken.Should().Be("foo-bar");
+    }
+    
+    private AuthAspectManager GetSut(bool useCurrentDomainForCookie = true, params string[] additionalDomains)
     {
         var options = Options.Create(new AuthSettings
         {
@@ -213,6 +260,6 @@ public class AuthCookieManagerTests
             CookieNameFormat = "auth-token-{0}",
             UseCurrentDomainForCookie = useCurrentDomainForCookie
         });
-        return new AuthCookieManager(contextAccessor, options);
+        return new AuthAspectManager(contextAccessor, options);
     }
 }

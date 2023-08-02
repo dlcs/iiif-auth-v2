@@ -11,6 +11,7 @@
       <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.6.0" />
       <PackageReference Include="iiif-net" Version="0.2.1" />
       <PackageReference Include="JetBrains.Annotations" Version="2023.2.0" />
+      <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
       <PackageReference Include="MediatR.Extensions.Microsoft.DependencyInjection" Version="11.1.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.9">
         <PrivateAssets>all</PrivateAssets>

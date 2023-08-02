@@ -1,4 +1,5 @@
-﻿using IIIFAuth2.API.Data.Entities;
+﻿using System.Net.Http.Headers;
+using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Settings;
 using IIIFAuth2.API.Utils;
 using Microsoft.Extensions.Options;
@@ -9,13 +10,13 @@ namespace IIIFAuth2.API.Infrastructure.Auth;
 /// A collection of helper utils for dealing with auth cookies.
 /// </summary>
 /// <remarks>This is based on the original implementation for iiif auth 1.0 in Protagonist</remarks>
-public class AuthCookieManager
+public class AuthAspectManager
 {
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly AuthSettings authSettings;
     private const string CookiePrefix = "id=";
     
-    public AuthCookieManager(
+    public AuthAspectManager(
         IHttpContextAccessor httpContextAccessor,
         IOptions<AuthSettings> authSettings
         )
@@ -47,7 +48,7 @@ public class AuthCookieManager
     /// </summary>
     public string? GetCookieValueForCustomer(int customer)
     {
-        var httpContext = httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
+        var httpContext = GetContext();
         var cookieKey = GetAuthCookieKey(authSettings.CookieNameFormat, customer);
         return httpContext.Request.Cookies.TryGetValue(cookieKey, out var cookieValue)
             ? cookieValue
@@ -59,7 +60,7 @@ public class AuthCookieManager
     /// </summary>
     public void IssueCookie(SessionUser sessionUser)
     {
-        var httpContext = httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
+        var httpContext = GetContext();
         var domains = GetCookieDomainList(httpContext);
 
         var cookieValue = GetCookieValueForId(sessionUser.CookieId);
@@ -77,6 +78,23 @@ public class AuthCookieManager
                 });
         }
     }
+
+    /// <summary>
+    /// Get the Id of provided access-token from Bearer token header
+    /// </summary>
+    public string? GetAccessToken()
+    {
+        const string bearerTokenScheme = "bearer";
+
+        var requestHeaders = GetContext().Request.Headers;
+        return AuthenticationHeaderValue.TryParse(requestHeaders.Authorization, out var parsed) &&
+               parsed.Scheme.Equals(bearerTokenScheme, StringComparison.InvariantCultureIgnoreCase)
+            ? parsed.Parameter
+            : null;
+    }
+
+    private HttpContext GetContext() =>
+        httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
 
     private IEnumerable<string> GetCookieDomainList(HttpContext httpContext)
     {
