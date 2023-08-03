@@ -70,4 +70,24 @@ public class AccessController : AuthBaseController
             return View("CloseWindow", errorMessage);
         });
     }
+
+    /// <summary>
+    /// IIIF Authorization logout service 
+    /// https://iiif.io/api/auth/2.0/#logout-service
+    /// </summary>
+    [HttpGet]
+    [Route("{customerId}/{accessServiceName}/logout")]
+    public async Task<IActionResult> AccessService(
+        [FromRoute] int customerId,
+        [FromRoute] string accessServiceName,
+        CancellationToken cancellationToken)
+    {
+        return await HandleRequest(async () =>
+        {
+            var logout = new HandleLogoutRequest(customerId, accessServiceName);
+            await Mediator.Send(logout, cancellationToken);
+
+            return NoContent();
+        });
+    }
 }

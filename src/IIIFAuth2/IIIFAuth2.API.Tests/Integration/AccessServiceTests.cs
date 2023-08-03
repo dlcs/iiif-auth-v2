@@ -295,6 +295,97 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         tokenEntity.Entity.Version.Should().NotBe(beforeVersion);
     }
 
+    [Fact]
+    public async Task Logout_Returns204_IfNoCookieProvided()
+    {
+        // Arrange
+        const string path = "/access/99/clickthrough/logout";
+        
+        // Act
+        var response = await httpClient.GetAsync(path);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+    
+    [Fact]
+    public async Task Logout_Returns204_IfCookieProvided_ButInvalidFormat()
+    {
+        // Arrange
+        const string path = "/access/99/clickthrough/logout";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", "dlcs-auth2-99=unexpected-value;");
+        
+        // Act
+        var response = await httpClient.SendAsync(request);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+    
+    [Fact]
+    public async Task Logout_Returns204_IfCookieProvidedWithId_ButIdNotInDatabase()
+    {
+        // Arrange
+        const string path = "/access/99/clickthrough/logout";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", "dlcs-auth2-99=id=123456789;");
+        
+        // Act
+        var response = await httpClient.SendAsync(request);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+    
+    [Fact]
+    public async Task Logout_Returns204_AndMarksAsExpired_IfCookieValid_AndInDatabase()
+    {
+        // Arrange
+        const string cookieId = nameof(Logout_Returns204_AndMarksAsExpired_IfCookieValid_AndInDatabase);
+        var sessionUser =
+            await dbContext.SessionUsers.AddAsync(CreateSessionUser(cookieId, expires: DateTime.UtcNow.AddHours(1)));
+        await dbContext.SaveChangesAsync();
+        
+        const string path = "/access/99/clickthrough/logout";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+        
+        // Act
+        var response = await httpClient.SendAsync(request);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await dbContext.Entry(sessionUser.Entity).ReloadAsync();
+        sessionUser.Entity.LastChecked.Should().HaveValue();
+        sessionUser.Entity.Expires.Should().BeBefore(DateTime.UtcNow);
+    }
+    
+    [Fact]
+    public async Task Logout_SetsExpiredCookie_IfCookieValid()
+    {
+        // Arrange
+        const string cookieId = nameof(Logout_SetsExpiredCookie_IfCookieValid);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(cookieId));
+        await dbContext.SaveChangesAsync();
+        
+        const string path = "/access/99/clickthrough/logout";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+        
+        // Act
+        var response = await httpClient.SendAsync(request);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        response.Headers.Should().ContainKey("Set-Cookie");
+        var cookie = response.Headers.SingleOrDefault(header => header.Key == "Set-Cookie").Value.First();
+
+        var expires = DateTime.Parse(cookie.Split(';').Single(c => c.Trim().StartsWith("expires")).Split('=')[1]);
+        expires.Should().BeBefore(DateTime.UtcNow);
+    }
+
     private static async Task ValidateWindowCloseWithError(HttpResponseMessage response)
     {
         var htmlParser = new HtmlParser();
@@ -310,5 +401,19 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         {
             Id = token, Created = DateTime.UtcNow, Customer = 99, Roles = roles.ToList(), Used = used,
             Origin = "http://localhost"
+        };
+    
+    private static SessionUser CreateSessionUser(string cookieId, int customer = 99, DateTime? expires = null)
+        => new()
+        {
+            Id = Guid.NewGuid(),
+            CookieId = cookieId,
+            AccessToken = "found-access-token",
+            Customer = 99,
+            Created = DateTime.UtcNow,
+            Roles = new List<string> { "foo" },
+            Expires = expires ?? DateTime.UtcNow.AddMinutes(5),
+            Origin = "http://localhost/",
+            LastChecked = null
         };
 }
