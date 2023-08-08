@@ -28,7 +28,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task GetProbeService_Returns400StatusProperty_IfRolesMissing()
     {
         // Arrange
-        const string path = "probe/99/2/assetname";
+        const string path = "probe_internal/99/2/assetname";
             
         // Act
         var response = await httpClient.GetAsync(path);
@@ -43,7 +43,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task GetProbeService_Returns400StatusProperty_IfAssetIdInvalid()
     {
         // Arrange
-        const string path = "probe/12345?roles=hello";
+        const string path = "probe_internal/12345?roles=hello";
             
         // Act
         var response = await httpClient.GetAsync(path);
@@ -58,7 +58,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task GetProbeService_Returns401StatusProperty_IfNoBearerToken()
     {
         // Arrange
-        const string path = "probe/99/2/foo?roles=clickthrough";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough";
             
         // Act
         var response = await httpClient.GetAsync(path);
@@ -75,7 +75,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task GetProbeService_Returns401StatusProperty_IfAuthHeaderProvided_NotBearerToken()
     {
         // Arrange
-        const string path = "probe/99/2/foo?roles=clickthrough";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", "Basic amV3ZWxzOmJpbm9jdWxhcnM=");
             
@@ -94,7 +94,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task GetProbeService_Returns401StatusProperty_IfBearerTokenProvided_ButNotInDatabase()
     {
         // Arrange
-        const string path = "probe/99/2/foo?roles=clickthrough";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", "Bearer foo-bar");
         
@@ -118,7 +118,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken, customer: 10));
         await dbContext.SaveChangesAsync();
         
-        const string path = "probe/99/2/foo?roles=clickthrough";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         
@@ -142,7 +142,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken, expires: DateTime.UtcNow.AddMinutes(-10)));
         await dbContext.SaveChangesAsync();
         
-        const string path = "probe/99/2/foo?roles=clickthrough";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         
@@ -166,7 +166,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken));
         await dbContext.SaveChangesAsync();
         
-        const string path = "probe/99/2/foo?roles=clickthrough";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         
@@ -190,7 +190,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken));
         await dbContext.SaveChangesAsync();
         
-        const string path = "probe/99/2/foo?roles=clickthrough,foo";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough,foo";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         
@@ -214,7 +214,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         var sessionUser = await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken));
         await dbContext.SaveChangesAsync();
         
-        const string path = "probe/99/2/foo?roles=clickthrough,foo";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough,foo";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         
@@ -238,7 +238,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
                 lastChecked: DateTime.UtcNow.AddHours(-1)));
         await dbContext.SaveChangesAsync();
         
-        const string path = "probe/99/2/foo?roles=clickthrough,foo";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough,foo";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         
@@ -262,7 +262,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
             await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken, lastChecked: lastChecked));
         await dbContext.SaveChangesAsync();
         
-        const string path = "probe/99/2/foo?roles=clickthrough,foo";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough,foo";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         
@@ -283,7 +283,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken));
         await dbContext.SaveChangesAsync();
         
-        const string path = "probe/99/2/foo?roles=clickthrough,foo";
+        const string path = "probe_internal/99/2/foo?roles=clickthrough,foo";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Authorization", $"Bearer {accessToken}");
         
