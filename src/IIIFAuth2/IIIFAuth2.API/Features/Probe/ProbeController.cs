@@ -13,7 +13,6 @@ namespace IIIFAuth2.API.Features.Probe;
 /// probe-service-response objects w/ status-code.
 /// </summary>
 /// <remarks>We don't use [ApiController] here as we always want to return a ProbeServiceResponse</remarks>
-[Route("[controller]")]
 public class ProbeController : AuthBaseController
 {
     public ProbeController(IMediator mediator, ILogger<ProbeController> logger) : base(mediator, logger) 
@@ -26,7 +25,7 @@ public class ProbeController : AuthBaseController
     /// <param name="assetId">Id of DLCS asset to get probe service result for</param>
     /// <param name="roles">Comma delimited list of roles that asset has</param>
     [HttpGet]
-    [Route("{**assetId}")]
+    [Route("/probe_internal/{**assetId}")]
     public async Task<IActionResult> ProbeService(
         [FromRoute] string assetId,
         [FromQuery] string roles,
