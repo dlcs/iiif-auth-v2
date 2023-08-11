@@ -25,7 +25,7 @@ public class ProbeController : AuthBaseController
     /// <param name="assetId">Id of DLCS asset to get probe service result for</param>
     /// <param name="roles">Comma delimited list of roles that asset has</param>
     [HttpGet]
-    [Route("/probe_internal/{**assetId}")]
+    [Route("probe_internal/{**assetId}")]
     public async Task<IActionResult> ProbeService(
         [FromRoute] string assetId,
         [FromQuery] string roles,
@@ -41,7 +41,7 @@ public class ProbeController : AuthBaseController
             return IIIFContent(probeServiceResult);
         }
         catch (FormatException fmtEx)
-        {
+        {   
             Logger.LogDebug(fmtEx, "Format exception processing probe service request");
             return GenerateErrorResult(HttpStatusCode.BadRequest, "Provided AssetId is invalid format");
         }
