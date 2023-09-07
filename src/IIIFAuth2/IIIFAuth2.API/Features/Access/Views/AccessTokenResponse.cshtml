@@ -10,7 +10,7 @@
 <script>
     window.parent.postMessage(
       @Html.Raw(Model.TokenResponse.AsJson()),
-      @Model.Origin
+      "@Model.Origin"
     );
 </script>
 </body>
