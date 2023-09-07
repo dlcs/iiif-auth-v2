@@ -306,9 +306,7 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
 
         if (!string.IsNullOrEmpty(origin))
         {
-            // Output origin is from a Uri object and may have trailing `/` appended so mimic here
-            var originToCheck = new Uri(origin);
-            elText.Should().Contain($"\"{originToCheck}\"", "origin should be a string");
+            elText.Should().Contain($"\"{origin}\"", "origin should be a string");
         }
     }
 
