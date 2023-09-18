@@ -25,7 +25,7 @@ jobs:
         run: dotnet test ./src/IIIFAuth2/ /p:Configuration=Release --verbosity normal
 
       - id: buildx        
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - id: docker-meta        
         uses: docker/metadata-action@v4
