@@ -3,6 +3,7 @@ using System;
 using IIIFAuth2.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace IIIFAuth2.API.Data.Migrations
 {
     [DbContext(typeof(AuthServicesContext))]
-    partial class AuthServicesContextModelSnapshot : ModelSnapshot
+    [Migration("20230920144949_add customerCookieDomains")]
+    partial class addcustomerCookieDomains
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
