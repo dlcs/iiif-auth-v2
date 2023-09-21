@@ -66,7 +66,7 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await ValidateResponse(response, expectedProfile: "missingAspect");
+        await ValidateResponse(response, expectedProfile: "missingAspect", origin: "http://localhost");
     }
     
     [Fact]
@@ -83,7 +83,7 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await ValidateResponse(response, expectedProfile: "invalidAspect");
+        await ValidateResponse(response, expectedProfile: "invalidAspect", origin: "http://localhost");
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await ValidateResponse(response, expectedProfile: "invalidAspect");
+        await ValidateResponse(response, expectedProfile: "invalidAspect", origin: "http://localhost");
     }
     
     [Fact]
@@ -122,7 +122,7 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await ValidateResponse(response, expectedProfile: "invalidAspect");
+        await ValidateResponse(response, expectedProfile: "invalidAspect", origin: "http://localhost");
     }
     
     [Fact]
@@ -144,7 +144,7 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await ValidateResponse(response, expectedProfile: "expiredAspect");
+        await ValidateResponse(response, expectedProfile: "expiredAspect", origin: "http://localhost");
     }
     
     [Fact]
@@ -166,7 +166,7 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await ValidateResponse(response, expectedProfile: "invalidOrigin");
+        await ValidateResponse(response, expectedProfile: "invalidOrigin", origin: "http://whatever.here");
     }
 
     [Fact]
@@ -187,7 +187,7 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        await ValidateResponse(response, expectedAccessToken: "found-access-token");
+        await ValidateResponse(response, expectedAccessToken: "found-access-token", origin: "http://localhost");
     }
     
     [Fact]
@@ -281,26 +281,32 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
     }
 
     private static async Task ValidateResponse(HttpResponseMessage response, string? expectedProfile = null,
-        string? expectedAccessToken = null)
+        string? expectedAccessToken = null, string? origin = null)
     {
         var htmlParser = new HtmlParser();
         var document = htmlParser.ParseDocument(await response.Content.ReadAsStreamAsync());
         var el = document.QuerySelector("script") as IHtmlScriptElement;
 
+        var elText = el.Text;
         if (!string.IsNullOrEmpty(expectedProfile))
         {
-            el.Text.Should().Contain("\"type\": \"AuthAccessTokenError2\"",
+            elText.Should().Contain("\"type\": \"AuthAccessTokenError2\"",
                 "result is AuthAccessTokenError2");
-            el.Text.Should().Contain($"\"profile\": \"{expectedProfile}\"",
+            elText.Should().Contain($"\"profile\": \"{expectedProfile}\"",
                 $"expected profile is '{expectedProfile}'");
         }
 
         if (!string.IsNullOrEmpty(expectedAccessToken))
         {
-            el.Text.Should().Contain("\"type\": \"AuthAccessToken2\"",
+            elText.Should().Contain("\"type\": \"AuthAccessToken2\"",
                 "result is AuthAccessToken2");
-            el.Text.Should().Contain($"\"accessToken\": \"{expectedAccessToken}\"");
-            el.Text.Should().Contain("\"messageId\": \"12345\"");
+            elText.Should().Contain($"\"accessToken\": \"{expectedAccessToken}\"");
+            elText.Should().Contain("\"messageId\": \"12345\"");
+        }
+
+        if (!string.IsNullOrEmpty(origin))
+        {
+            elText.Should().Contain($"\"{origin}\"", "origin should be a string");
         }
     }
 

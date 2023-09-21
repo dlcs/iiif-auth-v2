@@ -1,4 +1,5 @@
 @using IIIF.Serialisation
+@using IIIFAuth2.API.Utils
 @model (IIIF.JsonLdBase TokenResponse, Uri Origin)
 <!DOCTYPE html>
 
@@ -10,7 +11,7 @@
 <script>
     window.parent.postMessage(
       @Html.Raw(Model.TokenResponse.AsJson()),
-      @Model.Origin
+      "@Model.Origin?.GetOrigin()"
     );
 </script>
 </body>
