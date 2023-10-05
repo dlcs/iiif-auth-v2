@@ -23,8 +23,7 @@ public class CustomerDomainService
     }
     
     /// <summary>
-    /// Check if the specified Origin is for the current domain or Origin is on a domain that the DLCS can issue cookies
-    /// too 
+    /// Check if the specified Origin is for the current domain, or it is on a domain that the DLCS can issue cookies to
     /// </summary>
     public async Task<bool> OriginForControlledDomain(int customerId, Uri origin)
     {
