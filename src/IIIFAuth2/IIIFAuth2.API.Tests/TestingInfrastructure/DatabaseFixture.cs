@@ -17,6 +17,7 @@ public class DatabaseFixture : IAsyncLifetime
     public string ConnectionString { get; private set; } = null!;
     
     public const int Customer = 99;
+    public const string CookieDomain = "foo.bar";
     public const string ClickthroughService = "clickthrough";
     public Guid AccessId;
     public Guid RoleProviderId; 
@@ -58,6 +59,7 @@ public class DatabaseFixture : IAsyncLifetime
         DbContext.Database.ExecuteSqlRaw($"DELETE FROM roles WHERE access_service_id != '{AccessId.ToString()}';");
         DbContext.Database.ExecuteSqlRaw($"DELETE FROM access_services WHERE id != '{AccessId.ToString()}';");
         DbContext.Database.ExecuteSqlRaw($"DELETE FROM role_providers WHERE id != '{RoleProviderId.ToString()}';");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM customer_cookie_domains WHERE customer != '{Customer}';");
     }
 
     private void SeedData()
@@ -93,6 +95,12 @@ public class DatabaseFixture : IAsyncLifetime
         });
         AccessId = accessService.Id;
         RoleProviderId = accessService.RoleProviderId.Value;
+
+        DbContext.CustomerCookieDomains.Add(new CustomerCookieDomain
+        {
+            Customer = Customer,
+            Domains = new List<string> { CookieDomain }
+        });
         DbContext.SaveChanges();
     }
 

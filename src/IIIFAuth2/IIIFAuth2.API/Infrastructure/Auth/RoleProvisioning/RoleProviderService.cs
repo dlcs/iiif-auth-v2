@@ -10,12 +10,12 @@ public class RoleProviderService
 {
     private readonly AuthServicesContext dbContext;
     private readonly RoleProviderHandlerResolver handlerResolver;
-    private readonly ILogger<AuthServicesContext> logger;
+    private readonly ILogger<RoleProviderService> logger;
 
     public RoleProviderService(
         AuthServicesContext dbContext,
         RoleProviderHandlerResolver handlerResolver,
-        ILogger<AuthServicesContext> logger)
+        ILogger<RoleProviderService> logger)
     {
         this.dbContext = dbContext;
         this.handlerResolver = handlerResolver;
@@ -23,7 +23,7 @@ public class RoleProviderService
     }
 
     public async Task<HandleRoleProvisionResponse?> HandleRequest(int customerId, string accessServiceName,
-        bool hostIsOrigin, Uri requestOrigin, CancellationToken cancellationToken = default)
+        bool hostIsControlled, Uri requestOrigin, CancellationToken cancellationToken = default)
     {
         var accessService = await GetAccessServices(customerId, accessServiceName);
         if (accessService == null) return null;
@@ -42,7 +42,7 @@ public class RoleProviderService
         var handler = handlerResolver(providerConfiguration.Config);
 
         var result = await handler.HandleRequest(customerId, requestOrigin.ToString(), accessService,
-            providerConfiguration, hostIsOrigin, cancellationToken);
+            providerConfiguration, hostIsControlled, cancellationToken);
         return result;
     }
 

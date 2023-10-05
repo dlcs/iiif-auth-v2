@@ -18,6 +18,23 @@ public interface IRoleProviderHandler
     /// create a session + issue a cookie (if authorizing aspect present) or request the user carry out a significant
     /// gesture in order that a cookie may be issues for that domain
     /// </summary>
-    Task<HandleRoleProvisionResponse> HandleRequest(int customerId, string requestOrigin, AccessService accessService,
-        IProviderConfiguration providerConfiguration, bool hostIsOrigin, CancellationToken cancellationToken = default);
+    /// <param name="customerId">Id of current customer</param>
+    /// <param name="requestOrigin">"Origin" value for current request</param>
+    /// <param name="accessService">Current AccessServiceDescription object</param>
+    /// <param name="providerConfiguration">
+    /// Current <see cref="IProviderConfiguration"/> object with details on how to provision role
+    /// </param>
+    /// <param name="hostIsControlled">
+    /// If true, Origin is either for current host or a known domain that we will issue a cookie for. Assumption is that
+    /// if we are issuing a cookie for domain we don't need to capture a significant gesture
+    /// </param>
+    /// <param name="cancellationToken">Current cancellation token</param>
+    /// <returns><see cref="HandleRoleProvisionResponse"/> representing how this request has been handled</returns>
+    Task<HandleRoleProvisionResponse> HandleRequest(
+        int customerId,
+        string requestOrigin,
+        AccessService accessService,
+        IProviderConfiguration providerConfiguration, 
+        bool hostIsControlled,
+        CancellationToken cancellationToken = default);
 }

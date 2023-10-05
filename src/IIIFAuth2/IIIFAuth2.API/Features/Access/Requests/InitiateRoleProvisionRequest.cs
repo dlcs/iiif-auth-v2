@@ -1,5 +1,5 @@
+using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
-using IIIFAuth2.API.Utils;
 using MediatR;
 
 namespace IIIFAuth2.API.Features.Access.Requests;
@@ -25,33 +25,21 @@ public class InitiateRoleProvisionRequest : IRequest<HandleRoleProvisionResponse
 public class InitiateRoleProvisionRequestHandler : IRequestHandler<InitiateRoleProvisionRequest, HandleRoleProvisionResponse?>
 {
     private readonly RoleProviderService roleProviderService;
-    private readonly IHttpContextAccessor httpContextAccessor;
-    private readonly ILogger<InitiateRoleProvisionRequestHandler> logger;
+    private readonly CustomerDomainService customerDomainService;
 
     public InitiateRoleProvisionRequestHandler(
         RoleProviderService roleProviderService,
-        IHttpContextAccessor httpContextAccessor,
-        ILogger<InitiateRoleProvisionRequestHandler> logger)
+        CustomerDomainService customerDomainService)
     {
         this.roleProviderService = roleProviderService;
-        this.httpContextAccessor = httpContextAccessor;
-        this.logger = logger;
+        this.customerDomainService = customerDomainService;
     }
     
     public async Task<HandleRoleProvisionResponse?> Handle(InitiateRoleProvisionRequest request, CancellationToken cancellationToken)
     {
-        var originMatchesHost = OriginMatchesHost(request);
+        var hostIsControlled = await customerDomainService.OriginForControlledDomain(request.CustomerId, request.Origin);
         var handled = await roleProviderService.HandleRequest(request.CustomerId, request.AccessServiceName,
-            originMatchesHost, request.Origin, cancellationToken);
+            hostIsControlled, request.Origin, cancellationToken);
         return handled;
-    }
-
-    private bool OriginMatchesHost(InitiateRoleProvisionRequest request)
-    {
-        var httpContext = httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
-        var originMatchesHost = httpContext.Request.IsSameOrigin(request.Origin);
-        logger.LogTrace("Test Origin {RequestOrigin} with Host {Scheme}://{Host} result: {OriginMatchesHost}", request.Origin,
-            httpContext.Request.Scheme, httpContext.Request.Host, originMatchesHost);
-        return originMatchesHost;
     }
 }

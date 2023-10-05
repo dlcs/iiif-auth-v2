@@ -9,4 +9,6 @@ public static class CacheKeys
     public static readonly string AccessService = "accessServices";
 
     public static readonly string Roles = "roles";
+
+    public static readonly string CookieDomains = "cookieDomains";
 }
