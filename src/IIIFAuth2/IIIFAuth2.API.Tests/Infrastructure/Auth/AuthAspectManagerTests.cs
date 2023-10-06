@@ -56,7 +56,7 @@ public class AuthAspectManagerTests
     }
     
     [Fact]
-    public void IssueCookie_AppendsCookieToResponse_WithCurrentDomain_IfUserCurrentDomainForCookieTrue()
+    public async Task IssueCookie_AppendsCookieToResponse_WithCurrentDomain_IfUserCurrentDomainForCookieTrue()
     {
         // Arrange
         var sut = GetSut(useCurrentDomainForCookie: true);
@@ -68,7 +68,7 @@ public class AuthAspectManagerTests
         };
         
         // Act
-        sut.IssueCookie(authToken);
+        await sut.IssueCookie(authToken);
         var cookie = contextAccessor.HttpContext.Response.Headers["Set-Cookie"].ToString();
 
         // Assert
@@ -80,7 +80,7 @@ public class AuthAspectManagerTests
     }
     
     [Fact]
-    public void IssueCookie_AppendsCookieToResponse_WithAdditionalDomains_IfSpecified()
+    public async Task IssueCookie_AppendsCookieToResponse_WithAdditionalDomains_IfSpecified()
     {
         // Arrange
         var sut = GetSut(useCurrentDomainForCookie: false, additionalDomains: "another.example");
@@ -92,7 +92,7 @@ public class AuthAspectManagerTests
         };
         
         // Act
-        sut.IssueCookie(authToken);
+        await sut.IssueCookie(authToken);
         var cookie = contextAccessor.HttpContext.Response.Headers["Set-Cookie"].ToString();
 
         // Assert
@@ -104,7 +104,7 @@ public class AuthAspectManagerTests
     }
     
     [Fact]
-    public void IssueCookie_AppendsCookieToResponse_PerDomain()
+    public async Task IssueCookie_AppendsCookieToResponse_PerDomain()
     {
         // Arrange
         var sut = GetSut(useCurrentDomainForCookie: true, additionalDomains: "another.example");
@@ -116,7 +116,7 @@ public class AuthAspectManagerTests
         };
         
         // Act
-        sut.IssueCookie(authToken);
+        await sut.IssueCookie(authToken);
         var cookies = contextAccessor.HttpContext.Response.Headers["Set-Cookie"];
 
         void ValidateCookie(string host, string cookie)
@@ -256,10 +256,11 @@ public class AuthAspectManagerTests
     {
         var options = Options.Create(new AuthSettings
         {
-            CookieDomains = additionalDomains.ToList(),
             CookieNameFormat = "auth-token-{0}",
             UseCurrentDomainForCookie = useCurrentDomainForCookie
         });
-        return new AuthAspectManager(contextAccessor, options);
+        var domainProvider = A.Fake<ICustomerDomainProvider>();
+        A.CallTo(() => domainProvider.GetCustomerCookieDomains(A<int>._)).Returns(additionalDomains.ToList());
+        return new AuthAspectManager(contextAccessor, domainProvider, options);
     }
 }

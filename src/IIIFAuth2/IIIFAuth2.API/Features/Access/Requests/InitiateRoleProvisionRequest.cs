@@ -25,19 +25,19 @@ public class InitiateRoleProvisionRequest : IRequest<HandleRoleProvisionResponse
 public class InitiateRoleProvisionRequestHandler : IRequestHandler<InitiateRoleProvisionRequest, HandleRoleProvisionResponse?>
 {
     private readonly RoleProviderService roleProviderService;
-    private readonly CustomerDomainService customerDomainService;
+    private readonly ICustomerDomainChecker customerDomainChecker;
 
     public InitiateRoleProvisionRequestHandler(
         RoleProviderService roleProviderService,
-        CustomerDomainService customerDomainService)
+        ICustomerDomainChecker customerDomainChecker)
     {
         this.roleProviderService = roleProviderService;
-        this.customerDomainService = customerDomainService;
+        this.customerDomainChecker = customerDomainChecker;
     }
     
     public async Task<HandleRoleProvisionResponse?> Handle(InitiateRoleProvisionRequest request, CancellationToken cancellationToken)
     {
-        var hostIsControlled = await customerDomainService.OriginForControlledDomain(request.CustomerId, request.Origin);
+        var hostIsControlled = await customerDomainChecker.OriginForControlledDomain(request.CustomerId, request.Origin);
         var handled = await roleProviderService.HandleRequest(request.CustomerId, request.AccessServiceName,
             hostIsControlled, request.Origin, cancellationToken);
         return handled;

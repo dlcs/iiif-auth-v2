@@ -69,7 +69,8 @@ public static class ServiceCollectionX
     public static IServiceCollection AddAuthServices(this IServiceCollection services)
         => services
             .AddScoped<AuthAspectManager>()
-            .AddScoped<CustomerDomainService>()
+            .AddScoped<ICustomerDomainChecker, CustomerDomainService>()
+            .AddScoped<ICustomerDomainProvider, CustomerDomainService>()
             .AddScoped<RoleProviderService>()
             .AddScoped<ClickthroughRoleProviderHandler>()
             .AddScoped<SessionManagementService>()

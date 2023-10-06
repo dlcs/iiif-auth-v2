@@ -41,11 +41,6 @@ public class AuthSettings
     public int RefreshThreshold { get; set; } = 120;
 
     /// <summary>
-    /// A list of domains to set on auth cookie.
-    /// </summary>
-    public List<string> CookieDomains { get; set; } = new();
-
-    /// <summary>
     /// If true the current domain is automatically added to auth token domains.
     /// </summary>
     public bool UseCurrentDomainForCookie { get; set; } = true;

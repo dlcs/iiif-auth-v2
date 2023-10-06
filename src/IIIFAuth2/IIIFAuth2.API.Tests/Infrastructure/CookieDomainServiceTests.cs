@@ -113,4 +113,33 @@ public class CookieDomainServiceTests
         // Assert
         result.Should().BeFalse();
     }
+
+    [Fact]
+    public async Task GetCustomerCookieDomains_ReturnsEmptyCollection_IfNoRecordForCustomer()
+    {
+        // Act
+        var result = await sut.GetCustomerCookieDomains(29292);
+
+        // Assert
+        result.Should().BeEmpty();
+    }
+    
+    [Fact]
+    public async Task GetCustomerCookieDomains_ReturnsCookieDomains()
+    {
+        // Arrange
+        const int customerId = 2929288;
+        var domains = new List<string> { "subdomain.foo.bar" };
+        await dbContext.CustomerCookieDomains.AddAsync(new CustomerCookieDomain
+        {
+            Customer = customerId, Domains = domains
+        });
+        await dbContext.SaveChangesAsync();
+        
+        // Act
+        var result = await sut.GetCustomerCookieDomains(customerId);
+
+        // Assert
+        result.Should().BeEquivalentTo(domains);
+    }
 }

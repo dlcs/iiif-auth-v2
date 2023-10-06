@@ -3,10 +3,26 @@ using IIIFAuth2.API.Utils;
 
 namespace IIIFAuth2.API.Infrastructure.Auth;
 
+public interface ICustomerDomainProvider
+{
+    /// <summary>
+    /// Get a list of any custom domains configured for customer
+    /// </summary>
+    Task<IReadOnlyCollection<string>> GetCustomerCookieDomains(int customerId);
+}
+
+public interface ICustomerDomainChecker
+{
+    /// <summary>
+    /// Check if the specified Origin is for the current domain, or it is on a domain that the DLCS can issue cookies to
+    /// </summary>
+    Task<bool> OriginForControlledDomain(int customerId, Uri origin);
+}
+
 /// <summary>
 /// Service to help dealing with customer domains
 /// </summary>
-public class CustomerDomainService
+public class CustomerDomainService : ICustomerDomainProvider, ICustomerDomainChecker
 {
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly AuthServicesContext dbContext;
@@ -41,7 +57,10 @@ public class CustomerDomainService
         }
     }
 
-    private async Task<List<string>> GetCustomerCookieDomains(int customerId)
+    /// <summary>
+    /// Get a list of any custom domains configured for customer
+    /// </summary>
+    public async Task<IReadOnlyCollection<string>> GetCustomerCookieDomains(int customerId)
     {
         var customerCookieDomain =
             (await dbContext.CustomerCookieDomains.GetCachedCustomerRecords(customerId, CacheKeys.CookieDomains))
@@ -52,9 +71,7 @@ public class CustomerDomainService
     
     private bool OriginMatchesHost(Uri origin)
     {
-        var currentRequest = httpContextAccessor
-            .HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext))
-            .Request;
+        var currentRequest = httpContextAccessor.SafeHttpContext().Request;
         
         var originMatchesHost = currentRequest.IsSameOrigin(origin);
 
@@ -73,7 +90,6 @@ public class CustomerDomainService
             return false;
         }
 
-        // Use Host.Host, rather than Host.Value, as we don't check port
         var currentHost = origin.Host;
         foreach (var domain in customerCookieDomains)
         {

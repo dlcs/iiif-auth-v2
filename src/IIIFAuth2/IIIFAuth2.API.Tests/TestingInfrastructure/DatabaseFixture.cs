@@ -17,7 +17,7 @@ public class DatabaseFixture : IAsyncLifetime
     public string ConnectionString { get; private set; } = null!;
     
     public const int Customer = 99;
-    public const string CookieDomain = "foo.bar";
+    public const string CookieDomain = "localhost";
     public const string ClickthroughService = "clickthrough";
     public Guid AccessId;
     public Guid RoleProviderId; 
