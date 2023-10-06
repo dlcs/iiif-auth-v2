@@ -114,8 +114,6 @@ public class AuthAspectManager
     private async Task<IEnumerable<string>> GetCookieDomainList(int customerId, HttpContext httpContext)
     {
         var customDomains = await customerDomainProvider.GetCustomerCookieDomains(customerId);
-        return authSettings.UseCurrentDomainForCookie
-            ? customDomains.Union(httpContext.Request.Host.Host.AsList()).Distinct()
-            : customDomains;
+        return customDomains.Union(httpContext.Request.Host.Host.AsList()).Distinct();
     }
 }

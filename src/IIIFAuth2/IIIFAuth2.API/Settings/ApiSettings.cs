@@ -39,9 +39,4 @@ public class AuthSettings
     /// </summary>
     /// <remarks>This avoids constant churn in db</remarks>
     public int RefreshThreshold { get; set; } = 120;
-
-    /// <summary>
-    /// If true the current domain is automatically added to auth token domains.
-    /// </summary>
-    public bool UseCurrentDomainForCookie { get; set; } = true;
 }

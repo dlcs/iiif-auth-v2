@@ -45,8 +45,9 @@ public class CustomerDomainService : ICustomerDomainProvider, ICustomerDomainChe
     {
         try
         {
-            var originMatchesHost = OriginMatchesHost(origin);
-            if (originMatchesHost) return true;
+            var currentRequest = httpContextAccessor.SafeHttpContext().Request;
+            if (OriginMatchesHost(origin, currentRequest)) return true;
+            if (OriginSubdomainOfHost(origin, currentRequest)) return true;
 
             return await IsOriginSubdomainOfCookieDomain(customerId, origin);
         }
@@ -69,15 +70,26 @@ public class CustomerDomainService : ICustomerDomainProvider, ICustomerDomainChe
         return customerCookieDomain?.Domains ?? new List<string>(0);
     }
     
-    private bool OriginMatchesHost(Uri origin)
+    private bool OriginMatchesHost(Uri origin, HttpRequest currentRequest)
     {
-        var currentRequest = httpContextAccessor.SafeHttpContext().Request;
-        
         var originMatchesHost = currentRequest.IsSameOrigin(origin);
 
         logger.LogTrace("Test Origin {RequestOrigin} with Host {Scheme}://{Host} result: {OriginMatchesHost}", origin,
             currentRequest.Scheme, currentRequest.Host, originMatchesHost);
         return originMatchesHost;
+    }
+
+    private bool OriginSubdomainOfHost(Uri origin, HttpRequest currentRequest)
+    {
+        var originHost = origin.Host;
+        var currentHost = currentRequest.Host.Host;
+        if (originHost.Contains(currentHost, StringComparison.OrdinalIgnoreCase))
+        {
+            logger.LogTrace("'{OriginHost}' is subdomain of current Host {CurrentHost}", originHost, currentHost);
+            return true;
+        }
+
+        return false;
     }
 
     private async Task<bool> IsOriginSubdomainOfCookieDomain(int customerId, Uri origin)
@@ -90,13 +102,13 @@ public class CustomerDomainService : ICustomerDomainProvider, ICustomerDomainChe
             return false;
         }
 
-        var currentHost = origin.Host;
+        var originHost = origin.Host;
         foreach (var domain in customerCookieDomains)
         {
-            if (currentHost.Contains(domain, StringComparison.OrdinalIgnoreCase))
+            if (originHost.Contains(domain, StringComparison.OrdinalIgnoreCase))
             {
-                logger.LogTrace("'{CookieDomain}' is subdomain of current Host {CurrentHost} for Customer {CustomerId}",
-                    domain, currentHost, customerId);
+                logger.LogTrace("'{CookieDomain}' is subdomain of origin {OriginHost} for Customer {CustomerId}",
+                    domain, originHost, customerId);
                 return true;
             }
         }

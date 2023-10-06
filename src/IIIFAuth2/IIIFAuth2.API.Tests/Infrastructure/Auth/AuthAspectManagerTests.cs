@@ -59,7 +59,7 @@ public class AuthAspectManagerTests
     public async Task IssueCookie_AppendsCookieToResponse_WithCurrentDomain_IfUserCurrentDomainForCookieTrue()
     {
         // Arrange
-        var sut = GetSut(useCurrentDomainForCookie: true);
+        var sut = GetSut();
         var cookieId = Guid.NewGuid().ToString();
         var authToken = new SessionUser
         {
@@ -80,34 +80,10 @@ public class AuthAspectManagerTests
     }
     
     [Fact]
-    public async Task IssueCookie_AppendsCookieToResponse_WithAdditionalDomains_IfSpecified()
-    {
-        // Arrange
-        var sut = GetSut(useCurrentDomainForCookie: false, additionalDomains: "another.example");
-        var cookieId = Guid.NewGuid().ToString();
-        var authToken = new SessionUser
-        {
-            CookieId = cookieId,
-            Customer = 99
-        };
-        
-        // Act
-        await sut.IssueCookie(authToken);
-        var cookie = contextAccessor.HttpContext.Response.Headers["Set-Cookie"].ToString();
-
-        // Assert
-        cookie.Should()
-            .Contain($"id%3D{cookieId}")
-            .And.Contain("domain=another.example;")
-            .And.Contain("secure;")
-            .And.Contain("samesite=none");
-    }
-    
-    [Fact]
     public async Task IssueCookie_AppendsCookieToResponse_PerDomain()
     {
         // Arrange
-        var sut = GetSut(useCurrentDomainForCookie: true, additionalDomains: "another.example");
+        var sut = GetSut(additionalDomains: "another.example");
         var cookieId = Guid.NewGuid().ToString();
         var authToken = new SessionUser
         {
@@ -252,12 +228,11 @@ public class AuthAspectManagerTests
         bearerToken.Should().Be("foo-bar");
     }
     
-    private AuthAspectManager GetSut(bool useCurrentDomainForCookie = true, params string[] additionalDomains)
+    private AuthAspectManager GetSut(params string[] additionalDomains)
     {
         var options = Options.Create(new AuthSettings
         {
             CookieNameFormat = "auth-token-{0}",
-            UseCurrentDomainForCookie = useCurrentDomainForCookie
         });
         var domainProvider = A.Fake<ICustomerDomainProvider>();
         A.CallTo(() => domainProvider.GetCustomerCookieDomains(A<int>._)).Returns(additionalDomains.ToList());

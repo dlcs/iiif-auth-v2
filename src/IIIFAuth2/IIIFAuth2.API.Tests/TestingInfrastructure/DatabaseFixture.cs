@@ -105,18 +105,21 @@ public class DatabaseFixture : IAsyncLifetime
     }
 
     public Task DisposeAsync() => postgresContainer.StopAsync();
+
+    public AuthServicesContext CreateNewAuthServiceContext()
+        => new(
+            new DbContextOptionsBuilder<AuthServicesContext>()
+                .UseNpgsql(ConnectionString)
+                .UseSnakeCaseNamingConvention()
+                .Options
+        );
     
     private void SetPropertiesFromContainer()
     {
         ConnectionString = postgresContainer.GetConnectionString();
 
         // Create new context using connection string for Postgres container
-        DbContext = new AuthServicesContext(
-            new DbContextOptionsBuilder<AuthServicesContext>()
-                .UseNpgsql(ConnectionString)
-                .UseSnakeCaseNamingConvention()
-                .Options
-        );
+        DbContext = CreateNewAuthServiceContext();
     }
 }
 
