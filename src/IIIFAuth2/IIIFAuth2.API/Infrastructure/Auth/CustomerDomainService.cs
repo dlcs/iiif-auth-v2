@@ -54,7 +54,7 @@ public class CustomerDomainService : ICustomerDomainProvider, ICustomerDomainChe
         catch (Exception ex)
         {
             logger.LogError(ex, "Error checking if Origin is for ControlledDomain");
-            return true;
+            return false;
         }
     }
 
