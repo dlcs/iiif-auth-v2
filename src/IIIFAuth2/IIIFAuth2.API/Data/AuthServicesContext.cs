@@ -20,6 +20,7 @@ public class AuthServicesContext : DbContext
     public DbSet<Role> Roles { get; set; }
     public DbSet<AccessService> AccessServices { get; set; }
     public DbSet<SessionUser> SessionUsers { get; set; }
+    public DbSet<CustomerCookieDomain> CustomerCookieDomains { get; set; }
     
     public DbSet<RoleProvisionToken> RoleProvisionTokens { get; set; }
     
@@ -87,5 +88,12 @@ public class AuthServicesContext : DbContext
         modelBuilder.Entity<RoleProvisionToken>()
             .Property(b => b.Version)
             .IsRowVersion();
+
+        modelBuilder.Entity<CustomerCookieDomain>()
+            .Property(p => p.Customer)
+            .ValueGeneratedNever();
+            
+        modelBuilder.Entity<CustomerCookieDomain>()
+            .HasKey(p => p.Customer);
     }
 }

@@ -32,7 +32,7 @@ public class SessionCleaner : SessionManagerBase
         
         InvalidateCache(sessionUser);
 
-        AuthAspectManager.RemoveCookieFromResponse(sessionUser.Customer);
+        await AuthAspectManager.RemoveCookieFromResponse(sessionUser.Customer);
         return saveSuccess;
     }
 

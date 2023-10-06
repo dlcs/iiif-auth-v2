@@ -176,7 +176,7 @@ public class SessionManagementService : SessionManagerBase
         var sessionUser = await CreateAndAddSessionUser(customerId, roles, origin, cancellationToken);
         await SaveChangesWithRowCountCheck(operation, expectedRowCount, cancellationToken: cancellationToken);
 
-        AuthAspectManager.IssueCookie(sessionUser);
+        await AuthAspectManager.IssueCookie(sessionUser);
         return sessionUser;
     }
 
@@ -248,7 +248,7 @@ public class SessionManagementService : SessionManagerBase
             }
 
             // Re-issue the cookie to extend ttl
-            AuthAspectManager.IssueCookie(session);
+            await AuthAspectManager.IssueCookie(session);
             return new TryGetSessionResponse(GetSessionStatus.Success, session);
         }
         catch (Exception ex)

@@ -29,23 +29,25 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
         apiSettings = apiOptions.Value;
     }
 
+    /// <inheritdoc />
     public async Task<HandleRoleProvisionResponse> HandleRequest(int customerId,
         string requestOrigin,
         AccessService accessService,
         IProviderConfiguration providerConfiguration,
-        bool hostIsOrigin,
+        bool hostIsControlled,
         CancellationToken cancellationToken = default)
     {
         if (providerConfiguration is not ClickthroughConfiguration configuration)
         {
-            logger.LogError("ClickthroughRoleProviderHandler given non-clickthrough configuration {@Configuration}",
+            logger.LogError(
+                $"{nameof(ClickthroughRoleProviderHandler)} given non-clickthrough configuration {{@Configuration}}",
                 providerConfiguration);
             throw new ArgumentException("Unable to handle provided configuration", nameof(providerConfiguration));
         }
 
         var roles = await GetRolesToBeGranted(customerId, accessService);
 
-        if (hostIsOrigin)
+        if (hostIsControlled)
         {
             await sessionManagementService.CreateSessionForRoles(customerId, roles, requestOrigin, cancellationToken);
             return HandleRoleProvisionResponse.Handled();

@@ -14,15 +14,17 @@ public class AuthAspectManager
 {
     private delegate void DomainCookieHandler(HttpContext httpContext, string cookieId, string domain);
     private readonly IHttpContextAccessor httpContextAccessor;
+    private readonly ICustomerDomainProvider customerDomainProvider;
     private readonly AuthSettings authSettings;
     private const string CookiePrefix = "id=";
     
     public AuthAspectManager(
         IHttpContextAccessor httpContextAccessor,
-        IOptions<AuthSettings> authSettings
-        )
+        ICustomerDomainProvider customerDomainProvider,
+        IOptions<AuthSettings> authSettings)
     {
         this.httpContextAccessor = httpContextAccessor;
+        this.customerDomainProvider = customerDomainProvider;
         this.authSettings = authSettings.Value;
     }
     
@@ -49,7 +51,7 @@ public class AuthAspectManager
     /// </summary>
     public string? GetCookieValueForCustomer(int customer)
     {
-        var httpContext = GetContext();
+        var httpContext = httpContextAccessor.SafeHttpContext();
         var cookieKey = GetAuthCookieKey(authSettings.CookieNameFormat, customer);
         return httpContext.Request.Cookies.TryGetValue(cookieKey, out var cookieValue)
             ? cookieValue
@@ -59,7 +61,7 @@ public class AuthAspectManager
     /// <summary>
     /// Add cookie to current Response object, using details from specified <see cref="SessionUser"/>
     /// </summary>
-    public void IssueCookie(SessionUser sessionUser)
+    public Task IssueCookie(SessionUser sessionUser)
         => HandleCookieDomain(sessionUser.Customer,
             (httpContext, cookieId, domain) =>
             {
@@ -77,7 +79,7 @@ public class AuthAspectManager
     /// <summary>
     /// Remove cookie for customer from current Response object 
     /// </summary>
-    public void RemoveCookieFromResponse(int customerId)
+    public Task RemoveCookieFromResponse(int customerId)
         => HandleCookieDomain(customerId,
             (httpContext, cookieId, domain) =>
                 httpContext.Response.Cookies.Delete(cookieId, new CookieOptions { Domain = domain }));
@@ -89,19 +91,19 @@ public class AuthAspectManager
     {
         const string bearerTokenScheme = "bearer";
 
-        var requestHeaders = GetContext().Request.Headers;
+        var requestHeaders = httpContextAccessor.SafeHttpContext().Request.Headers;
         return AuthenticationHeaderValue.TryParse(requestHeaders.Authorization, out var parsed) &&
                parsed.Scheme.Equals(bearerTokenScheme, StringComparison.InvariantCultureIgnoreCase)
             ? parsed.Parameter
             : null;
     }
     
-    private void HandleCookieDomain(int customer, DomainCookieHandler domainCookieHandler)
+    private async Task HandleCookieDomain(int customerId, DomainCookieHandler domainCookieHandler)
     {
-        var httpContext = GetContext();
-        var domains = GetCookieDomainList(httpContext);
+        var httpContext = httpContextAccessor.SafeHttpContext();
+        var domains = await GetCookieDomainList(customerId, httpContext);
 
-        var cookieId = GetAuthCookieKey(authSettings.CookieNameFormat, customer);
+        var cookieId = GetAuthCookieKey(authSettings.CookieNameFormat, customerId);
 
         foreach (var domain in domains)
         {
@@ -109,14 +111,9 @@ public class AuthAspectManager
         }
     }
 
-    private HttpContext GetContext() =>
-        httpContextAccessor.HttpContext.ThrowIfNull(nameof(httpContextAccessor.HttpContext));
-
-    private IEnumerable<string> GetCookieDomainList(HttpContext httpContext)
+    private async Task<IEnumerable<string>> GetCookieDomainList(int customerId, HttpContext httpContext)
     {
-        var domains = authSettings.CookieDomains;
-        return authSettings.UseCurrentDomainForCookie
-            ? domains.Union(httpContext.Request.Host.Host.AsList())
-            : domains;
+        var customDomains = await customerDomainProvider.GetCustomerCookieDomains(customerId);
+        return customDomains.Union(httpContext.Request.Host.Host.AsList()).Distinct();
     }
 }

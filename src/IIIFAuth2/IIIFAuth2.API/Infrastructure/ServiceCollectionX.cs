@@ -1,4 +1,5 @@
 ﻿using IIIFAuth2.API.Data;
+using IIIFAuth2.API.Features.Access.Requests;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 using IIIFAuth2.API.Models.Domain;
@@ -66,7 +67,10 @@ public static class ServiceCollectionX
     /// Add dependencies for handling auth requests
     /// </summary>
     public static IServiceCollection AddAuthServices(this IServiceCollection services)
-        => services.AddScoped<AuthAspectManager>()
+        => services
+            .AddScoped<AuthAspectManager>()
+            .AddScoped<ICustomerDomainChecker, CustomerDomainService>()
+            .AddScoped<ICustomerDomainProvider, CustomerDomainService>()
             .AddScoped<RoleProviderService>()
             .AddScoped<ClickthroughRoleProviderHandler>()
             .AddScoped<SessionManagementService>()

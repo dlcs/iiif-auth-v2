@@ -34,7 +34,9 @@ public class ProbeController : AuthBaseController
         try
         {
             if (string.IsNullOrEmpty(roles))
+            {
                 return GenerateErrorResult(HttpStatusCode.BadRequest, "Required roles query parameter missing");
+            }
 
             var probeServiceRequest = new GetProbeServiceDescription(assetId, roles);
             var probeServiceResult = await Mediator.Send(probeServiceRequest, cancellationToken);

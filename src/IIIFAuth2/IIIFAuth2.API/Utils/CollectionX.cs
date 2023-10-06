@@ -5,12 +5,12 @@ namespace IIIFAuth2.API.Utils;
 public static class CollectionX
 {
     /// <summary>
-    /// Check if IList is null or empty
+    /// Check if IEnumerable is null or empty
     /// </summary>
     /// <returns>true if null or empty, else false</returns>
-    public static bool IsNullOrEmpty<T>([NotNullWhen(false)] this ICollection<T>? collection)
-        => collection == null || collection.Count == 0;
-    
+    public static bool IsNullOrEmpty<T>([NotNullWhen(false)] this IEnumerable<T>? collection)
+        => collection == null || !collection.Any();
+
     /// <summary>
     /// Return a List{T} containing single item.
     /// </summary>
