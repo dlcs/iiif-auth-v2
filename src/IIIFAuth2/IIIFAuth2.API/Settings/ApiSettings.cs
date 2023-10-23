@@ -18,7 +18,7 @@ public class ApiSettings
     /// <summary>
     /// Fallback message for Significant Gesture view, if none specified by RoleProvider
     /// </summary>
-    public string DefaultSignificantGestureMessage = "You will now be redirected to DLCS to login";
+    public string DefaultSignificantGestureMessage = "Confirm authentication with DLCS";
 }
 
 public class AuthSettings
