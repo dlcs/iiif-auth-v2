@@ -57,7 +57,7 @@ public class AccessController : AuthBaseController
     /// This is required for us to issue a cookie to user. 
     /// </summary>
     [HttpPost]
-    [Route("gesture")]
+    [Route("{customerId}/gesture")]
     public async Task<IActionResult> SignificantGesture(
         [FromForm] string singleUseToken,
         CancellationToken cancellationToken)

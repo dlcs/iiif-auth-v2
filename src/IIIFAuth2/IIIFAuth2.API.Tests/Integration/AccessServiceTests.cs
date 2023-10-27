@@ -233,7 +233,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task SignificantGesture_Returns400_IfNoSingleUseToken()
     {
         // Arrange
-        const string path = "/access/gesture";
+        const string path = "/access/99/gesture";
             
         // Act
         var formContent = new FormUrlEncodedContent(new[]
@@ -250,7 +250,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task SignificantGesture_RendersWindowClose_WithError_IfTokenExpired()
     {
         // Arrange
-        const string path = "/access/gesture";
+        const string path = "/access/99/gesture";
         var expiredToken = ExpiringToken.GenerateNewToken(DateTime.UtcNow.AddHours(-1));
             
         // Act
@@ -270,7 +270,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task SignificantGesture_RendersWindowClose_WithError_IfTokenValidButNotInDatabase()
     {
         // Arrange
-        const string path = "/access/gesture";
+        const string path = "/access/99/gesture";
         var expiredToken = ExpiringToken.GenerateNewToken(DateTime.UtcNow.AddHours(1));
             
         // Act
@@ -290,7 +290,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task SignificantGesture_RendersWindowClose_WithError_IfTokenValidButUsed()
     {
         // Arrange
-        const string path = "/access/gesture";
+        const string path = "/access/99/gesture";
         var validToken = ExpiringToken.GenerateNewToken(DateTime.UtcNow.AddHours(1));
         await dbContext.RoleProvisionTokens.AddAsync(CreateToken(validToken, true, Array.Empty<string>()));
         await dbContext.SaveChangesAsync();
@@ -312,7 +312,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     public async Task SignificantGesture_CreatesSession_AndSetsCookie_AndMarksTokenAsUsed()
     {
         // Arrange
-        const string path = "/access/gesture";
+        const string path = "/access/99/gesture";
         var validToken = ExpiringToken.GenerateNewToken(DateTime.UtcNow.AddHours(1));
         var roles = new string[] { DatabaseFixture.ClickthroughRoleUri };
         var tokenEntity = await dbContext.RoleProvisionTokens.AddAsync(CreateToken(validToken, false, roles));

@@ -1,4 +1,5 @@
-﻿using IIIFAuth2.API.Data.Entities;
+﻿using System.Text.RegularExpressions;
+using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Settings;
 using IIIFAuth2.API.Utils;
@@ -26,7 +27,14 @@ public interface IUrlPathProvider
     /// <summary>
     /// Get the path for AccessService
     /// </summary>
-    Uri GetAccessTokenServicePath(int customer);
+    Uri GetAccessTokenServicePath(int customerId);
+
+    /// <summary>
+    /// Get the relative Uri for posting back  
+    /// </summary>
+    /// <param name="customerId"></param>
+    /// <returns></returns>
+    Uri GetGesturePostbackRelativePath(int customerId);
 }
 
 public class UrlPathProvider : IUrlPathProvider
@@ -80,10 +88,10 @@ public class UrlPathProvider : IUrlPathProvider
     }
     
     /// <inheritdoc />
-    public Uri GetAccessTokenServicePath(int customer)
+    public Uri GetAccessTokenServicePath(int customerId)
     {
         var baseUrl = GetCurrentBaseUrl();
-        var path = $"/auth/v2/access/{customer}/token";
+        var path = $"/auth/v2/access/{customerId}/token";
         var builder = new UriBuilder(baseUrl)
         {
             Path = path
@@ -92,6 +100,39 @@ public class UrlPathProvider : IUrlPathProvider
         return builder.Uri;
     }
 
+    /// <inheritdoc />
+    public Uri GetGesturePostbackRelativePath(int customerId)
+    {
+        var request = httpContextAccessor.SafeHttpContext().Request;
+        var host = request.Host.Value;
+
+        var template = GetPopulatedTemplate(host, customerId);
+        return new Uri(template, UriKind.Relative);
+    }
+    
+    private string GetPopulatedTemplate(string host, int customerId)
+    {
+        var template = GetTemplate(host);
+        return template.Replace("{customerId}", customerId.ToString());
+    }
+
+    private string GetTemplate(string host)
+    {
+        const string defaultPathTemplate = "/access/{customerId}/gesture";
+        const string defaultKey = "Default";
+
+        var pathTemplates = apiSettings.Auth.GesturePathTemplateForDomain;
+
+        if (pathTemplates.TryGetValue(host, out var hostTemplate)) return hostTemplate;
+        if (pathTemplates.TryGetValue(defaultKey, out var pathTemplate)) return pathTemplate;
+        if (apiSettings.PathBase.IsNullOrEmpty()) return defaultPathTemplate;
+
+        // Replace any duplicate slashes after joining path elements
+        var candidate = $"{apiSettings.PathBase}/{defaultPathTemplate}";
+        var duplicateSlashRegex = new Regex("(/)+", RegexOptions.Compiled);
+        return duplicateSlashRegex.Replace(candidate, "$1");
+    }
+
     private string GetCurrentBaseUrl() =>
-        httpContextAccessor.HttpContext?.Request.GetDisplayUrl(null, false) ?? string.Empty;
+        httpContextAccessor.SafeHttpContext().Request.GetDisplayUrl(null, false);
 }

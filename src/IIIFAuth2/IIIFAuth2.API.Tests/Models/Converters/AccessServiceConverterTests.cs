@@ -226,7 +226,10 @@ public class AccessServiceConverterTests
         public Uri GetAccessServiceLogoutPath(AccessService accessService)
             => new($"http://test.example/access/{accessService.Name}/logout");
 
-        public Uri GetAccessTokenServicePath(int customer)
-            => new($"http://test.example/token/{customer}");
+        public Uri GetAccessTokenServicePath(int customerId)
+            => new($"http://test.example/token/{customerId}");
+
+        public Uri GetGesturePostbackRelativePath(int customerId)
+            => new($"/access/{customerId}/gesture", UriKind.Relative);
     }
 }

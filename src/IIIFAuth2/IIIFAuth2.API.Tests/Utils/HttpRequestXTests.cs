@@ -121,6 +121,26 @@ public class HttpRequestXTests
         // Assert
         result.Should().Be(expected);
     }
+    
+    [Fact]
+    public void GetDisplayUrl_WithPathBase_ReturnsFullUrl_WithoutQueryParam_WhenCalledWithDoNotIncludeHost()
+    {
+        // Arrange
+        var httpRequest = new DefaultHttpContext().Request;
+        httpRequest.Path = new PathString("/anything");
+        httpRequest.QueryString = new QueryString("?foo=bar");
+        httpRequest.Host = new HostString("test.example");
+        httpRequest.PathBase = new PathString("/v2");
+        httpRequest.Scheme = "https";
+
+        const string expected = "/v2/test";
+
+        // Act
+        var result = httpRequest.GetDisplayUrl("/test", includeQueryParams: false, includeHost: false);
+        
+        // Assert
+        result.Should().Be(expected);
+    }
 
     [Theory]
     [InlineData("https://test.example")]

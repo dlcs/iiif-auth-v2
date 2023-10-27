@@ -5,21 +5,24 @@ namespace IIIFAuth2.API.Utils;
 public static class HttpRequestX
 {
     private const string SchemeDelimiter = "://";
-    
+
     /// <summary>
     /// Generate a full display URL, deriving values from specified HttpRequest
     /// </summary>
     /// <param name="request">HttpRequest to generate display URL for</param>
     /// <param name="path">Path to append to URL</param>
     /// <param name="includeQueryParams">If true, query params are included in path. Else they are omitted</param>
+    /// <param name="includeHost">If true, host and scheme are included in path. Else it is omitted</param>
     /// <returns>Full URL, including scheme, host, pathBase, path and queryString</returns>
     /// <remarks>
     /// based on Microsoft.AspNetCore.Http.Extensions.UriHelper.GetDisplayUrl(this HttpRequest request)
     /// </remarks>
-    public static string GetDisplayUrl(this HttpRequest request, string? path = null, bool includeQueryParams = true)
+    public static string GetDisplayUrl(this HttpRequest request, string? path = null, bool includeQueryParams = true,
+        bool includeHost = true)
     {
-        var host = request.Host.Value ?? string.Empty;
-        var scheme = request.Scheme ?? string.Empty;
+        var host = includeHost ? request.Host.Value : string.Empty;
+        var scheme = includeHost ? request.Scheme : string.Empty;
+        var schemeDelimiterToUse = includeHost ? SchemeDelimiter : string.Empty;
         var pathBase = request.PathBase.Value ?? string.Empty;
         var queryString = includeQueryParams
             ? request.QueryString.Value ?? string.Empty
@@ -27,12 +30,12 @@ public static class HttpRequestX
         var pathElement = path ?? string.Empty;
 
         // PERF: Calculate string length to allocate correct buffer size for StringBuilder.
-        var length = scheme.Length + SchemeDelimiter.Length + host.Length
+        var length = scheme.Length + schemeDelimiterToUse.Length + host.Length
                      + pathBase.Length + pathElement.Length + queryString.Length;
 
         return new StringBuilder(length)
             .Append(scheme)
-            .Append(SchemeDelimiter)
+            .Append(schemeDelimiterToUse)
             .Append(host)
             .Append(pathBase)
             .Append(path)

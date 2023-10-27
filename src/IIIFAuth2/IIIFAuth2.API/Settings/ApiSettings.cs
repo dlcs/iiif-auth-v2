@@ -10,6 +10,8 @@ public class ApiSettings
     /// <remarks>Used to generate Probe request paths</remarks>
     public Uri OrchestratorRoot { get; set; } = null!;
 
+    public AuthSettings Auth { get; set; } = new();
+
     /// <summary>
     /// Fallback title for Significant Gesture view, if none specified by RoleProvider
     /// </summary>
@@ -39,4 +41,6 @@ public class AuthSettings
     /// </summary>
     /// <remarks>This avoids constant churn in db</remarks>
     public int RefreshThreshold { get; set; } = 120;
+
+    public Dictionary<string, string> GesturePathTemplateForDomain { get; set; } = new();
 }
