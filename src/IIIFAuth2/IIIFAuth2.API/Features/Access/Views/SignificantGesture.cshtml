@@ -8,7 +8,7 @@
 </head>
 <body>
 <p>@Model.SignificantGestureMessage</p>
-@using (Html.BeginForm("SignificantGesture", "Access"))
+@using (Html.BeginForm("SignificantGesture", "Access", new { customerId = Model.CustomerId}))
 {
     @Html.HiddenFor(m => m.SingleUseToken)
     <input type="submit">

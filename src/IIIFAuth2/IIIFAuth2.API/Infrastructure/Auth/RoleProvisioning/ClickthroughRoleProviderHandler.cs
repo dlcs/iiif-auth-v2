@@ -80,6 +80,7 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
         var expiringToken =
             await sessionManagementService.CreateRoleProvisionToken(customerId, roles, origin, cancellationToken);
         var gestureModel = new SignificantGestureModel(
+            customerId,
             configuration.GestureTitle ?? apiSettings.DefaultSignificantGestureTitle,
             configuration.GestureMessage ?? apiSettings.DefaultSignificantGestureMessage,
             expiringToken);
