@@ -8,10 +8,9 @@
 </head>
 <body>
 <p>@Model.SignificantGestureMessage</p>
-@using (Html.BeginForm("SignificantGesture", "Access", new { customerId = Model.CustomerId}))
-{
+<form action="@Model.PostbackUri.ToString()" method="post">
     @Html.HiddenFor(m => m.SingleUseToken)
     <input type="submit">
-}
+</form>
 </body>
 </html>

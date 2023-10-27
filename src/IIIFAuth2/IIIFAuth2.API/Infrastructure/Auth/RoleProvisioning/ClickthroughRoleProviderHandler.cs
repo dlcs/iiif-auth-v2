@@ -1,6 +1,7 @@
 ﻿using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Auth.Models;
+using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Settings;
 using Microsoft.Extensions.Options;
@@ -16,16 +17,19 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
     private readonly SessionManagementService sessionManagementService;
     private readonly ILogger<ClickthroughRoleProviderHandler> logger;
     private readonly ApiSettings apiSettings;
+    private readonly IUrlPathProvider urlPathProvider;
 
     public ClickthroughRoleProviderHandler(
         AuthServicesContext dbContext,
         SessionManagementService sessionManagementService,
+        IUrlPathProvider urlPathProvider,
         IOptions<ApiSettings> apiOptions,
         ILogger<ClickthroughRoleProviderHandler> logger)
     {
         this.dbContext = dbContext;
         this.sessionManagementService = sessionManagementService;
         this.logger = logger;
+        this.urlPathProvider = urlPathProvider;
         apiSettings = apiOptions.Value;
     }
 
@@ -79,8 +83,9 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
     {
         var expiringToken =
             await sessionManagementService.CreateRoleProvisionToken(customerId, roles, origin, cancellationToken);
+        var relativePath = urlPathProvider.GetGesturePostbackRelativePath(customerId);
         var gestureModel = new SignificantGestureModel(
-            customerId,
+            relativePath,
             configuration.GestureTitle ?? apiSettings.DefaultSignificantGestureTitle,
             configuration.GestureMessage ?? apiSettings.DefaultSignificantGestureMessage,
             expiringToken);
