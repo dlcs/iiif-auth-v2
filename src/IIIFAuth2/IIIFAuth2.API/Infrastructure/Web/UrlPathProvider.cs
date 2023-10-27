@@ -111,12 +111,20 @@ public class UrlPathProvider : IUrlPathProvider
     
     private string GetPopulatedTemplate(string host, int customerId)
     {
-        const string defaultPathTemplate = "/access/{customerId}/gesture";
-        var template = apiSettings.Auth.GesturePathTemplateForDomain.TryGetValue(host, out var pathTemplate)
-            ? pathTemplate
-            : defaultPathTemplate;
-
+        var template = GetTemplate(host);
         return template.Replace("{customerId}", customerId.ToString());
+    }
+    
+    private string GetTemplate(string host)
+    {
+        const string defaultPathTemplate = "/access/{customerId}/gesture";
+        const string defaultKey = "Default";
+
+        var pathTemplates = apiSettings.Auth.GesturePathTemplateForDomain;
+        
+        if (pathTemplates.TryGetValue(host, out var hostTemplate)) return hostTemplate;
+        if (pathTemplates.TryGetValue(defaultKey, out var pathTemplate)) return pathTemplate;
+        return defaultPathTemplate;
     }
 
     private string GetCurrentBaseUrl() =>
