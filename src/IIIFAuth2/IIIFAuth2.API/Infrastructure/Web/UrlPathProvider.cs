@@ -1,4 +1,5 @@
-﻿using IIIFAuth2.API.Data.Entities;
+﻿using System.Text.RegularExpressions;
+using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Settings;
 using IIIFAuth2.API.Utils;
@@ -114,17 +115,22 @@ public class UrlPathProvider : IUrlPathProvider
         var template = GetTemplate(host);
         return template.Replace("{customerId}", customerId.ToString());
     }
-    
+
     private string GetTemplate(string host)
     {
         const string defaultPathTemplate = "/access/{customerId}/gesture";
         const string defaultKey = "Default";
 
         var pathTemplates = apiSettings.Auth.GesturePathTemplateForDomain;
-        
+
         if (pathTemplates.TryGetValue(host, out var hostTemplate)) return hostTemplate;
         if (pathTemplates.TryGetValue(defaultKey, out var pathTemplate)) return pathTemplate;
-        return defaultPathTemplate;
+        if (apiSettings.PathBase.IsNullOrEmpty()) return defaultPathTemplate;
+
+        // Replace any duplicate slashes after joining path elements
+        var candidate = $"{apiSettings.PathBase}/{defaultPathTemplate}";
+        var duplicateSlashRegex = new Regex("(/)+", RegexOptions.Compiled);
+        return duplicateSlashRegex.Replace(candidate, "$1");
     }
 
     private string GetCurrentBaseUrl() =>

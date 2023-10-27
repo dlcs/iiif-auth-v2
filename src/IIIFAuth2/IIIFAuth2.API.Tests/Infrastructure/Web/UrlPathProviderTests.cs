@@ -30,6 +30,24 @@ public class UrlPathProviderTests
     }
     
     [Fact]
+    public void GetGesturePostbackRelativePath_HandlesNoConfiguredDefault_WithPathBase()
+    {
+        // Arrange
+        var gestureTemplates = new Dictionary<string, string>
+        {
+            [OtherHost] = "/access/specific-host"
+        };
+        var sut = GetSut(CurrentHost, gestureTemplates, "auth/v2/");
+        
+        // Act
+        var result = sut.GetGesturePostbackRelativePath(123);
+        
+        // Asset
+        result.IsAbsoluteUri.Should().BeFalse();
+        result.ToString().Should().Be("auth/v2/access/123/gesture");
+    }
+    
+    [Fact]
     public void GetGesturePostbackRelativePath_UsesConfiguredDefault()
     {
         // Arrange
@@ -67,7 +85,7 @@ public class UrlPathProviderTests
         result.ToString().Should().Be("/123/access/gesture");
     }
     
-    private UrlPathProvider GetSut(string host, Dictionary<string, string> gestureTemplates)
+    private UrlPathProvider GetSut(string host, Dictionary<string, string> gestureTemplates, string? pathBase = null)
     {
         var context = new DefaultHttpContext();
         var request = context.Request;
@@ -77,7 +95,7 @@ public class UrlPathProviderTests
         A.CallTo(() => contextAccessor.HttpContext).Returns(context);
 
         var authSettings = new AuthSettings { GesturePathTemplateForDomain = gestureTemplates };
-        var apiSettings = Options.Create(new ApiSettings { Auth = authSettings });
+        var apiSettings = Options.Create(new ApiSettings { Auth = authSettings, PathBase = pathBase });
         
         return new UrlPathProvider(contextAccessor, apiSettings);
     }
