@@ -76,7 +76,8 @@ public class AuthAspectManagerTests
             .Contain($"id%3D{cookieId}")
             .And.Contain("domain=test.example;")
             .And.Contain("secure;")
-            .And.Contain("samesite=none");
+            .And.Contain("samesite=none")
+            .And.Contain("httponly");
     }
     
     [Fact]
@@ -102,7 +103,8 @@ public class AuthAspectManagerTests
                 .Contain($"id%3D{cookieId}")
                 .And.Contain($"domain={host};")
                 .And.Contain("secure;")
-                .And.Contain("samesite=none");
+                .And.Contain("samesite=none")
+                .And.Contain("httponly");
         }
         
         ValidateCookie("another.example", cookies[0]);

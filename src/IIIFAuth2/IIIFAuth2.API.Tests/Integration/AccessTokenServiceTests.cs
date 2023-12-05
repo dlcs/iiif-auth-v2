@@ -213,7 +213,8 @@ public class AccessTokenServiceTests : IClassFixture<AuthWebApplicationFactory>
         cookie.Should()
             .StartWith("dlcs-auth2-99")
             .And.Contain("samesite=none")
-            .And.Contain("secure;");
+            .And.Contain("secure;")
+            .And.Contain("httponly");
     }
 
     [Fact]

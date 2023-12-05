@@ -113,7 +113,8 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         cookie.Should()
             .StartWith("dlcs-auth2-99")
             .And.Contain("samesite=none")
-            .And.Contain("secure;");
+            .And.Contain("secure;")
+            .And.Contain("httponly");
         
         // E.g. dlcs-token-99=id%3D76e7d9fb-99ab-4b4f-87b0-f2e3f0e9664e; expires=Tue, 14 Sep 2021 16:53:53 GMT; domain=localhost; path=/; secure; samesite=none
         var toRemoveLength = "dlcs-auth2-99id%3D".Length;
@@ -144,7 +145,8 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         cookie.Should()
             .StartWith("dlcs-auth2-99")
             .And.Contain("samesite=none")
-            .And.Contain("secure;");
+            .And.Contain("secure;")
+            .And.Contain("httponly");
         
         // E.g. dlcs-token-99=id%3D76e7d9fb-99ab-4b4f-87b0-f2e3f0e9664e; expires=Tue, 14 Sep 2021 16:53:53 GMT; domain=localhost; path=/; secure; samesite=none
         var toRemoveLength = "dlcs-auth2-99id%3D".Length;
@@ -172,7 +174,8 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         cookie.Should()
             .StartWith("dlcs-auth2-99")
             .And.Contain("samesite=none")
-            .And.Contain("secure;");
+            .And.Contain("secure;")
+            .And.Contain("httponly");
         
         // E.g. dlcs-token-99=id%3D76e7d9fb-99ab-4b4f-87b0-f2e3f0e9664e; expires=Tue, 14 Sep 2021 16:53:53 GMT; domain=localhost; path=/; secure; samesite=none
         var toRemoveLength = "dlcs-auth2-99id%3D".Length;
@@ -200,7 +203,8 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         cookie.Should()
             .StartWith("dlcs-auth2-99")
             .And.Contain("samesite=none")
-            .And.Contain("secure;");
+            .And.Contain("secure;")
+            .And.Contain("httponly");
         
         // E.g. dlcs-token-99=id%3D76e7d9fb-99ab-4b4f-87b0-f2e3f0e9664e; expires=Tue, 14 Sep 2021 16:53:53 GMT; domain=localhost; path=/; secure; samesite=none
         var toRemoveLength = "dlcs-auth2-99id%3D".Length;
@@ -334,7 +338,8 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         cookie.Should()
             .StartWith("dlcs-auth2-99")
             .And.Contain("samesite=none")
-            .And.Contain("secure;");
+            .And.Contain("secure;")
+            .And.Contain("httponly");
         
         // E.g. dlcs-token-99=id%3D76e7d9fb-99ab-4b4f-87b0-f2e3f0e9664e; expires=Tue, 14 Sep 2021 16:53:53 GMT; domain=localhost; path=/; secure; samesite=none
         var toRemoveLength = "dlcs-auth2-99id%3D".Length;
