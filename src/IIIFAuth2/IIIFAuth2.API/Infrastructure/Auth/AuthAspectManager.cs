@@ -72,7 +72,8 @@ public class AuthAspectManager
                         Domain = domain,
                         Expires = DateTimeOffset.UtcNow.AddSeconds(authSettings.SessionTtl),
                         SameSite = SameSiteMode.None,
-                        Secure = true
+                        Secure = true,
+                        HttpOnly = true,
                     });
             });
 
