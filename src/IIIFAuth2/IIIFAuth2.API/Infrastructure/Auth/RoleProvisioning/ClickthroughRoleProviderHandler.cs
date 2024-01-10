@@ -41,13 +41,7 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
         bool hostIsControlled,
         CancellationToken cancellationToken = default)
     {
-        if (providerConfiguration is not ClickthroughConfiguration configuration)
-        {
-            logger.LogError(
-                $"{nameof(ClickthroughRoleProviderHandler)} given non-clickthrough configuration {{@Configuration}}",
-                providerConfiguration);
-            throw new ArgumentException("Unable to handle provided configuration", nameof(providerConfiguration));
-        }
+        var configuration = providerConfiguration.SafelyGetTypedConfig<ClickthroughConfiguration>();
 
         var roles = await GetRolesToBeGranted(customerId, accessService);
 

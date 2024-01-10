@@ -2,6 +2,7 @@
 using IIIFAuth2.API.Features.Access.Requests;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Settings;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -73,11 +74,13 @@ public static class ServiceCollectionX
             .AddScoped<ICustomerDomainProvider, CustomerDomainService>()
             .AddScoped<RoleProviderService>()
             .AddScoped<ClickthroughRoleProviderHandler>()
+            .AddScoped<OidcRoleProviderHandler>()
             .AddScoped<SessionManagementService>()
             .AddScoped<SessionCleaner>()
             .AddScoped<RoleProviderHandlerResolver>(provider => roleProviderType => roleProviderType switch
             {
                 RoleProviderType.Clickthrough => provider.GetRequiredService<ClickthroughRoleProviderHandler>(),
+                RoleProviderType.Oidc => provider.GetRequiredService<OidcRoleProviderHandler>(),
                 _ => throw new ArgumentOutOfRangeException(nameof(roleProviderType), roleProviderType, null)
             });
 

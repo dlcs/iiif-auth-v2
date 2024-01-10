@@ -71,7 +71,7 @@ public class OidcConfiguration : IProviderConfiguration
 {
     public string Provider { get; set; } = null!;
     public string Domain { get; set; } = null!;
-    public string Scopes { get; set; } = null!;
+    public string? Scopes { get; set; }
     public string ClaimType { get; set; } = null!;
     
     /// <summary>
@@ -88,23 +88,22 @@ public class OidcConfiguration : IProviderConfiguration
     /// <summary>
     /// A collection of {claimValue}:{dlcs-role} mappings
     /// </summary>
-    public Dictionary<string, string[]> Mapping { get; set; } = new();
+    public Dictionary<string, string[]>? Mapping { get; set; }
     
-    /// <summary>
     /// <inheritdoc />
-    /// </summary>
     public string? GestureTitle { get; set; }
     
-    /// <summary>
     /// <inheritdoc />
-    /// </summary>
     public string? GestureMessage { get; set; }
     
-    /// <summary>
     /// <inheritdoc />
-    /// </summary>
     [JsonConverter(typeof(StringEnumConverter))]
     public RoleProviderType Config { get; set; }
+
+    public static class SupportedProviders
+    {
+        public const string Auth0 = "auth0";
+    }
 }
 
 /// <summary>
