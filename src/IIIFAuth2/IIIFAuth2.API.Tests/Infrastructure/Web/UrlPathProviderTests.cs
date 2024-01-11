@@ -1,4 +1,5 @@
 ﻿using FakeItEasy;
+using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Settings;
 using Microsoft.AspNetCore.Http;
@@ -84,8 +85,23 @@ public class UrlPathProviderTests
         result.IsAbsoluteUri.Should().BeFalse();
         result.ToString().Should().Be("/123/access/gesture");
     }
+
+    [Fact]
+    public void GetAccessServiceOAuthCallbackPath_Correct()
+    {
+        // Arrange
+        var sut = GetSut(CurrentHost);
+        var accessService = new AccessService { Customer = 99, Name = "ghosts" };
+        var expected = new Uri("https://dlcs.test.example/access/v2/99/ghosts/oauth2/callback");
+        
+        // Act
+        var result = sut.GetAccessServiceOAuthCallbackPath(accessService);
+        
+        // Assert
+        result.Should().BeEquivalentTo(expected);
+    }
     
-    private UrlPathProvider GetSut(string host, Dictionary<string, string> gestureTemplates, string? pathBase = null)
+    private UrlPathProvider GetSut(string host, Dictionary<string, string>? gestureTemplates = null, string? pathBase = null)
     {
         var context = new DefaultHttpContext();
         var request = context.Request;
@@ -94,7 +110,7 @@ public class UrlPathProviderTests
         var contextAccessor = A.Fake<IHttpContextAccessor>();
         A.CallTo(() => contextAccessor.HttpContext).Returns(context);
 
-        var authSettings = new AuthSettings { GesturePathTemplateForDomain = gestureTemplates };
+        var authSettings = new AuthSettings { GesturePathTemplateForDomain = gestureTemplates ?? new() };
         var apiSettings = Options.Create(new ApiSettings { Auth = authSettings, PathBase = pathBase });
         
         return new UrlPathProvider(contextAccessor, apiSettings);

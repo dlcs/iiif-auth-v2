@@ -73,6 +73,7 @@ public static class ServiceCollectionX
             .AddScoped<ICustomerDomainChecker, CustomerDomainService>()
             .AddScoped<ICustomerDomainProvider, CustomerDomainService>()
             .AddScoped<RoleProviderService>()
+            .AddScoped<Auth0Client>()
             .AddScoped<ClickthroughRoleProviderHandler>()
             .AddScoped<OidcRoleProviderHandler>()
             .AddScoped<SessionManagementService>()

@@ -7,6 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="Auth0.AuthenticationApi" Version="7.26.0" />
       <PackageReference Include="EFCore.NamingConventions" Version="7.0.2" />
       <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.6.0" />
       <PackageReference Include="iiif-net" Version="0.2.1" />

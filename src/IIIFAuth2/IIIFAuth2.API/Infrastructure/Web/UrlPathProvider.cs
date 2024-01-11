@@ -23,6 +23,11 @@ public interface IUrlPathProvider
     /// Get the path for AccessService logout
     /// </summary>
     Uri GetAccessServiceLogoutPath(AccessService accessService);
+    
+    /// <summary>
+    /// Get the path oauth2 identity provider will callback after login
+    /// </summary>
+    Uri GetAccessServiceOAuthCallbackPath(AccessService accessService);
 
     /// <summary>
     /// Get the path for AccessService
@@ -86,7 +91,20 @@ public class UrlPathProvider : IUrlPathProvider
 
         return builder.Uri;
     }
-    
+
+    /// <inheritdoc />
+    public Uri GetAccessServiceOAuthCallbackPath(AccessService accessService)
+    {
+        var baseUrl = GetCurrentBaseUrl();
+        var path = $"/auth/v2/access/{accessService.Customer}/{accessService.Name}/oauth2/callback";
+        var builder = new UriBuilder(baseUrl)
+        {
+            Path = path
+        };
+
+        return builder.Uri;
+    }
+
     /// <inheritdoc />
     public Uri GetAccessTokenServicePath(int customerId)
     {

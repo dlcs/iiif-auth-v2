@@ -226,6 +226,9 @@ public class AccessServiceConverterTests
         public Uri GetAccessServiceLogoutPath(AccessService accessService)
             => new($"http://test.example/access/{accessService.Name}/logout");
 
+        public Uri GetAccessServiceOAuthCallbackPath(AccessService accessService)
+            => new($"http://test.example/access/{accessService.Name}/oauth2/callback");
+
         public Uri GetAccessTokenServicePath(int customerId)
             => new($"http://test.example/token/{customerId}");
 

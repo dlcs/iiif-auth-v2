@@ -38,6 +38,11 @@ public class AccessController : AuthBaseController
                 return NotFound($"AccessService {accessServiceName} not found");
             }
 
+            if (provisionRoleResponse.RequiresRedirect)
+            {
+                return Redirect(provisionRoleResponse.RedirectUri!.ToString());
+            }
+
             if (provisionRoleResponse.SignificantGestureRequired)
             {
                 return View("SignificantGesture", provisionRoleResponse.SignificantGestureModel);
@@ -69,6 +74,22 @@ public class AccessController : AuthBaseController
 
             return View("CloseWindow", errorMessage);
         });
+    }
+
+    /// <summary>
+    /// Callback handler after user has authenticated with 3rd party oauth provider
+    /// </summary>
+    [HttpGet]
+    [Route("{customerId}/{accessServiceName}/oauth2/callback")]
+    public async Task<IActionResult> Oauth2Callback(
+            [FromRoute] int customerId,
+            [FromRoute] string accessServiceName,
+            [FromQuery] string code,
+            [FromQuery] string state,
+            CancellationToken cancellationToken)
+    {
+        // TODO - validate state. Exchange code for token
+        throw new NotImplementedException();
     }
 
     /// <summary>

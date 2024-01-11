@@ -73,6 +73,7 @@ public class RoleProviderConverterTests
         var expected = new OidcConfiguration
         {
             Config = RoleProviderType.Oidc,
+            ClientId = "foobar",
             GestureMessage = "Gesture message",
             GestureTitle = "Gesture title",
             Domain = "my-domain",
@@ -89,6 +90,7 @@ public class RoleProviderConverterTests
 
         var json = @"{
     ""config"": ""Oidc"",
+    ""clientId"": ""foobar"",
     ""provider"": ""auth0"",
     ""domain"": ""my-domain"",
     ""scopes"": ""scoped"",
@@ -116,6 +118,7 @@ public class RoleProviderConverterTests
         var config = new OidcConfiguration
         {
             Config = RoleProviderType.Oidc,
+            ClientId = "foobar",
             GestureMessage = "Gesture message",
             GestureTitle = "Gesture title",
             Domain = "my-domain",
@@ -132,6 +135,7 @@ public class RoleProviderConverterTests
 
         var json = @"{
     ""config"": ""Oidc"",
+    ""clientId"": ""foobar"",
     ""provider"": ""auth0"",
     ""domain"": ""my-domain"",
     ""scopes"": ""scoped"",
