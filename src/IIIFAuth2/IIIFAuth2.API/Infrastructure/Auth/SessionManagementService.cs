@@ -61,6 +61,35 @@ public class SessionManagementService : SessionManagerBase
         => CreateSessionAndIssueCookie(customerId, roles, origin, "Create session-user", 1, cancellationToken);
 
     /// <summary>
+    /// Validate the provided roleProvisionToken - this will validate whether it has timed out or been used.
+    /// </summary>
+    public async Task<ResultStatus<RoleProvisionToken>> TryGetValidToken(string roleProvisionToken,
+    CancellationToken cancellationToken)
+    {
+        try
+        {
+            const int tokenValidForSecs = 900;
+            var token =
+                await TryGetValidUnusedRoleProvisionToken(roleProvisionToken, tokenValidForSecs, cancellationToken);
+            if (token == null) return ResultStatus<RoleProvisionToken>.Unsuccessful();
+            
+            await SaveChangesWithRowCountCheck("Mark token as used", cancellationToken: cancellationToken);
+            Logger.LogDebug("Successfully marked token as used: {Token}", roleProvisionToken);
+            return ResultStatus<RoleProvisionToken>.Successful(token);
+        }
+        catch (DbUpdateConcurrencyException dbEx)
+        {
+            Logger.LogError(dbEx, "Concurrency failure marking token {Token} as used", roleProvisionToken);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Unexpected error creating session user from token {Token}", roleProvisionToken);
+        }
+        
+        return ResultStatus<RoleProvisionToken>.Unsuccessful();
+    }
+    
+    /// <summary>
     /// Attempt to create a new session using provided token. This can fail if token has been used, is expired or not
     /// known
     /// </summary>
@@ -69,28 +98,10 @@ public class SessionManagementService : SessionManagerBase
     {
         try
         {
-            if (ExpiringToken.HasExpired(roleProvisionToken))
-            {
-                Logger.LogInformation("Received an invalid or expired token: {Token}", roleProvisionToken);
-                return ResultStatus<SessionUser>.Unsuccessful();
-            }
+            var token =
+                await TryGetValidUnusedRoleProvisionToken(roleProvisionToken, cancellationToken: cancellationToken);
+            if (token == null) return ResultStatus<SessionUser>.Unsuccessful();
 
-            var token = await DbContext.RoleProvisionTokens.SingleOrDefaultAsync(r => r.Id == roleProvisionToken,
-                cancellationToken);
-            if (token == null)
-            {
-                Logger.LogWarning("Received a valid, unexpired token that could not be found in db: {Token}",
-                    roleProvisionToken);
-                return ResultStatus<SessionUser>.Unsuccessful();
-            }
-
-            if (token.Used)
-            {
-                Logger.LogDebug("Received a used token: {Token}", roleProvisionToken);
-                return ResultStatus<SessionUser>.Unsuccessful();
-            }
-
-            token.Used = true;
             const int expectedRowCount = 2;
             var sessionUser = await CreateSessionAndIssueCookie(token.Customer, token.Roles, token.Origin,
                 "Create session from token", expectedRowCount, cancellationToken);
@@ -149,6 +160,40 @@ public class SessionManagementService : SessionManagerBase
             cancellationToken: cancellationToken);
 
         return findSessionResponse;
+    }
+    
+    /// <summary>
+    /// Try and get <see cref="RoleProvisionToken"/> with specified Id. Value only returned if token hasn't expired and
+    /// is unused.
+    /// Returned token will have been marked as used but not saved to backing store.
+    /// </summary>
+    private async Task<RoleProvisionToken?> TryGetValidUnusedRoleProvisionToken(string roleProvisionToken,
+        int validForSecs = 300,
+        CancellationToken cancellationToken = default)
+    {
+        if (ExpiringToken.HasExpired(roleProvisionToken, validForSecs))
+        {
+            Logger.LogInformation("Received an invalid or expired token: {Token}", roleProvisionToken);
+            return null;
+        }
+
+        var token = await DbContext.RoleProvisionTokens.SingleOrDefaultAsync(r => r.Id == roleProvisionToken,
+            cancellationToken);
+        if (token == null)
+        {
+            Logger.LogWarning("Received a valid, unexpired token that could not be found in db: {Token}",
+                roleProvisionToken);
+            return null;
+        }
+
+        if (token.Used)
+        {
+            Logger.LogDebug("Received a used token: {Token}", roleProvisionToken);
+            return null;
+        }
+
+        token.Used = true;
+        return token;
     }
 
     private async Task<SessionUser> CreateAndAddSessionUser(int customerId, IReadOnlyCollection<string> roles, 

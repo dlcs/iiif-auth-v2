@@ -1,4 +1,5 @@
-﻿using IIIFAuth2.API.Data.Entities;
+﻿using System.Reflection.Metadata.Ecma335;
+using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Models.Domain;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
@@ -10,11 +11,19 @@ public class OidcRoleProviderHandler
 {
     private readonly Auth0Client auth0Client;
     private readonly SessionManagementService sessionManagementService;
+    private readonly RoleProvisionGranter roleProvisionGranter;
+    private readonly ILogger<OidcRoleProviderHandler> logger;
 
-    public OidcRoleProviderHandler(Auth0Client auth0Client, SessionManagementService sessionManagementService)
+    public OidcRoleProviderHandler(
+        Auth0Client auth0Client, 
+        SessionManagementService sessionManagementService,
+        RoleProvisionGranter roleProvisionGranter,
+        ILogger<OidcRoleProviderHandler> logger)
     {
         this.auth0Client = auth0Client;
         this.sessionManagementService = sessionManagementService;
+        this.roleProvisionGranter = roleProvisionGranter;
+        this.logger = logger;
     }
 
     public async Task<HandleRoleProvisionResponse> InitiateLoginRequest(int customerId, Uri requestOrigin,
@@ -29,6 +38,35 @@ public class OidcRoleProviderHandler
         
         var loginUrl = auth0Client.GetAuthLoginUrl(configuration, accessService, roleProvisionTokenId);
         return HandleRoleProvisionResponse.Redirect(loginUrl);
+    }
+
+    public async Task<HandleRoleProvisionResponse> HandleLoginCallback(int customerId, string roleProvisionToken, string authCode,
+        AccessService accessService, IProviderConfiguration providerConfiguration,
+        CancellationToken cancellationToken = default)
+    {
+        var configuration = providerConfiguration.SafelyGetTypedConfig<OidcConfiguration>();
+        ValidateProviderIsSupported(configuration);
+
+        // Validate the roleProviderToken is valid and hasn't been used
+        var validateTokenResult =
+            await sessionManagementService.TryGetValidToken(roleProvisionToken, cancellationToken);
+
+        if (!validateTokenResult.Success)
+        {
+            logger.LogInformation("Received nonce token {Token} in oidc response that is invalid",
+                roleProvisionToken);
+            return HandleRoleProvisionResponse.Empty;
+        }
+
+        var requestUri = new Uri(validateTokenResult.Value!.Origin);
+        
+        // Initiate an exchange of code for token
+        var roles = await auth0Client.GetDlcsRolesForCode(configuration, accessService, authCode, cancellationToken);
+
+        // TODO - throw if no roles found?
+        
+        return await roleProvisionGranter.CompleteRequest(customerId, requestUri, providerConfiguration,
+            () => Task.FromResult(roles), cancellationToken);
     }
 
     private static void ValidateProviderIsSupported(OidcConfiguration configuration)

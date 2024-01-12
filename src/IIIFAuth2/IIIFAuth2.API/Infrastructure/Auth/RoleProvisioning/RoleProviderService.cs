@@ -11,18 +11,18 @@ namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 public class RoleProviderService
 {
     private readonly AuthServicesContext dbContext;
-    private readonly RoleProvisioner roleProvisioner;
+    private readonly ClickThroughProviderHandler clickthroughRoleHandler;
     private readonly OidcRoleProviderHandler oidcRoleProviderHandler;
     private readonly ILogger<RoleProviderService> logger;
 
     public RoleProviderService(
         AuthServicesContext dbContext,
-        RoleProvisioner roleProvisioner,
+        ClickThroughProviderHandler clickthroughRoleHandler,
         OidcRoleProviderHandler oidcRoleProviderHandler,
         ILogger<RoleProviderService> logger)
     {
         this.dbContext = dbContext;
-        this.roleProvisioner = roleProvisioner;
+        this.clickthroughRoleHandler = clickthroughRoleHandler;
         this.oidcRoleProviderHandler = oidcRoleProviderHandler;
         this.logger = logger;
     }
@@ -52,7 +52,7 @@ public class RoleProviderService
             case RoleProviderType.Clickthrough:
             {
                 // By the time access-service is accessed the user has agreed to terms so we can complete request
-                var clickthroughResult = await roleProvisioner.CompleteRequest(customerId, requestOrigin,
+                var clickthroughResult = await clickthroughRoleHandler.CompleteRequest(customerId, requestOrigin,
                     accessService, providerConfiguration, cancellationToken);
                 return clickthroughResult;
             }
@@ -67,6 +67,27 @@ public class RoleProviderService
                 throw new ArgumentOutOfRangeException(nameof(providerConfiguration.Config),
                     $"Role provider configuration type {providerConfiguration.Config} unknown");
         }
+    }
+
+    public async Task<HandleRoleProvisionResponse?> HandleOidcCallback(int customerId, string accessServiceName,
+        string roleProvisionToken, string authCode, CancellationToken cancellationToken = default)
+    {
+        var accessService = await GetAccessServices(customerId, accessServiceName);
+        if (accessService == null) return null;
+        
+        var roleProvider = accessService.RoleProvider;
+        if (roleProvider == null)
+        {
+            logger.LogWarning(
+                "AccessService '{AccessServiceId}' ({CustomerId}:{AccessServiceName}) has no RoleProvider",
+                accessService.Id, customerId, accessService.Name);
+            return null;
+        }
+        
+        var providerConfiguration = roleProvider.Configuration.GetDefaultConfiguration();
+        var result = await oidcRoleProviderHandler.HandleLoginCallback(customerId, roleProvisionToken, authCode,
+            accessService, providerConfiguration, cancellationToken);
+        return result;
     }
 
     private async Task<AccessService?> GetAccessServices(int customerId, string accessServiceName)

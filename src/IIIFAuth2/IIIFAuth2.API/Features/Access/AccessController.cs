@@ -1,4 +1,5 @@
 ﻿using IIIFAuth2.API.Features.Access.Requests;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 using IIIFAuth2.API.Infrastructure.Web;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -22,39 +23,14 @@ public class AccessController : AuthBaseController
     /// </summary>
     [HttpGet]
     [Route("{customerId}/{accessServiceName}")]
-    public async Task<IActionResult> AccessService(
+    public Task<IActionResult> AccessService(
         [FromRoute] int customerId,
         [FromRoute] string accessServiceName,
         [FromQuery] Uri origin,
         CancellationToken cancellationToken)
     {
-        return await HandleRequest(async () =>
-        {
-            var initiate = new InitiateRoleProvisionRequest(customerId, accessServiceName, origin);
-            var provisionRoleResponse = await Mediator.Send(initiate, cancellationToken);
-
-            if (provisionRoleResponse == null)
-            {
-                return NotFound($"AccessService {accessServiceName} not found");
-            }
-
-            if (provisionRoleResponse.RequiresRedirect)
-            {
-                return Redirect(provisionRoleResponse.RedirectUri!.ToString());
-            }
-
-            if (provisionRoleResponse.SignificantGestureRequired)
-            {
-                return View("SignificantGesture", provisionRoleResponse.SignificantGestureModel);
-            }
-
-            if (provisionRoleResponse.RoleProvisionHandled)
-            {
-                return View("CloseWindow");
-            }
-
-            return StatusCode(500, "Unexpected error encountered");
-        });
+        var initiate = new InitiateRoleProvisionRequest(customerId, accessServiceName, origin);
+        return RoleProvisionResponseConverter(initiate, accessServiceName, cancellationToken);
     }
 
     /// <summary>
@@ -81,15 +57,15 @@ public class AccessController : AuthBaseController
     /// </summary>
     [HttpGet]
     [Route("{customerId}/{accessServiceName}/oauth2/callback")]
-    public async Task<IActionResult> Oauth2Callback(
+    public Task<IActionResult> Oauth2Callback(
             [FromRoute] int customerId,
             [FromRoute] string accessServiceName,
             [FromQuery] string code,
-            [FromQuery] string state,
+            [FromQuery(Name = "state")] string roleProvisionToken,
             CancellationToken cancellationToken)
     {
-        // TODO - validate state. Exchange code for token
-        throw new NotImplementedException();
+        var oauth2Callback = new HandleOAuth2Callback(customerId, accessServiceName, code, roleProvisionToken);
+        return RoleProvisionResponseConverter(oauth2Callback, accessServiceName, cancellationToken);
     }
 
     /// <summary>
@@ -109,6 +85,37 @@ public class AccessController : AuthBaseController
             await Mediator.Send(logout, cancellationToken);
 
             return NoContent();
+        });
+    }
+
+    private async Task<IActionResult> RoleProvisionResponseConverter(IRequest<HandleRoleProvisionResponse?> request,
+        string accessServiceName, CancellationToken cancellationToken)
+    {
+        return await HandleRequest(async () =>
+        {
+            var provisionRoleResponse = await Mediator.Send(request, cancellationToken);
+
+            if (provisionRoleResponse == null)
+            {
+                return NotFound($"AccessService {accessServiceName} not found");
+            }
+
+            if (provisionRoleResponse.RequiresRedirect)
+            {
+                return Redirect(provisionRoleResponse.RedirectUri!.ToString());
+            }
+
+            if (provisionRoleResponse.SignificantGestureRequired)
+            {
+                return View("SignificantGesture", provisionRoleResponse.SignificantGestureModel);
+            }
+
+            if (provisionRoleResponse.RoleProvisionHandled)
+            {
+                return View("CloseWindow");
+            }
+
+            return StatusCode(500, "Unexpected error encountered");
         });
     }
 }

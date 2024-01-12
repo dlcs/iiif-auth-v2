@@ -30,4 +30,6 @@ public class HandleRoleProvisionResponse
 
     public static HandleRoleProvisionResponse Redirect(Uri redirectUri) =>
         new() { RedirectUri = redirectUri, RequiresRedirect = true };
+
+    public static readonly HandleRoleProvisionResponse Empty = new();
 }

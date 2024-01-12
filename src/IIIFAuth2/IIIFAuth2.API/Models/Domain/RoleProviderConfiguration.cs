@@ -72,6 +72,7 @@ public class OidcConfiguration : IProviderConfiguration
     public string Provider { get; set; } = null!;
     public string Domain { get; set; } = null!;
     public string ClientId { get; set; } = null!;
+    public string ClientSecret { get; set; } = null!;
     public string? Scopes { get; set; }
     public string ClaimType { get; set; } = null!;
     

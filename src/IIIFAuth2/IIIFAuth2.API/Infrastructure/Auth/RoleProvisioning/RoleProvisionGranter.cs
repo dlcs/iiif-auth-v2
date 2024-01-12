@@ -1,6 +1,4 @@
-﻿using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Data.Entities;
-using IIIFAuth2.API.Infrastructure.Auth.Models;
+﻿using IIIFAuth2.API.Infrastructure.Auth.Models;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Settings;
@@ -11,28 +9,22 @@ namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 /// <summary>
 /// Class used to handle provisioning a token OR initiating a request for a significant gesture. This happens when the
 /// user has provided enough information that we are satisfied that have relevant access required for the provided
-/// accessService 
+/// accessService.
 /// </summary>
-public class RoleProvisioner 
+public class RoleProvisionGranter
 {
-    private readonly AuthServicesContext dbContext;
     private readonly SessionManagementService sessionManagementService;
-    private readonly ILogger<RoleProvisioner> logger;
     private readonly ApiSettings apiSettings;
     private readonly IUrlPathProvider urlPathProvider;
     private readonly ICustomerDomainChecker customerDomainChecker;
 
-    public RoleProvisioner(
-        AuthServicesContext dbContext,
+    public RoleProvisionGranter(
         SessionManagementService sessionManagementService,
         IUrlPathProvider urlPathProvider,
         ICustomerDomainChecker customerDomainChecker,
-        IOptions<ApiSettings> apiOptions,
-        ILogger<RoleProvisioner> logger)
+        IOptions<ApiSettings> apiOptions)
     {
-        this.dbContext = dbContext;
         this.sessionManagementService = sessionManagementService;
-        this.logger = logger;
         this.urlPathProvider = urlPathProvider;
         this.customerDomainChecker = customerDomainChecker;
         apiSettings = apiOptions.Value;
@@ -45,12 +37,12 @@ public class RoleProvisioner
     public async Task<HandleRoleProvisionResponse> CompleteRequest(
         int customerId,
         Uri requestOrigin,
-        AccessService accessService,
         IProviderConfiguration providerConfiguration,
+        Func<Task<IReadOnlyCollection<string>>> getRolesToBeGranted,
         CancellationToken cancellationToken = default)
     {
         var hostIsControlled = await customerDomainChecker.OriginForControlledDomain(customerId, requestOrigin);
-        var roles = await GetRolesToBeGranted(customerId, accessService);
+        var roles = await getRolesToBeGranted();
 
         if (hostIsControlled)
         {
@@ -63,22 +55,6 @@ public class RoleProvisioner
         var gestureModel = await GetSignificantGestureModel(customerId, roles, requestOrigin.ToString(),
             providerConfiguration, cancellationToken);
         return HandleRoleProvisionResponse.SignificantGesture(gestureModel);
-    }
-
-    private async Task<IReadOnlyCollection<string>> GetRolesToBeGranted(int customerId, AccessService accessService)
-    {
-        var customerRoles = await dbContext.Roles.GetCachedCustomerRecords(customerId, CacheKeys.Roles);
-        var roles = customerRoles
-            .Where(r => r.AccessServiceId == accessService.Id)
-            .Select(r => r.Id)
-            .ToList();
-
-        if (roles.Count == 0)
-        {
-            logger.LogWarning("AccessService {CustomerId}:{AccessServiceName} grants no roles", customerId,
-                accessService.Name);
-        }
-        return roles;
     }
 
     private async Task<SignificantGestureModel> GetSignificantGestureModel(int customerId, IReadOnlyCollection<string> roles,

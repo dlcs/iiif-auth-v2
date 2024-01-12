@@ -66,16 +66,22 @@ public static class ServiceCollectionX
     /// Add dependencies for handling auth requests
     /// </summary>
     public static IServiceCollection AddAuthServices(this IServiceCollection services)
-        => services
+    {
+        var serviceCollection = services
             .AddScoped<AuthAspectManager>()
             .AddScoped<ICustomerDomainChecker, CustomerDomainService>()
             .AddScoped<ICustomerDomainProvider, CustomerDomainService>()
             .AddScoped<RoleProviderService>()
-            .AddScoped<Auth0Client>()
-            .AddScoped<RoleProvisioner>()
+            .AddScoped<RoleProvisionGranter>()
             .AddScoped<OidcRoleProviderHandler>()
+            .AddScoped<ClickThroughProviderHandler>()
             .AddScoped<SessionManagementService>()
             .AddScoped<SessionCleaner>();
+
+        services.AddHttpClient<Auth0Client>();
+
+        return serviceCollection;
+    }
 
     /// <summary>
     /// Add caching dependencies
