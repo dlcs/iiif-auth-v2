@@ -9,50 +9,59 @@ using Microsoft.Extensions.Options;
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 
 /// <summary>
-/// Implementation of <see cref="IRoleProviderHandler"/> for Clickthrough operations
+/// Class used to handle provisioning a token OR initiating a request for a significant gesture. This happens when the
+/// user has provided enough information that we are satisfied that have relevant access required for the provided
+/// accessService 
 /// </summary>
-public class ClickthroughRoleProviderHandler : IRoleProviderHandler
+public class RoleProvisioner 
 {
     private readonly AuthServicesContext dbContext;
     private readonly SessionManagementService sessionManagementService;
-    private readonly ILogger<ClickthroughRoleProviderHandler> logger;
+    private readonly ILogger<RoleProvisioner> logger;
     private readonly ApiSettings apiSettings;
     private readonly IUrlPathProvider urlPathProvider;
+    private readonly ICustomerDomainChecker customerDomainChecker;
 
-    public ClickthroughRoleProviderHandler(
+    public RoleProvisioner(
         AuthServicesContext dbContext,
         SessionManagementService sessionManagementService,
         IUrlPathProvider urlPathProvider,
+        ICustomerDomainChecker customerDomainChecker,
         IOptions<ApiSettings> apiOptions,
-        ILogger<ClickthroughRoleProviderHandler> logger)
+        ILogger<RoleProvisioner> logger)
     {
         this.dbContext = dbContext;
         this.sessionManagementService = sessionManagementService;
         this.logger = logger;
         this.urlPathProvider = urlPathProvider;
+        this.customerDomainChecker = customerDomainChecker;
         apiSettings = apiOptions.Value;
     }
 
-    /// <inheritdoc />
-    public async Task<HandleRoleProvisionResponse> HandleRequest(int customerId,
-        string requestOrigin,
+    /// <summary>
+    /// Handle the role provisioning request - this will either request a significant gesture from the user or issue
+    /// a cookie.
+    /// </summary>
+    public async Task<HandleRoleProvisionResponse> CompleteRequest(
+        int customerId,
+        Uri requestOrigin,
         AccessService accessService,
         IProviderConfiguration providerConfiguration,
-        bool hostIsControlled,
         CancellationToken cancellationToken = default)
     {
-        var configuration = providerConfiguration.SafelyGetTypedConfig<ClickthroughConfiguration>();
-
+        var hostIsControlled = await customerDomainChecker.OriginForControlledDomain(customerId, requestOrigin);
         var roles = await GetRolesToBeGranted(customerId, accessService);
 
         if (hostIsControlled)
         {
-            await sessionManagementService.CreateSessionForRoles(customerId, roles, requestOrigin, cancellationToken);
+            await sessionManagementService.CreateSessionForRoles(customerId, roles, requestOrigin.ToString(),
+                cancellationToken);
             return HandleRoleProvisionResponse.Handled();
         }
 
         // We need to capture a significant gesture on this domain before we can issue a cookie
-        var gestureModel = await GetSignificantGestureModel(customerId, roles, requestOrigin, configuration, cancellationToken);
+        var gestureModel = await GetSignificantGestureModel(customerId, roles, requestOrigin.ToString(),
+            providerConfiguration, cancellationToken);
         return HandleRoleProvisionResponse.SignificantGesture(gestureModel);
     }
 
@@ -73,7 +82,7 @@ public class ClickthroughRoleProviderHandler : IRoleProviderHandler
     }
 
     private async Task<SignificantGestureModel> GetSignificantGestureModel(int customerId, IReadOnlyCollection<string> roles,
-        string origin, ClickthroughConfiguration configuration, CancellationToken cancellationToken)
+        string origin, IProviderConfiguration configuration, CancellationToken cancellationToken)
     {
         var expiringToken =
             await sessionManagementService.CreateRoleProvisionToken(customerId, roles, origin, cancellationToken);

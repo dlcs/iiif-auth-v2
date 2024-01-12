@@ -19,16 +19,15 @@ public class Auth0Client
     /// Get URI to redirect user for authorizing with auth0
     /// </summary>
     /// <remarks>See https://auth0.com/docs/api/authentication#-get-authorize- </remarks>
-    public Uri GetAuthLoginUrl(OidcConfiguration oidcConfiguration, AccessService accessService)
+    public Uri GetAuthLoginUrl(OidcConfiguration oidcConfiguration, AccessService accessService, string state)
     {
         var callbackUrl = urlPathProvider.GetAccessServiceOAuthCallbackPath(accessService);
         
-        // TODO create and add a State value with meaning - use RoleProvisionToken table, maybe with a different flag?
         var authBuilder = new AuthorizationUrlBuilder(oidcConfiguration.Domain)
             .WithClient(oidcConfiguration.ClientId)
             .WithRedirectUrl(callbackUrl)
             .WithResponseType(AuthorizationResponseType.Code)
-            .WithState(Guid.NewGuid().ToString());
+            .WithState(state);
 
         var url = authBuilder.Build();
         return url;

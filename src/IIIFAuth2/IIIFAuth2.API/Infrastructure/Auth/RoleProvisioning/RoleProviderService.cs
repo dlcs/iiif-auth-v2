@@ -1,5 +1,7 @@
 ﻿using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Data.Entities;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
+using IIIFAuth2.API.Models.Domain;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 
@@ -9,21 +11,27 @@ namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 public class RoleProviderService
 {
     private readonly AuthServicesContext dbContext;
-    private readonly RoleProviderHandlerResolver handlerResolver;
+    private readonly RoleProvisioner roleProvisioner;
+    private readonly OidcRoleProviderHandler oidcRoleProviderHandler;
     private readonly ILogger<RoleProviderService> logger;
 
     public RoleProviderService(
         AuthServicesContext dbContext,
-        RoleProviderHandlerResolver handlerResolver,
+        RoleProvisioner roleProvisioner,
+        OidcRoleProviderHandler oidcRoleProviderHandler,
         ILogger<RoleProviderService> logger)
     {
         this.dbContext = dbContext;
-        this.handlerResolver = handlerResolver;
+        this.roleProvisioner = roleProvisioner;
+        this.oidcRoleProviderHandler = oidcRoleProviderHandler;
         this.logger = logger;
     }
 
-    public async Task<HandleRoleProvisionResponse?> HandleRequest(int customerId, string accessServiceName,
-        bool hostIsControlled, Uri requestOrigin, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Handle 'initial' role-provision request, which is when a user requests the access-service for the first time.
+    /// </summary>
+    public async Task<HandleRoleProvisionResponse?> HandleInitialRequest(int customerId, string accessServiceName,
+        Uri requestOrigin, CancellationToken cancellationToken = default)
     {
         var accessService = await GetAccessServices(customerId, accessServiceName);
         if (accessService == null) return null;
@@ -39,11 +47,26 @@ public class RoleProviderService
         
         // TODO - does this need to be smarter? How does it look up the key? Hostname?
         var providerConfiguration = roleProvider.Configuration.GetDefaultConfiguration();
-        var handler = handlerResolver(providerConfiguration.Config);
-
-        var result = await handler.HandleRequest(customerId, requestOrigin.ToString(), accessService,
-            providerConfiguration, hostIsControlled, cancellationToken);
-        return result;
+        switch (providerConfiguration.Config)
+        {
+            case RoleProviderType.Clickthrough:
+            {
+                // By the time access-service is accessed the user has agreed to terms so we can complete request
+                var clickthroughResult = await roleProvisioner.CompleteRequest(customerId, requestOrigin,
+                    accessService, providerConfiguration, cancellationToken);
+                return clickthroughResult;
+            }
+            case RoleProviderType.Oidc:
+            {
+                // For OIDC the initial request needs to head off to identity provider first
+                var oidcResult = await oidcRoleProviderHandler.InitiateLoginRequest(customerId, requestOrigin,
+                    accessService, providerConfiguration, cancellationToken);
+                return oidcResult;
+            }
+            default:
+                throw new ArgumentOutOfRangeException(nameof(providerConfiguration.Config),
+                    $"Role provider configuration type {providerConfiguration.Config} unknown");
+        }
     }
 
     private async Task<AccessService?> GetAccessServices(int customerId, string accessServiceName)

@@ -1,4 +1,3 @@
-using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 using MediatR;
 
@@ -25,21 +24,16 @@ public class InitiateRoleProvisionRequest : IRequest<HandleRoleProvisionResponse
 public class InitiateRoleProvisionRequestHandler : IRequestHandler<InitiateRoleProvisionRequest, HandleRoleProvisionResponse?>
 {
     private readonly RoleProviderService roleProviderService;
-    private readonly ICustomerDomainChecker customerDomainChecker;
 
-    public InitiateRoleProvisionRequestHandler(
-        RoleProviderService roleProviderService,
-        ICustomerDomainChecker customerDomainChecker)
+    public InitiateRoleProvisionRequestHandler(RoleProviderService roleProviderService)
     {
         this.roleProviderService = roleProviderService;
-        this.customerDomainChecker = customerDomainChecker;
     }
     
     public async Task<HandleRoleProvisionResponse?> Handle(InitiateRoleProvisionRequest request, CancellationToken cancellationToken)
     {
-        var hostIsControlled = await customerDomainChecker.OriginForControlledDomain(request.CustomerId, request.Origin);
-        var handled = await roleProviderService.HandleRequest(request.CustomerId, request.AccessServiceName,
-            hostIsControlled, request.Origin, cancellationToken);
+        var handled = await roleProviderService.HandleInitialRequest(request.CustomerId, request.AccessServiceName,
+            request.Origin, cancellationToken);
         return handled;
     }
 }

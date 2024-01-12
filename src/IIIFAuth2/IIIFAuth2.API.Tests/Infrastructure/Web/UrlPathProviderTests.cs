@@ -92,7 +92,7 @@ public class UrlPathProviderTests
         // Arrange
         var sut = GetSut(CurrentHost);
         var accessService = new AccessService { Customer = 99, Name = "ghosts" };
-        var expected = new Uri("https://dlcs.test.example/access/v2/99/ghosts/oauth2/callback");
+        var expected = new Uri("https://dlcs.test.example/auth/v2/access/99/ghosts/oauth2/callback");
         
         // Act
         var result = sut.GetAccessServiceOAuthCallbackPath(accessService);

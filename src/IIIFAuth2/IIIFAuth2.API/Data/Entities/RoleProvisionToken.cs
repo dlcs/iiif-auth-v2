@@ -2,7 +2,8 @@ namespace IIIFAuth2.API.Data.Entities;
 
 /// <summary>
 /// Records single user correlation token for role provisioning.
-/// Used when asking user to carry out a 'significant gesture' to allow us to issue a cookie. 
+/// Used when asking user to carry out a 'significant gesture' to allow us to issue a cookie or as a temporary nonce
+/// value when posting to identify providers.
 /// </summary>
 public class RoleProvisionToken : IHaveCustomer
 {
@@ -17,7 +18,7 @@ public class RoleProvisionToken : IHaveCustomer
     public bool Used { get; set; }
     
     /// <summary>
-    /// The list of roles that this token is for
+    /// The list of roles that this token is for, if known
     /// </summary>
     public List<string> Roles { get; set; } = new();
     
