@@ -73,9 +73,11 @@ public static class ServiceCollectionX
             .AddScoped<ICustomerDomainProvider, CustomerDomainService>()
             .AddScoped<RoleProviderService>()
             .AddScoped<RoleProvisionGranter>()
+            .AddScoped<IJwtTokenHandler, JwtTokenHandler>()
             .AddScoped<OidcRoleProviderHandler>()
             .AddScoped<ClickThroughProviderHandler>()
             .AddScoped<SessionManagementService>()
+            .AddSingleton<ClaimsConverter>()
             .AddScoped<SessionCleaner>();
 
         services.AddHttpClient<Auth0Client>();

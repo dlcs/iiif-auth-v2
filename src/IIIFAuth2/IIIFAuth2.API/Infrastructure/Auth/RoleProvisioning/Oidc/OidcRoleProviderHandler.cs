@@ -1,6 +1,7 @@
 ﻿using System.Reflection.Metadata.Ecma335;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Models.Domain;
+using IIIFAuth2.API.Utils;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 
@@ -55,15 +56,15 @@ public class OidcRoleProviderHandler
         {
             logger.LogInformation("Received nonce token {Token} in oidc response that is invalid",
                 roleProvisionToken);
-            return HandleRoleProvisionResponse.Empty;
+            return HandleRoleProvisionResponse.Error("Auth code invalid");
         }
 
         var requestUri = new Uri(validateTokenResult.Value!.Origin);
         
-        // Initiate an exchange of code for token
+        // Get DLCS roles from authcode
         var roles = await auth0Client.GetDlcsRolesForCode(configuration, accessService, authCode, cancellationToken);
-
-        // TODO - throw if no roles found?
+        
+        if (roles.IsNullOrEmpty()) return HandleRoleProvisionResponse.Error("Unable to get DLCS roles for user");
         
         return await roleProvisionGranter.CompleteRequest(customerId, requestUri, providerConfiguration,
             () => Task.FromResult(roles), cancellationToken);

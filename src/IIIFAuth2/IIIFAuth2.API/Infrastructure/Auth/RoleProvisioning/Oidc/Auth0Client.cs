@@ -1,15 +1,10 @@
 using System.Text.Json.Serialization;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 using Auth0.AuthenticationApi.Builders;
 using Auth0.AuthenticationApi.Models;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Utils;
-using LazyCache;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.IdentityModel.Tokens;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 
@@ -17,18 +12,21 @@ public class Auth0Client
 {
     private readonly IUrlPathProvider urlPathProvider;
     private readonly HttpClient httpClient;
-    private readonly IAppCache appCache;
+    private readonly IJwtTokenHandler jwtTokenHandler;
+    private readonly ClaimsConverter claimsConverter;
     private readonly ILogger<Auth0Client> logger;
 
     public Auth0Client(
         IUrlPathProvider urlPathProvider,
         HttpClient httpClient,
-        IAppCache appCache,
+        IJwtTokenHandler jwtTokenHandler,
+        ClaimsConverter claimsConverter,
         ILogger<Auth0Client> logger)
     {
         this.urlPathProvider = urlPathProvider;
         this.httpClient = httpClient;
-        this.appCache = appCache;
+        this.jwtTokenHandler = jwtTokenHandler;
+        this.claimsConverter = claimsConverter;
         this.logger = logger;
     }
     
@@ -60,82 +58,57 @@ public class Auth0Client
     public async Task<IReadOnlyCollection<string>> GetDlcsRolesForCode(OidcConfiguration oidcConfiguration,
         AccessService accessService, string code, CancellationToken cancellationToken)
     {
-        // TODO - log errors
         var auth0Token = await GetAuth0Token(oidcConfiguration, accessService, code, cancellationToken);
 
-        var claimsPrincipal = GetClaimsFromToken(auth0Token, oidcConfiguration.Domain, cancellationToken);
+        // For auth0 "iss" = auth0 domain (ending in /) and "aud" = clientId 
+        var issuer = oidcConfiguration.Domain.EnsureEndsWith("/");
+        var audience = oidcConfiguration.ClientId;
         
-        // TODO - determine DLCS roles based on the OidcConfiguration object
+        var claimsPrincipal =
+            await jwtTokenHandler.GetClaimsFromToken(auth0Token.IdToken, oidcConfiguration.Domain,
+                issuer, audience, cancellationToken);
 
-        return Array.Empty<string>();
+        if (claimsPrincipal == null) return Array.Empty<string>();
+        
+        var dlcsRoles = claimsConverter.GetDlcsRolesFromClaims(claimsPrincipal, oidcConfiguration);
+        return dlcsRoles.Success ? dlcsRoles.Value! : Array.Empty<string>();
     }
 
     private async Task<Auth0TokenResponse> GetAuth0Token(OidcConfiguration oidcConfiguration,
         AccessService accessService, string code, CancellationToken cancellationToken)
     {
-        var callbackUrl = urlPathProvider.GetAccessServiceOAuthCallbackPath(accessService);
-        var tokenEndpoint = new UriBuilder(oidcConfiguration.Domain)
-        {
-            Path = "/oauth/token"
-        };
-        
-        var data = new Dictionary<string, string>
-        {
-            { "grant_type", "authorization_code" },
-            { "client_id", oidcConfiguration.ClientId },
-            { "client_secret", oidcConfiguration.ClientSecret },
-            { "code", code },
-            { "redirect_uri", callbackUrl.ToString() },
-        };
-
-        var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint.Uri);
-        request.Content = new FormUrlEncodedContent(data);
-        var response = await httpClient.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-
-        var auth0Token =
-            await response.Content.ReadFromJsonAsync<Auth0TokenResponse>(cancellationToken: cancellationToken);
-        return auth0Token.ThrowIfNull(nameof(auth0Token));
-    }
-    
-    private async Task<ClaimsPrincipal?> GetClaimsFromToken(Auth0TokenResponse auth0Token, string domain,
-        CancellationToken cancellationToken)
-    {
         try
         {
-            var jwks = await GetWebKeySetForDomain(domain, cancellationToken);
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var tokenValidationParameters = new TokenValidationParameters
+            var callbackUrl = urlPathProvider.GetAccessServiceOAuthCallbackPath(accessService);
+            var tokenEndpoint = new UriBuilder(oidcConfiguration.Domain)
             {
-                ValidateIssuerSigningKey = true,
-                ValidateLifetime = true,
-                IssuerSigningKeys = jwks.GetSigningKeys(),
+                Path = "/oauth/token"
             };
-            var claimsPrincipal = tokenHandler.ValidateToken(auth0Token.IdToken, tokenValidationParameters, out _);
-            return claimsPrincipal;
-        }
-        catch (SecurityTokenException ste)
-        {
-            logger.LogError(ste, "Received invalid jwt token");
+
+            var data = new Dictionary<string, string>
+            {
+                { "grant_type", "authorization_code" },
+                { "client_id", oidcConfiguration.ClientId },
+                { "client_secret", oidcConfiguration.ClientSecret },
+                { "code", code },
+                { "redirect_uri", callbackUrl.ToString() },
+            };
+
+            var request = new HttpRequestMessage(HttpMethod.Post, tokenEndpoint.Uri);
+            request.Content = new FormUrlEncodedContent(data);
+            var response = await httpClient.SendAsync(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            var auth0Token =
+                await response.Content.ReadFromJsonAsync<Auth0TokenResponse>(cancellationToken: cancellationToken);
+            return auth0Token.ThrowIfNull(nameof(auth0Token));
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unknown error validating jwt token");
+            logger.LogError(ex, "Unexpected exception getting accessToken from auth0 for {ClientId}",
+                oidcConfiguration.ClientId);
+            throw;
         }
-
-        return null;
-    }
-
-    private async Task<JsonWebKeySet> GetWebKeySetForDomain(string auth0Domain, CancellationToken cancellationToken)
-    {
-        var cacheKey = $"{auth0Domain}:jwks";
-        return await appCache.GetOrAddAsync(cacheKey, async () =>
-        {
-            var builder = new UriBuilder(auth0Domain) { Path = "/.well-known/jwks.json" };
-            var jwks = await httpClient.GetFromJsonAsync<JsonWebKeySet>(builder.Uri, cancellationToken);
-            return jwks.ThrowIfNull(nameof(jwks));
-        }, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10) });
     }
 }
 

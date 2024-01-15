@@ -74,6 +74,7 @@ public class RoleProviderConverterTests
         {
             Config = RoleProviderType.Oidc,
             ClientId = "foobar",
+            ClientSecret = "shhhh",
             GestureMessage = "Gesture message",
             GestureTitle = "Gesture title",
             Domain = "my-domain",
@@ -91,6 +92,7 @@ public class RoleProviderConverterTests
         var json = @"{
     ""config"": ""Oidc"",
     ""clientId"": ""foobar"",
+    ""clientSecret"": ""shhhh"",
     ""provider"": ""auth0"",
     ""domain"": ""my-domain"",
     ""scopes"": ""scoped"",
@@ -119,6 +121,7 @@ public class RoleProviderConverterTests
         {
             Config = RoleProviderType.Oidc,
             ClientId = "foobar",
+            ClientSecret = "shhhh",
             GestureMessage = "Gesture message",
             GestureTitle = "Gesture title",
             Domain = "my-domain",
@@ -136,6 +139,7 @@ public class RoleProviderConverterTests
         var json = @"{
     ""config"": ""Oidc"",
     ""clientId"": ""foobar"",
+    ""clientSecret"": ""shhhh"",
     ""provider"": ""auth0"",
     ""domain"": ""my-domain"",
     ""scopes"": ""scoped"",

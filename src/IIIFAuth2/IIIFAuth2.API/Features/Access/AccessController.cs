@@ -114,6 +114,11 @@ public class AccessController : AuthBaseController
             {
                 return View("CloseWindow");
             }
+            
+            if (provisionRoleResponse.IsError)
+            {
+                return StatusCode(provisionRoleResponse.ErrorStatus ?? 500, provisionRoleResponse.ErrorMessage);
+            }
 
             return StatusCode(500, "Unexpected error encountered");
         });
