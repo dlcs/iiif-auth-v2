@@ -41,14 +41,19 @@ public class Auth0Client
         var additionalScopes = oidcConfiguration.Scopes?.Split(",", StringSplitOptions.RemoveEmptyEntries) ??
                                Array.Empty<string>();
 
+        /* don't use .WithRedirectUrl(Uri uri) ond instead pass string. The former uses .OriginalString and will always
+         * include the port number (so https://dlcs.digirati.io/ => https://dlcs.digirati.io:443/). This differs from
+         * how the redirect URI is build for code exchange and causes 403 error */
         var authBuilder = new AuthorizationUrlBuilder(oidcConfiguration.Domain)
             .WithClient(oidcConfiguration.ClientId)
-            .WithRedirectUrl(callbackUrl)
+            .WithRedirectUrl(callbackUrl.ToString())
             .WithResponseType(AuthorizationResponseType.Code)
             .WithState(state)
             .WithScopes(additionalScopes.Append("openid").ToArray());
 
         var loginUrl = authBuilder.Build();
+        logger.LogDebug("Generated auth0 login url {Auth0Url} for accessService {AccessServiceId}", loginUrl,
+            accessService.Id);
         return loginUrl;
     }
 
