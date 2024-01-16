@@ -1,6 +1,5 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using IIIFAuth2.API.Utils;
 using LazyCache;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
@@ -13,12 +12,12 @@ public interface IJwtTokenHandler
     /// Validate JWT token and return <see cref="ClaimsPrincipal"/> if successfully parsed.
     /// </summary>
     /// <param name="jwtToken">JWT id token string</param>
-    /// <param name="domain">Base domain where jwks can be found</param>
+    /// <param name="jwksUri">Path where jwks can be found</param>
     /// <param name="issuer">Valid "iss" value</param>
     /// <param name="audience">Valid "aud" value</param>
     /// <param name="cancellationToken">Current cancellation token</param>
     /// <returns><see cref="ClaimsPrincipal"/> if jwt is valid, else null</returns>
-    Task<ClaimsPrincipal?> GetClaimsFromToken(string jwtToken, string domain, string issuer, string audience,
+    Task<ClaimsPrincipal?> GetClaimsFromToken(string jwtToken, Uri jwksUri, string issuer, string audience,
         CancellationToken cancellationToken);
 }
 
@@ -36,12 +35,12 @@ public class JwtTokenHandler : IJwtTokenHandler
     }
 
     /// <inheritdoc />
-    public async Task<ClaimsPrincipal?> GetClaimsFromToken(string jwtToken, string domain, string issuer,
+    public async Task<ClaimsPrincipal?> GetClaimsFromToken(string jwtToken, Uri jwksUri, string issuer,
         string audience, CancellationToken cancellationToken)
     {
         try
         {
-            var jwks = await GetWebKeySetForDomain(domain, cancellationToken);
+            var jwks = await GetWebKeySetForDomain(jwksUri, cancellationToken);
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenValidationParameters = new TokenValidationParameters
@@ -70,14 +69,13 @@ public class JwtTokenHandler : IJwtTokenHandler
 
         return null;
     }
-
-    private async Task<JsonWebKeySet> GetWebKeySetForDomain(string auth0Domain, CancellationToken cancellationToken)
+    
+    private async Task<JsonWebKeySet> GetWebKeySetForDomain(Uri jwksPath, CancellationToken cancellationToken)
     {
-        var cacheKey = $"{auth0Domain}:jwks";
+        var cacheKey = $"{jwksPath}:jwks";
         return await appCache.GetOrAddAsync(cacheKey, async () =>
         {
-            var builder = new UriBuilder(auth0Domain) { Path = "/.well-known/jwks.json" };
-            var jwks = await httpClient.GetStringAsync(builder.Uri, cancellationToken);
+            var jwks = await httpClient.GetStringAsync(jwksPath, cancellationToken);
             return new JsonWebKeySet(jwks);
         }, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10) });
     }

@@ -64,22 +64,25 @@ public class Auth0Client
         AccessService accessService, string code, CancellationToken cancellationToken)
     {
         var auth0Token = await GetAuth0Token(oidcConfiguration, accessService, code, cancellationToken);
+        if (auth0Token == null) return Array.Empty<string>();
 
         // For auth0 "iss" = auth0 domain (ending in /) and "aud" = clientId 
         var issuer = oidcConfiguration.Domain.EnsureEndsWith("/");
         var audience = oidcConfiguration.ClientId;
         
         var claimsPrincipal =
-            await jwtTokenHandler.GetClaimsFromToken(auth0Token.IdToken, oidcConfiguration.Domain,
+            await jwtTokenHandler.GetClaimsFromToken(auth0Token.IdToken, GetJwksUri(oidcConfiguration),
                 issuer, audience, cancellationToken);
-
         if (claimsPrincipal == null) return Array.Empty<string>();
         
         var dlcsRoles = claimsConverter.GetDlcsRolesFromClaims(claimsPrincipal, oidcConfiguration);
         return dlcsRoles.Success ? dlcsRoles.Value! : Array.Empty<string>();
     }
 
-    private async Task<Auth0TokenResponse> GetAuth0Token(OidcConfiguration oidcConfiguration,
+    private Uri GetJwksUri(OidcConfiguration oidcConfiguration)
+        => new UriBuilder(oidcConfiguration.Domain) { Path = "/.well-known/jwks.json" }.Uri;
+
+    private async Task<Auth0TokenResponse?> GetAuth0Token(OidcConfiguration oidcConfiguration,
         AccessService accessService, string code, CancellationToken cancellationToken)
     {
         try
@@ -112,7 +115,7 @@ public class Auth0Client
         {
             logger.LogError(ex, "Unexpected exception getting accessToken from auth0 for {ClientId}",
                 oidcConfiguration.ClientId);
-            throw;
+            return null;
         }
     }
 }
