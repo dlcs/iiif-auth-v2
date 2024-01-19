@@ -115,12 +115,15 @@ public class AccessController : AuthBaseController
                 return View("CloseWindow");
             }
             
+            // Below here are errors but rather than return a 500, return the closeWindow view. This will allow the
+            // viewer to continue (and fail) the auth flow.
             if (provisionRoleResponse.IsError)
             {
-                return StatusCode(provisionRoleResponse.ErrorStatus ?? 500, provisionRoleResponse.ErrorMessage);
+                return View("CloseWindow");
             }
 
-            return StatusCode(500, "Unexpected error encountered");
+            Logger.LogWarning("RoleProvisionResponseConverter could not determine appropriate response");
+            return View("CloseWindow");
         });
     }
 }
