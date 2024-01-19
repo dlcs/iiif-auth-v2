@@ -2,6 +2,7 @@
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Models.Domain;
+using IIIFAuth2.API.Utils;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 
@@ -13,17 +14,20 @@ public class RoleProviderService
     private readonly AuthServicesContext dbContext;
     private readonly ClickThroughProviderHandler clickthroughRoleHandler;
     private readonly OidcRoleProviderHandler oidcRoleProviderHandler;
+    private readonly IHttpContextAccessor httpContextAccessor;
     private readonly ILogger<RoleProviderService> logger;
 
     public RoleProviderService(
         AuthServicesContext dbContext,
         ClickThroughProviderHandler clickthroughRoleHandler,
         OidcRoleProviderHandler oidcRoleProviderHandler,
+        IHttpContextAccessor httpContextAccessor,
         ILogger<RoleProviderService> logger)
     {
         this.dbContext = dbContext;
         this.clickthroughRoleHandler = clickthroughRoleHandler;
         this.oidcRoleProviderHandler = oidcRoleProviderHandler;
+        this.httpContextAccessor = httpContextAccessor;
         this.logger = logger;
     }
 
@@ -36,17 +40,9 @@ public class RoleProviderService
         var accessService = await GetAccessServices(customerId, accessServiceName);
         if (accessService == null) return null;
         
-        var roleProvider = accessService.RoleProvider;
-        if (roleProvider == null)
-        {
-            logger.LogWarning(
-                "AccessService '{AccessServiceId}' ({CustomerId}:{AccessServiceName}) has no RoleProvider",
-                accessService.Id, customerId, accessService.Name);
-            return null;
-        }
+        var providerConfiguration = GetProviderConfigurationForHost(accessService);
+        if (providerConfiguration == null) return null;
         
-        // TODO - does this need to be smarter? How does it look up the key? Hostname?
-        var providerConfiguration = roleProvider.Configuration.GetDefaultConfiguration();
         switch (providerConfiguration.Config)
         {
             case RoleProviderType.Clickthrough:
@@ -74,17 +70,10 @@ public class RoleProviderService
     {
         var accessService = await GetAccessServices(customerId, accessServiceName);
         if (accessService == null) return null;
+
+        var providerConfiguration = GetProviderConfigurationForHost(accessService);
+        if (providerConfiguration == null) return null;
         
-        var roleProvider = accessService.RoleProvider;
-        if (roleProvider == null)
-        {
-            logger.LogWarning(
-                "AccessService '{AccessServiceId}' ({CustomerId}:{AccessServiceName}) has no RoleProvider",
-                accessService.Id, customerId, accessService.Name);
-            return null;
-        }
-        
-        var providerConfiguration = roleProvider.Configuration.GetDefaultConfiguration();
         var result = await oidcRoleProviderHandler.HandleLoginCallback(customerId, roleProvisionToken, authCode,
             accessService, providerConfiguration, cancellationToken);
         return result;
@@ -97,5 +86,24 @@ public class RoleProviderService
         var accessService = customerServices
             .SingleOrDefault(s => s.Name.Equals(accessServiceName, StringComparison.OrdinalIgnoreCase));
         return accessService;
+    }
+
+    private IProviderConfiguration? GetProviderConfigurationForHost(AccessService accessService)
+    {
+        var roleProvider = accessService.RoleProvider;
+        if (roleProvider == null)
+        {
+            logger.LogWarning(
+                "AccessService '{AccessServiceId}' ({CustomerId}:{AccessServiceName}) has no RoleProvider",
+                accessService.Id, accessService.Customer, accessService.Name);
+            return null;
+        }
+        
+        var currentRequest = httpContextAccessor.SafeHttpContext().Request;
+        var host = currentRequest.Host.Value;
+        logger.LogTrace("Getting provider configuration for host {Host}", host);
+        
+        var providerConfiguration = roleProvider.Configuration.GetConfiguration(host);
+        return providerConfiguration;
     }
 }
