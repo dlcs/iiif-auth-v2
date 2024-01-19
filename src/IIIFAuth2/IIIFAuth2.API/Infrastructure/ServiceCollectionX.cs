@@ -1,4 +1,7 @@
-﻿using IIIFAuth2.API.Data;
+﻿using Amazon.SecretsManager;
+using Amazon.SecretsManager.Extensions.Caching;
+using AWSSDK;
+using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
@@ -90,9 +93,18 @@ public static class ServiceCollectionX
     /// </summary>
     /// <remarks>
     /// This adds LazyCache, Z.EntityFramework.Plus.EFCore caching is also used but there is no setup as default
-    /// MemoryCache is enough
+    /// MemoryCache is enough. SecretsManagerCache also uses memory cache but that is configured with AWS deps
     /// </remarks>
     public static IServiceCollection AddCaching(this IServiceCollection services) => services.AddLazyCache();
+
+    /// <summary>
+    /// Add AWS dependencies
+    /// </summary>
+    public static IServiceCollection AddAws(this IServiceCollection services, IConfiguration configuration)
+        => services
+            .AddDefaultAWSOptions(configuration.GetAWSOptions())
+            .AddAWSService<IAmazonSecretsManager>()
+            .AddSingleton<ISecretsManagerCache, SecretsManagerCache>();
 }
 
 /// <summary>

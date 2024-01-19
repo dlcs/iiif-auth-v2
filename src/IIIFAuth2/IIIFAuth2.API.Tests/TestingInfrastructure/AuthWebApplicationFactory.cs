@@ -32,6 +32,16 @@ public class AuthWebApplicationFactory : WebApplicationFactory<Program>
         configuration[key] = value;
         return this;
     }
+    
+    /// <summary>
+    /// Action to call in ConfigureTestServices
+    /// </summary>
+    /// <returns>Current instance</returns>
+    public AuthWebApplicationFactory WithTestServices(Action<IServiceCollection> configure)
+    {
+        this.configureTestServices = configure;
+        return this;
+    }
 
     protected override IHost CreateHost(IHostBuilder builder)
     {

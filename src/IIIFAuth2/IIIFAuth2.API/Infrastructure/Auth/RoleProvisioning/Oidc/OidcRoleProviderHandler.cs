@@ -1,4 +1,5 @@
-﻿using System.Reflection.Metadata.Ecma335;
+﻿using System.Text.Json;
+using Amazon.SecretsManager.Extensions.Caching;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Utils;
@@ -13,17 +14,21 @@ public class OidcRoleProviderHandler
     private readonly Auth0Client auth0Client;
     private readonly SessionManagementService sessionManagementService;
     private readonly RoleProvisionGranter roleProvisionGranter;
+    private readonly ISecretsManagerCache secretsManagerCache;
     private readonly ILogger<OidcRoleProviderHandler> logger;
+    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 
     public OidcRoleProviderHandler(
         Auth0Client auth0Client, 
         SessionManagementService sessionManagementService,
         RoleProvisionGranter roleProvisionGranter,
+        ISecretsManagerCache secretsManagerCache,
         ILogger<OidcRoleProviderHandler> logger)
     {
         this.auth0Client = auth0Client;
         this.sessionManagementService = sessionManagementService;
         this.roleProvisionGranter = roleProvisionGranter;
+        this.secretsManagerCache = secretsManagerCache;
         this.logger = logger;
     }
 
@@ -47,6 +52,7 @@ public class OidcRoleProviderHandler
     {
         var configuration = providerConfiguration.SafelyGetTypedConfig<OidcConfiguration>();
         ValidateProviderIsSupported(configuration);
+        await EnsureSecrets(configuration, accessService.Id);
 
         // Validate the roleProviderToken is valid and hasn't been used
         var validateTokenResult =
@@ -72,9 +78,34 @@ public class OidcRoleProviderHandler
 
     private static void ValidateProviderIsSupported(OidcConfiguration configuration)
     {
-        if (!configuration.Provider.Equals(OidcConfiguration.SupportedProviders.Auth0, StringComparison.OrdinalIgnoreCase))
+        if (!configuration.Provider.Equals(OidcConfiguration.SupportedProviders.Auth0,
+                StringComparison.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException("Only Auth0 is supported as oidc provider");
         }
     }
+
+    private async Task EnsureSecrets(OidcConfiguration configuration, Guid accessServiceId)
+    {
+        // Note that this isn't an arn, it's just a prefix on the secretsmanager name
+        const string secretsManagerPrefix = "secretsmanager:";
+        if (configuration.ClientSecret.StartsWith(secretsManagerPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                var secretName = configuration.ClientSecret[secretsManagerPrefix.Length..];
+                logger.LogDebug("Fetching secretsmanager secret {SecretName} for {AccessService}", secretName,
+                    accessServiceId);
+                var secretsJson = await secretsManagerCache.GetSecretString(secretName);
+                var secret = JsonSerializer.Deserialize<Secrets>(secretsJson, Options);
+                configuration.ClientSecret = secret?.ClientSecret ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Error fetching secret for {AccessService}", accessServiceId);
+            }
+        }
+    }
+
+    private record Secrets(string ClientSecret);
 }

@@ -1,11 +1,14 @@
 ﻿using System.Net;
+using Amazon.SecretsManager;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
+using FakeItEasy;
 using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace IIIFAuth2.API.Tests.Integration;
 
@@ -21,6 +24,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         dbContext = dbFixture.DbContext;
         httpClient = factory
             .WithConnectionString(dbFixture.ConnectionString)
+            .WithTestServices(services => services.AddSingleton(A.Fake<IAmazonSecretsManager>()))
             .CreateClient();
 
         dbFixture.CleanUp();

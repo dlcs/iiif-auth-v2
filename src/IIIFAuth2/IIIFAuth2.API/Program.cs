@@ -34,6 +34,7 @@ try
         .AddAuthServicesHealthChecks()
         .AddMediatR(typeof(Program))
         .AddCaching()
+        .AddAws(builder.Configuration)
         .ConfigureAspnetMvc();
 
     var apiSettings = builder.Configuration.Get<ApiSettings>()!;
