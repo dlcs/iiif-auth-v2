@@ -9,7 +9,7 @@ namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 public interface IJwtTokenHandler
 {
     /// <summary>
-    /// Validate JWT token and return <see cref="ClaimsPrincipal"/> if successfully parsed.
+    /// Validate JWT token and return <see cref="ClaimsPrincipal"/> if successful
     /// </summary>
     /// <param name="jwtToken">JWT id token string</param>
     /// <param name="jwksUri">Path where jwks can be found</param>

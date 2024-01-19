@@ -32,6 +32,9 @@ public class OidcRoleProviderHandler
         this.logger = logger;
     }
 
+    /// <summary>
+    /// Generate redirect link to send user to idp
+    /// </summary>
     public async Task<HandleRoleProvisionResponse> InitiateLoginRequest(int customerId, Uri requestOrigin,
         AccessService accessService, IProviderConfiguration providerConfiguration,
         CancellationToken cancellationToken = default)
@@ -46,8 +49,11 @@ public class OidcRoleProviderHandler
         return HandleRoleProvisionResponse.Redirect(loginUrl);
     }
 
-    public async Task<HandleRoleProvisionResponse> HandleLoginCallback(int customerId, string roleProvisionToken, string authCode,
-        AccessService accessService, IProviderConfiguration providerConfiguration,
+    /// <summary>
+    /// Handle callback from idp, validate roleProvisionToken, exchange authCode for jwt + calculate DLCS roles
+    /// </summary>
+    public async Task<HandleRoleProvisionResponse> HandleLoginCallback(int customerId, string roleProvisionToken,
+        string authCode, AccessService accessService, IProviderConfiguration providerConfiguration,
         CancellationToken cancellationToken = default)
     {
         var configuration = providerConfiguration.SafelyGetTypedConfig<OidcConfiguration>();
@@ -66,12 +72,12 @@ public class OidcRoleProviderHandler
         }
 
         var requestUri = new Uri(validateTokenResult.Value!.Origin);
-        
+
         // Get DLCS roles from authcode
         var roles = await auth0Client.GetDlcsRolesForCode(configuration, accessService, authCode, cancellationToken);
-        
+
         if (roles.IsNullOrEmpty()) return HandleRoleProvisionResponse.Error("Unable to get DLCS roles for user");
-        
+
         return await roleProvisionGranter.CompleteRequest(customerId, requestUri, providerConfiguration,
             () => Task.FromResult(roles), cancellationToken);
     }
