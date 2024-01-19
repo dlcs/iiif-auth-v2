@@ -8,7 +8,22 @@ using IIIFAuth2.API.Utils;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 
-public class Auth0Client
+public interface IAuth0Client
+{
+    /// <summary>
+    /// Get URI to redirect user for authorizing with auth0
+    /// </summary>
+    /// <remarks>See https://auth0.com/docs/api/authentication#-get-authorize- </remarks>
+    Uri GetAuthLoginUrl(OidcConfiguration oidcConfiguration, AccessService accessService, string state);
+
+    /// <summary>
+    /// Exchange authentication code for access tokens for logged in user
+    /// </summary>
+    Task<IReadOnlyCollection<string>> GetDlcsRolesForCode(OidcConfiguration oidcConfiguration,
+        AccessService accessService, string code, CancellationToken cancellationToken);
+}
+
+public class Auth0Client : IAuth0Client
 {
     private readonly IUrlPathProvider urlPathProvider;
     private readonly HttpClient httpClient;

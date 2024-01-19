@@ -19,9 +19,13 @@ public class DatabaseFixture : IAsyncLifetime
     public const int Customer = 99;
     public const string CookieDomain = "localhost";
     public const string ClickthroughService = "clickthrough";
-    public Guid AccessId;
-    public Guid RoleProviderId; 
+    public const string OidcService = "oidc";
+    public Guid ClickthroughAccessId;
+    public Guid ClickthroughRoleProviderId; 
+    public Guid OidcAccessId;
+    public Guid OidcRoleProviderId; 
     public const string ClickthroughRoleUri = "http://dlcs.test/99/clickthrough";
+    public const string OidcRoleUri = "http://dlcs.test/99/oidc";
 
     public DatabaseFixture()
     {
@@ -56,15 +60,15 @@ public class DatabaseFixture : IAsyncLifetime
     public void CleanUp()
     {
         DbContext.Database.ExecuteSqlRaw("DELETE FROM session_users;");
-        DbContext.Database.ExecuteSqlRaw($"DELETE FROM roles WHERE access_service_id != '{AccessId.ToString()}';");
-        DbContext.Database.ExecuteSqlRaw($"DELETE FROM access_services WHERE id != '{AccessId.ToString()}';");
-        DbContext.Database.ExecuteSqlRaw($"DELETE FROM role_providers WHERE id != '{RoleProviderId.ToString()}';");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM roles WHERE access_service_id not in ('{ClickthroughAccessId.ToString()}', '{OidcAccessId.ToString()}');");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM access_services WHERE id not in ('{ClickthroughAccessId.ToString()}', '{OidcAccessId.ToString()}');");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM role_providers WHERE id not in ('{ClickthroughRoleProviderId.ToString()}', '{OidcRoleProviderId.ToString()}');");
         DbContext.Database.ExecuteSqlRaw($"DELETE FROM customer_cookie_domains WHERE customer != '{Customer}';");
     }
 
     private void SeedData()
     {
-        var roleProvider = new RoleProvider
+        var clickthroughRoleProvider = new RoleProvider
         {
             Configuration = new RoleProviderConfiguration
             {
@@ -74,27 +78,57 @@ public class DatabaseFixture : IAsyncLifetime
                 }
             }
         };
-        DbContext.RoleProviders.Add(roleProvider);
+        var oidcRoleProvider = new RoleProvider
+        {
+            Configuration = new RoleProviderConfiguration
+            {
+                [RoleProviderConfiguration.DefaultKey] = new OidcConfiguration
+                {
+                    Config = RoleProviderType.Oidc, GestureMessage = "Test-Message", GestureTitle = "Test-Title",
+                    Provider = "auth0", Domain = "http://sample-domain.idp", Scopes = "test-scope",
+                    ClientId = "clientId", ClientSecret = "secretsmanager:clientSecret",
+                    UnknownValueBehaviour = UnknownMappingValueBehaviour.Fallback,
+                    FallbackMapping = new[] { "OidcRoleUri" }
+                }
+            }
+        };
+        DbContext.RoleProviders.AddRange(clickthroughRoleProvider, oidcRoleProvider);
         
-        var accessService = new AccessService
+        var clickthroughAccessService = new AccessService
         {
             Customer = Customer,
-            Id = AccessId,
+            Id = ClickthroughAccessId,
             Name = ClickthroughService,
             Profile = "active",
-            RoleProvider = roleProvider
+            RoleProvider = clickthroughRoleProvider
         };
-        DbContext.AccessServices.Add(accessService);
+        var oidcAccessService = new AccessService
+        {
+            Customer = Customer,
+            Id = OidcAccessId,
+            Name = OidcService,
+            Profile = "active",
+            RoleProvider = oidcRoleProvider
+        };
+        DbContext.AccessServices.AddRange(clickthroughAccessService, oidcAccessService);
 
-        DbContext.Roles.Add(new Role
+        DbContext.Roles.AddRange(new Role
         {
             Customer = Customer,
             Id = ClickthroughRoleUri,
             Name = "clickthrough-role",
-            AccessServiceId = accessService.Id
+            AccessServiceId = clickthroughAccessService.Id
+        }, new Role
+        {
+            Customer = Customer,
+            Id = OidcRoleUri,
+            Name = "oid-role",
+            AccessServiceId = oidcAccessService.Id
         });
-        AccessId = accessService.Id;
-        RoleProviderId = accessService.RoleProviderId.Value;
+        ClickthroughAccessId = clickthroughAccessService.Id;
+        ClickthroughRoleProviderId = clickthroughAccessService.RoleProviderId.Value;
+        OidcAccessId = oidcAccessService.Id;
+        OidcRoleProviderId = oidcAccessService.RoleProviderId.Value;
 
         DbContext.CustomerCookieDomains.Add(new CustomerCookieDomain
         {
@@ -102,6 +136,8 @@ public class DatabaseFixture : IAsyncLifetime
             Domains = new List<string> { CookieDomain }
         });
         DbContext.SaveChanges();
+
+        var x = DbContext.AccessServices;
     }
 
     public Task DisposeAsync() => postgresContainer.StopAsync();

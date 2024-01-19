@@ -5,8 +5,10 @@ using AngleSharp.Html.Parser;
 using FakeItEasy;
 using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Data.Entities;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,14 +20,21 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
+    private static readonly IAuth0Client Auth0Client = A.Fake<IAuth0Client>();
 
     public AccessServiceTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
         dbContext = dbFixture.DbContext;
         httpClient = factory
             .WithConnectionString(dbFixture.ConnectionString)
-            .WithTestServices(services => services.AddSingleton(A.Fake<IAmazonSecretsManager>()))
-            .CreateClient();
+            .WithTestServices(services => 
+                services
+                    .AddSingleton(A.Fake<IAmazonSecretsManager>())
+                    .AddScoped<IAuth0Client>(_ => Auth0Client))
+            .CreateClient(new WebApplicationFactoryClientOptions
+            {
+                AllowAutoRedirect = false
+            });
 
         dbFixture.CleanUp();
     }
@@ -224,6 +233,212 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     {
         // Arrange
         var path = $"/access/99/clickthrough?origin={httpClient.BaseAddress}";
+            
+        // Act
+        var response = await httpClient.GetAsync(path);
+        
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var htmlParser = new HtmlParser();
+        var document = htmlParser.ParseDocument(await response.Content.ReadAsStreamAsync());
+        var label = document.QuerySelector("p:nth-child(2)") as IHtmlParagraphElement;
+        label.TextContent.Should().Be("This window should close automatically...");
+    }
+
+    [Fact]
+    public async Task AccessService_Oidc_ReturnsRedirectToLoginUrl()
+    {
+        // Arrange
+        var path = $"/access/99/oidc?origin={httpClient.BaseAddress}";
+        var authUri = new Uri("http://sample.idp/authorize");
+        A.CallTo(() => Auth0Client.GetAuthLoginUrl(A<OidcConfiguration>._, A<AccessService>._, A<string>._))
+            .Returns(authUri);
+        
+        // Act
+        var response = await httpClient.GetAsync(path);
+        
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        response.Headers.Location.Should().Be(authUri);
+    }
+
+    [Fact]
+    public async Task AccessService_OAuth2Callback_Returns404_IfAccessServiceNotFound()
+    {
+        // Arrange
+        const string path = "/access/99/foo/oauth2/callback?state=value&code=12345";
+            
+        // Act
+        var response = await httpClient.GetAsync(path);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+    
+    [Fact]
+    public async Task AccessService_OAuth2Callback_Returns_WindowClose_IfStateUnknown()
+    {
+        // Arrange
+        const string path = "/access/99/oidc/oauth2/callback?state=value&code=12345";
+            
+        // Act
+        var response = await httpClient.GetAsync(path);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var htmlParser = new HtmlParser();
+        var document = htmlParser.ParseDocument(await response.Content.ReadAsStreamAsync());
+        var label = document.QuerySelector("p:nth-child(2)") as IHtmlParagraphElement;
+        label.TextContent.Should().Be("This window should close automatically...");
+    }
+    
+    [Fact]
+    public async Task AccessService_OAuth2Callback_Returns_WindowClose_IfStateUsed()
+    {
+        // Arrange
+        var token = new RoleProvisionToken
+        {
+            Id = ExpiringToken.GenerateNewToken(DateTime.UtcNow), Customer = 99, Used = true, Origin = "http://wherever"
+        };
+        await dbContext.RoleProvisionTokens.AddAsync(token);
+        await dbContext.SaveChangesAsync();
+        var path = $"/access/99/oidc/oauth2/callback?state={Uri.EscapeDataString(token.Id)}&code=12345";
+            
+        // Act
+        var response = await httpClient.GetAsync(path);
+            
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var htmlParser = new HtmlParser();
+        var document = htmlParser.ParseDocument(await response.Content.ReadAsStreamAsync());
+        var label = document.QuerySelector("p:nth-child(2)") as IHtmlParagraphElement;
+        label.TextContent.Should().Be("This window should close automatically...");
+    }
+    
+    [Fact]
+    public async Task AccessService_OAuth2Callback_RendersSignificantGestureView_MarksStateTokenAsUsed()
+    {
+        // Arrange
+        var stateToken = new RoleProvisionToken
+        {
+            Id = ExpiringToken.GenerateNewToken(DateTime.UtcNow), Customer = 99, Used = false, Origin = "http://whatever.here"
+        };
+        await dbContext.RoleProvisionTokens.AddAsync(stateToken);
+        await dbContext.SaveChangesAsync();
+        const string code =
+            nameof(AccessService_OAuth2Callback_RendersSignificantGestureView_WithRoleProvisionToken_IfDifferentHost);
+        var path = $"/access/99/oidc/oauth2/callback?state={Uri.EscapeDataString(stateToken.Id)}&code={code}";
+        A.CallTo(() =>
+                Auth0Client.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
+                    A<CancellationToken>._))
+            .Returns(new List<string> { DatabaseFixture.OidcRoleUri });
+            
+        // Act
+        var response = await httpClient.GetAsync(path);
+        
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await dbContext.Entry(stateToken).ReloadAsync();
+        stateToken.Used.Should().BeTrue();
+    }
+    
+    [Fact]
+    public async Task AccessService_OAuth2Callback_RendersSignificantGestureView_WithRoleProvisionToken_IfDifferentHost()
+    {
+        // Arrange
+        var stateToken = new RoleProvisionToken
+        {
+            Id = ExpiringToken.GenerateNewToken(DateTime.UtcNow), Customer = 99, Used = false, Origin = "http://whatever.here"
+        };
+        await dbContext.RoleProvisionTokens.AddAsync(stateToken);
+        await dbContext.SaveChangesAsync();
+        const string code =
+            nameof(AccessService_OAuth2Callback_RendersSignificantGestureView_WithRoleProvisionToken_IfDifferentHost);
+        var path = $"/access/99/oidc/oauth2/callback?state={Uri.EscapeDataString(stateToken.Id)}&code={code}";
+        A.CallTo(() =>
+                Auth0Client.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
+                    A<CancellationToken>._))
+            .Returns(new List<string> { DatabaseFixture.OidcRoleUri });
+            
+        // Act
+        var response = await httpClient.GetAsync(path);
+        
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        
+        var htmlParser = new HtmlParser();
+        var document = htmlParser.ParseDocument(await response.Content.ReadAsStreamAsync());
+
+        var hidden = document.QuerySelector("form>#SingleUseToken") as IHtmlInputElement;
+        var hiddenValue = hidden!.Value;
+        
+        ExpiringToken.HasExpired(hiddenValue).Should().BeFalse("A valid expiring token is returned");
+
+        var token = await dbContext.RoleProvisionTokens.SingleAsync(t => t.Id == hiddenValue);
+        token.Roles.Should().ContainSingle(DatabaseFixture.ClickthroughRoleUri);
+        token.Origin.Should().Be("http://whatever.here/");
+        token.Used.Should().BeFalse();
+    }
+    
+    [Fact]
+    public async Task AccessService_OAuth2Callback_CreatesSessionAndSetsCookie_IfSameHost()
+    {
+        // Arrange
+        var stateToken = new RoleProvisionToken
+        {
+            Id = ExpiringToken.GenerateNewToken(DateTime.UtcNow), Customer = 99, Used = false, Origin = httpClient.BaseAddress.ToString()
+        };
+        await dbContext.RoleProvisionTokens.AddAsync(stateToken);
+        await dbContext.SaveChangesAsync();
+        const string code = nameof(AccessService_OAuth2Callback_CreatesSessionAndSetsCookie_IfSameHost);
+        var path = $"/access/99/oidc/oauth2/callback?state={Uri.EscapeDataString(stateToken.Id)}&code={code}";
+        A.CallTo(() =>
+                Auth0Client.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
+                    A<CancellationToken>._))
+            .Returns(new List<string> { DatabaseFixture.OidcRoleUri });
+            
+        // Act
+        var response = await httpClient.GetAsync(path);
+        
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        response.Headers.Should().ContainKey("Set-Cookie");
+        var cookie = response.Headers.SingleOrDefault(header => header.Key == "Set-Cookie").Value.First();
+        cookie.Should()
+            .StartWith("dlcs-auth2-99")
+            .And.Contain("samesite=none")
+            .And.Contain("secure;")
+            .And.Contain("httponly");
+        
+        // E.g. dlcs-token-99=id%3D76e7d9fb-99ab-4b4f-87b0-f2e3f0e9664e; expires=Tue, 14 Sep 2021 16:53:53 GMT; domain=localhost; path=/; secure; samesite=none
+        var toRemoveLength = "dlcs-auth2-99id%3D".Length;
+        var cookieId = cookie.Substring(toRemoveLength + 1, cookie.IndexOf(';') - toRemoveLength - 1);
+        
+        var authToken = await dbContext.SessionUsers.SingleAsync(at => at.CookieId == cookieId);
+        authToken.Expires.Should().NotBeBefore(DateTime.UtcNow);
+        authToken.Customer.Should().Be(99);
+    }
+    
+    [Fact]
+    public async Task AccessService_Oidc_RendersWindowClose_IfSameHost()
+    {
+        // Arrange
+        var stateToken = new RoleProvisionToken
+        {
+            Id = ExpiringToken.GenerateNewToken(DateTime.UtcNow), Customer = 99, Used = false, Origin = httpClient.BaseAddress.ToString()
+        };
+        await dbContext.RoleProvisionTokens.AddAsync(stateToken);
+        await dbContext.SaveChangesAsync();
+        const string code = nameof(AccessService_Oidc_RendersWindowClose_IfSameHost);
+        var path = $"/access/99/oidc/oauth2/callback?state={Uri.EscapeDataString(stateToken.Id)}&code={code}";
+        A.CallTo(() =>
+                Auth0Client.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
+                    A<CancellationToken>._))
+            .Returns(new List<string> { DatabaseFixture.OidcRoleUri });
             
         // Act
         var response = await httpClient.GetAsync(path);

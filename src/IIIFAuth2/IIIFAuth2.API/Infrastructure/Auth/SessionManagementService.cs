@@ -64,7 +64,7 @@ public class SessionManagementService : SessionManagerBase
     /// Validate the provided roleProvisionToken - this will validate whether it has timed out or been used.
     /// </summary>
     public async Task<ResultStatus<RoleProvisionToken>> TryGetValidToken(string roleProvisionToken,
-    CancellationToken cancellationToken)
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -72,7 +72,7 @@ public class SessionManagementService : SessionManagerBase
             var token =
                 await TryGetValidUnusedRoleProvisionToken(roleProvisionToken, tokenValidForSecs, cancellationToken);
             if (token == null) return ResultStatus<RoleProvisionToken>.Unsuccessful();
-            
+
             await SaveChangesWithRowCountCheck("Mark token as used", cancellationToken: cancellationToken);
             Logger.LogDebug("Successfully marked token as used: {Token}", roleProvisionToken);
             return ResultStatus<RoleProvisionToken>.Successful(token);
@@ -85,10 +85,10 @@ public class SessionManagementService : SessionManagerBase
         {
             Logger.LogError(ex, "Unexpected error creating session user from token {Token}", roleProvisionToken);
         }
-        
+
         return ResultStatus<RoleProvisionToken>.Unsuccessful();
     }
-    
+
     /// <summary>
     /// Attempt to create a new session using provided token. This can fail if token has been used, is expired or not
     /// known
@@ -168,8 +168,7 @@ public class SessionManagementService : SessionManagerBase
     /// Returned token will have been marked as used but not saved to backing store.
     /// </summary>
     private async Task<RoleProvisionToken?> TryGetValidUnusedRoleProvisionToken(string roleProvisionToken,
-        int validForSecs = 300,
-        CancellationToken cancellationToken = default)
+        int validForSecs = 300, CancellationToken cancellationToken = default)
     {
         if (ExpiringToken.HasExpired(roleProvisionToken, validForSecs))
         {

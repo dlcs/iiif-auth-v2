@@ -36,7 +36,7 @@ exports.onExecutePostLogin = async (event, api) => {
 
         const dlcsType = metadata.dlcsType;
         if (dlcsType && scopeRequested(event, typeScope)) {
-            api.idToken.setCustomClaim(typeClaim, dlcsRole);
+            api.idToken.setCustomClaim(typeClaim, dlcsType);
         }
     }
 
