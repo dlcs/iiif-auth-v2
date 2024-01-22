@@ -1,7 +1,9 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using IIIFAuth2.API.Settings;
 using LazyCache;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
@@ -26,12 +28,15 @@ public class JwtTokenHandler : IJwtTokenHandler
     private readonly HttpClient httpClient;
     private readonly IAppCache appCache;
     private readonly ILogger<JwtTokenHandler> logger;
+    private readonly AuthSettings authSettings;
 
-    public JwtTokenHandler(HttpClient httpClient, IAppCache appCache, ILogger<JwtTokenHandler> logger)
+    public JwtTokenHandler(HttpClient httpClient, IAppCache appCache, IOptions<AuthSettings> authOptions,
+        ILogger<JwtTokenHandler> logger)
     {
         this.httpClient = httpClient;
         this.appCache = appCache;
         this.logger = logger;
+        authSettings = authOptions.Value;
     }
 
     /// <inheritdoc />
@@ -77,6 +82,6 @@ public class JwtTokenHandler : IJwtTokenHandler
         {
             var jwks = await httpClient.GetStringAsync(jwksPath, cancellationToken);
             return new JsonWebKeySet(jwks);
-        }, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10) });
+        }, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(authSettings.JwksTtl) });
     }
 }

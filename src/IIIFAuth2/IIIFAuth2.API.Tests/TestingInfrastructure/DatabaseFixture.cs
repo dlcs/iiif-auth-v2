@@ -136,8 +136,6 @@ public class DatabaseFixture : IAsyncLifetime
             Domains = new List<string> { CookieDomain }
         });
         DbContext.SaveChanges();
-
-        var x = DbContext.AccessServices;
     }
 
     public Task DisposeAsync() => postgresContainer.StopAsync();
