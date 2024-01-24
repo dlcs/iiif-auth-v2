@@ -5,17 +5,19 @@ namespace IIIFAuth2.API.Models.Domain;
 
 /// <summary>
 /// A collection of <see cref="IProviderConfiguration"/> objects, keyed as dictionary.
+/// A key of "default" will always be present. Further keys that match incoming host can be supplied, this allows for
+/// different configurations for different hosts.
 /// </summary>
-/// <remarks>
-/// The key will always be "default" but is a placeholder to allow more flexible configuration in the future. For auth1
-/// it stored hostname as different RoleProviders could be used per host
-/// </remarks>
 public class RoleProviderConfiguration : Dictionary<string, IProviderConfiguration>
 {
     public const string DefaultKey = "default";
-
-    public IProviderConfiguration GetDefaultConfiguration()
-        => this[DefaultKey];
+    
+    /// <summary>
+    /// Get the most appropriate <see cref="IProviderConfiguration"/> object. This will be host-specific, if found,
+    /// or fallback to Default config. 
+    /// </summary>
+    public IProviderConfiguration GetConfiguration(string host)
+        => TryGetValue(host, out var hostConfiguration) ? hostConfiguration : this[DefaultKey];
 }
 
 /// <summary>
@@ -71,7 +73,9 @@ public class OidcConfiguration : IProviderConfiguration
 {
     public string Provider { get; set; } = null!;
     public string Domain { get; set; } = null!;
-    public string Scopes { get; set; } = null!;
+    public string ClientId { get; set; } = null!;
+    public string ClientSecret { get; set; } = null!;
+    public string? Scopes { get; set; }
     public string ClaimType { get; set; } = null!;
     
     /// <summary>
@@ -88,23 +92,22 @@ public class OidcConfiguration : IProviderConfiguration
     /// <summary>
     /// A collection of {claimValue}:{dlcs-role} mappings
     /// </summary>
-    public Dictionary<string, string[]> Mapping { get; set; } = new();
+    public Dictionary<string, string[]>? Mapping { get; set; }
     
-    /// <summary>
     /// <inheritdoc />
-    /// </summary>
     public string? GestureTitle { get; set; }
     
-    /// <summary>
     /// <inheritdoc />
-    /// </summary>
     public string? GestureMessage { get; set; }
     
-    /// <summary>
     /// <inheritdoc />
-    /// </summary>
     [JsonConverter(typeof(StringEnumConverter))]
     public RoleProviderType Config { get; set; }
+
+    public static class SupportedProviders
+    {
+        public const string Auth0 = "auth0";
+    }
 }
 
 /// <summary>

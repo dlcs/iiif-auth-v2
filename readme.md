@@ -52,3 +52,21 @@ dotnet ef migrations add "{migration-name}" -p IIIFAuth2.API -o Data/Migrations
 ```
 
 Migrations are applied on startup, regardless of environment, if `"RunMigrations" = "true"`.
+
+## Local Development
+
+This service is an extension of [DLCS Protagonist](https://github.com/dlcs/protagonist/) and once deployed will run under the same host as the main DLCS.
+
+Below are steps for running iiif-auth-v2 and Orchestrator locally:
+
+1. Create a `customer_cookie_domain` for required customer (e.g. 99). As orchestrator and iiif-auth-v2 will be running on different ports this is necessary as otherwise orchestrator won't see required cookies.
+   * `INSERT INTO customer_cookie_domains (customer, domains) values (99, 'localhost');`
+2. In iiif-auth-v2 set `"OrchestratorRoot": "https://localhost:5003"` appSetting (default from orchestrator launchSettings)
+3. In orchestrator set `"Auth__Auth2ServiceRoot": "https://localhost:7049/auth/v2/"` appSetting (default from orchestrator launchSettings)
+4. In orchestrator change the last line of `ConfigDrivenAuthPathGenerator.GetAuth2PathForRequest` to:
+```cs
+var auth2PathForRequest = request.GetDisplayUrl(path, includeQueryParams: false);
+return auth2PathForRequest.Contains("probe") ? auth2PathForRequest : auth2PathForRequest.Replace(host, "localhost:7049");
+```
+
+> Point 4 is a hack and should be addressed in a better manner. It is required as the default path rewrite rules won't work as all auth paths aren't on the root domain

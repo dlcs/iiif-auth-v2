@@ -13,6 +13,21 @@ public class HandleRoleProvisionResponse
     /// If true the RoleProvider has finished an no further action is required
     /// </summary>
     public bool RoleProvisionHandled { get; private init; }
+    
+    /// <summary>
+    /// If true the RoleProvider request needs to be redirected to continue processing (e.g. for login to oidc provider)
+    /// </summary>
+    public bool RequiresRedirect { get; private init; }
+    
+    /// <summary>
+    /// If true the RoleProvider request failed
+    /// </summary>
+    public bool IsError { get; private init; }
+    
+    public Uri? RedirectUri { get; private init; }
+
+    public int? ErrorStatus { get; private init; }
+    public string? ErrorMessage { get; private init; }
 
     public SignificantGestureModel? SignificantGestureModel { get; private init; }
 
@@ -20,4 +35,12 @@ public class HandleRoleProvisionResponse
 
     public static HandleRoleProvisionResponse SignificantGesture(SignificantGestureModel model) => new()
         { SignificantGestureRequired = true, SignificantGestureModel = model };
+
+    public static HandleRoleProvisionResponse Redirect(Uri redirectUri) =>
+        new() { RedirectUri = redirectUri, RequiresRedirect = true };
+
+    public static HandleRoleProvisionResponse Error(string message, int statusCode = 500) =>
+        new() { IsError = true, ErrorMessage = message, ErrorStatus = statusCode };
+
+    public static readonly HandleRoleProvisionResponse Empty = new();
 }

@@ -42,5 +42,10 @@ public class AuthSettings
     /// <remarks>This avoids constant churn in db</remarks>
     public int RefreshThreshold { get; set; } = 120;
 
+    /// <summary>
+    /// TTL, in secs, for how long to cache jwks
+    /// </summary>
+    public int JwksTtl { get; set; } = 600;
+
     public Dictionary<string, string> GesturePathTemplateForDomain { get; set; } = new();
 }

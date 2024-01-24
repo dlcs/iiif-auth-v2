@@ -1,4 +1,5 @@
 ﻿using IIIFAuth2.API.Features.Access.Requests;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 using IIIFAuth2.API.Infrastructure.Web;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
@@ -22,34 +23,14 @@ public class AccessController : AuthBaseController
     /// </summary>
     [HttpGet]
     [Route("{customerId}/{accessServiceName}")]
-    public async Task<IActionResult> AccessService(
+    public Task<IActionResult> AccessService(
         [FromRoute] int customerId,
         [FromRoute] string accessServiceName,
         [FromQuery] Uri origin,
         CancellationToken cancellationToken)
     {
-        return await HandleRequest(async () =>
-        {
-            var initiate = new InitiateRoleProvisionRequest(customerId, accessServiceName, origin);
-            var provisionRoleResponse = await Mediator.Send(initiate, cancellationToken);
-
-            if (provisionRoleResponse == null)
-            {
-                return NotFound($"AccessService {accessServiceName} not found");
-            }
-
-            if (provisionRoleResponse.SignificantGestureRequired)
-            {
-                return View("SignificantGesture", provisionRoleResponse.SignificantGestureModel);
-            }
-
-            if (provisionRoleResponse.RoleProvisionHandled)
-            {
-                return View("CloseWindow");
-            }
-
-            return StatusCode(500, "Unexpected error encountered");
-        });
+        var initiate = new InitiateRoleProvisionRequest(customerId, accessServiceName, origin);
+        return RoleProvisionResponseConverter(initiate, accessServiceName, cancellationToken);
     }
 
     /// <summary>
@@ -72,6 +53,22 @@ public class AccessController : AuthBaseController
     }
 
     /// <summary>
+    /// Callback handler after user has authenticated with 3rd party oauth provider
+    /// </summary>
+    [HttpGet]
+    [Route("{customerId}/{accessServiceName}/oauth2/callback")]
+    public Task<IActionResult> Oauth2Callback(
+            [FromRoute] int customerId,
+            [FromRoute] string accessServiceName,
+            [FromQuery] string code,
+            [FromQuery(Name = "state")] string roleProvisionToken,
+            CancellationToken cancellationToken)
+    {
+        var oauth2Callback = new HandleOAuth2Callback(customerId, accessServiceName, code, roleProvisionToken);
+        return RoleProvisionResponseConverter(oauth2Callback, accessServiceName, cancellationToken);
+    }
+
+    /// <summary>
     /// IIIF Authorization logout service 
     /// https://iiif.io/api/auth/2.0/#logout-service
     /// </summary>
@@ -88,6 +85,45 @@ public class AccessController : AuthBaseController
             await Mediator.Send(logout, cancellationToken);
 
             return NoContent();
+        });
+    }
+
+    private async Task<IActionResult> RoleProvisionResponseConverter(IRequest<HandleRoleProvisionResponse?> request,
+        string accessServiceName, CancellationToken cancellationToken)
+    {
+        return await HandleRequest(async () =>
+        {
+            var provisionRoleResponse = await Mediator.Send(request, cancellationToken);
+
+            if (provisionRoleResponse == null)
+            {
+                return NotFound($"AccessService {accessServiceName} not found");
+            }
+
+            if (provisionRoleResponse.RequiresRedirect)
+            {
+                return Redirect(provisionRoleResponse.RedirectUri!.ToString());
+            }
+
+            if (provisionRoleResponse.SignificantGestureRequired)
+            {
+                return View("SignificantGesture", provisionRoleResponse.SignificantGestureModel);
+            }
+
+            if (provisionRoleResponse.RoleProvisionHandled)
+            {
+                return View("CloseWindow");
+            }
+            
+            // Below here are errors but rather than return a 500, return the closeWindow view. This will allow the
+            // viewer to continue (and fail) the auth flow.
+            if (provisionRoleResponse.IsError)
+            {
+                return View("CloseWindow");
+            }
+
+            Logger.LogWarning("RoleProvisionResponseConverter could not determine appropriate response");
+            return View("CloseWindow");
         });
     }
 }

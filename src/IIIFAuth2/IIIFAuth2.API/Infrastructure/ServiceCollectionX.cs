@@ -1,8 +1,10 @@
-﻿using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Features.Access.Requests;
+﻿using Amazon.SecretsManager;
+using Amazon.SecretsManager.Extensions.Caching;
+using AWSSDK;
+using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
-using IIIFAuth2.API.Models.Domain;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Settings;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
@@ -67,28 +69,42 @@ public static class ServiceCollectionX
     /// Add dependencies for handling auth requests
     /// </summary>
     public static IServiceCollection AddAuthServices(this IServiceCollection services)
-        => services
+    {
+        var serviceCollection = services
             .AddScoped<AuthAspectManager>()
             .AddScoped<ICustomerDomainChecker, CustomerDomainService>()
             .AddScoped<ICustomerDomainProvider, CustomerDomainService>()
             .AddScoped<RoleProviderService>()
-            .AddScoped<ClickthroughRoleProviderHandler>()
+            .AddScoped<RoleProvisionGranter>()
+            .AddScoped<IJwtTokenHandler, JwtTokenHandler>()
+            .AddScoped<OidcRoleProviderHandler>()
+            .AddScoped<ClickThroughProviderHandler>()
             .AddScoped<SessionManagementService>()
-            .AddScoped<SessionCleaner>()
-            .AddScoped<RoleProviderHandlerResolver>(provider => roleProviderType => roleProviderType switch
-            {
-                RoleProviderType.Clickthrough => provider.GetRequiredService<ClickthroughRoleProviderHandler>(),
-                _ => throw new ArgumentOutOfRangeException(nameof(roleProviderType), roleProviderType, null)
-            });
+            .AddSingleton<ClaimsConverter>()
+            .AddScoped<SessionCleaner>();
+
+        services.AddHttpClient<IAuth0Client, Auth0Client>();
+
+        return serviceCollection;
+    }
 
     /// <summary>
     /// Add caching dependencies
     /// </summary>
     /// <remarks>
     /// This adds LazyCache, Z.EntityFramework.Plus.EFCore caching is also used but there is no setup as default
-    /// MemoryCache is enough
+    /// MemoryCache is enough. SecretsManagerCache also uses memory cache but that is configured with AWS deps
     /// </remarks>
     public static IServiceCollection AddCaching(this IServiceCollection services) => services.AddLazyCache();
+
+    /// <summary>
+    /// Add AWS dependencies
+    /// </summary>
+    public static IServiceCollection AddAws(this IServiceCollection services, IConfiguration configuration)
+        => services
+            .AddDefaultAWSOptions(configuration.GetAWSOptions())
+            .AddAWSService<IAmazonSecretsManager>()
+            .AddSingleton<ISecretsManagerCache, SecretsManagerCache>();
 }
 
 /// <summary>
