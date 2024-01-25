@@ -20,7 +20,7 @@ public class UrlPathProviderTests
         {
             [OtherHost] = "/access/specific-host"
         };
-        var sut = GetSut(CurrentHost, gestureTemplates);
+        var sut = GetSut(CurrentHost, settings => settings.GesturePathTemplateForDomain = gestureTemplates);
         
         // Act
         var result = sut.GetGesturePostbackRelativePath(123);
@@ -38,7 +38,7 @@ public class UrlPathProviderTests
         {
             [OtherHost] = "/access/specific-host"
         };
-        var sut = GetSut(CurrentHost, gestureTemplates, "auth/v2/");
+        var sut = GetSut(CurrentHost, settings => settings.GesturePathTemplateForDomain = gestureTemplates, "auth/v2/");
         
         // Act
         var result = sut.GetGesturePostbackRelativePath(123);
@@ -57,7 +57,7 @@ public class UrlPathProviderTests
             ["Default"] = "/access/other",
             [OtherHost] = "/access/specific-host"
         };
-        var sut = GetSut(CurrentHost, gestureTemplates);
+        var sut = GetSut(CurrentHost, settings => settings.GesturePathTemplateForDomain = gestureTemplates);
         
         // Act
         var result = sut.GetGesturePostbackRelativePath(123);
@@ -76,7 +76,7 @@ public class UrlPathProviderTests
             ["Default"] = "/access/other",
             [CurrentHost] = "/{customerId}/access/gesture"
         };
-        var sut = GetSut(CurrentHost, gestureTemplates);
+        var sut = GetSut(CurrentHost, settings => settings.GesturePathTemplateForDomain = gestureTemplates);
         
         // Act
         var result = sut.GetGesturePostbackRelativePath(123);
@@ -87,21 +87,84 @@ public class UrlPathProviderTests
     }
 
     [Fact]
-    public void GetAccessServiceOAuthCallbackPath_Correct()
+    public void GetAccessServiceOAuthCallbackPath_HandlesNoConfiguredDefault()
     {
         // Arrange
-        var sut = GetSut(CurrentHost);
+        var templates = new Dictionary<string, string>
+        {
+            [OtherHost] = "/access/specific-host"
+        };
         var accessService = new AccessService { Customer = 99, Name = "ghosts" };
-        var expected = new Uri("https://dlcs.test.example/auth/v2/access/99/ghosts/oauth2/callback");
+        var expected = new Uri("https://dlcs.test.example/access/99/ghosts/oauth2/callback");
+        var sut = GetSut(CurrentHost, settings => settings.OAuthCallbackPathTemplateForDomain = templates);
         
         // Act
         var result = sut.GetAccessServiceOAuthCallbackPath(accessService);
         
-        // Assert
+        // Asset
         result.Should().BeEquivalentTo(expected);
     }
     
-    private UrlPathProvider GetSut(string host, Dictionary<string, string>? gestureTemplates = null, string? pathBase = null)
+    [Fact]
+    public void GetAccessServiceOAuthCallbackPath_HandlesNoConfiguredDefault_WithBaseBase()
+    {
+        // Arrange
+        var templates = new Dictionary<string, string>
+        {
+            [OtherHost] = "/access/specific-host"
+        };
+        var accessService = new AccessService { Customer = 99, Name = "ghosts" };
+        var expected = new Uri("https://dlcs.test.example/auth/v2/access/99/ghosts/oauth2/callback");
+        var sut = GetSut(CurrentHost, settings => settings.OAuthCallbackPathTemplateForDomain = templates, "auth/v2/");
+        
+        // Act
+        var result = sut.GetAccessServiceOAuthCallbackPath(accessService);
+        
+        // Asset
+        result.Should().BeEquivalentTo(expected);
+    }
+    
+    [Fact]
+    public void GetAccessServiceOAuthCallbackPath_UsesConfiguredDefault()
+    {
+        // Arrange
+        var templates = new Dictionary<string, string>
+        {
+            ["Default"] = "/access/other",
+            [OtherHost] = "/access/specific-host"
+        };
+        var accessService = new AccessService { Customer = 99, Name = "ghosts" };
+        var expected = new Uri("https://dlcs.test.example/access/other");
+        var sut = GetSut(CurrentHost, settings => settings.OAuthCallbackPathTemplateForDomain = templates, "auth/v2/");
+        
+        // Act
+        var result = sut.GetAccessServiceOAuthCallbackPath(accessService);
+        
+        // Asset
+        result.Should().BeEquivalentTo(expected);
+    }
+    
+    [Fact]
+    public void GetAccessServiceOAuthCallbackPath_UsesSpecifiedHost_IfFound()
+    {
+        // Arrange
+        var templates = new Dictionary<string, string>
+        {
+            ["Default"] = "/access/other",
+            [CurrentHost] = "/{customerId}/callback/{accessService}"
+        };
+        var accessService = new AccessService { Customer = 99, Name = "ghosts" };
+        var expected = new Uri("https://dlcs.test.example/99/callback/ghosts");
+        var sut = GetSut(CurrentHost, settings => settings.OAuthCallbackPathTemplateForDomain = templates, "auth/v2/");
+        
+        // Act
+        var result = sut.GetAccessServiceOAuthCallbackPath(accessService);
+        
+        // Asset
+        result.Should().BeEquivalentTo(expected);
+    }
+
+    private UrlPathProvider GetSut(string host, Action<AuthSettings>? settingsConfig = null, string? pathBase = null)
     {
         var context = new DefaultHttpContext();
         var request = context.Request;
@@ -110,7 +173,8 @@ public class UrlPathProviderTests
         var contextAccessor = A.Fake<IHttpContextAccessor>();
         A.CallTo(() => contextAccessor.HttpContext).Returns(context);
 
-        var authSettings = new AuthSettings { GesturePathTemplateForDomain = gestureTemplates ?? new() };
+        var authSettings = new AuthSettings();
+        settingsConfig?.Invoke(authSettings);
         var apiSettings = Options.Create(new ApiSettings { Auth = authSettings, PathBase = pathBase });
         
         return new UrlPathProvider(contextAccessor, apiSettings);

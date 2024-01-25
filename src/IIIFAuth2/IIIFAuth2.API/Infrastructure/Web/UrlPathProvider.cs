@@ -46,6 +46,7 @@ public class UrlPathProvider : IUrlPathProvider
 {
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly ApiSettings apiSettings;
+    private readonly Regex duplicateSlashRegex = new("(/)+", RegexOptions.Compiled);
 
     public UrlPathProvider(IHttpContextAccessor httpContextAccessor, IOptions<ApiSettings> apiOptions)
     {
@@ -95,13 +96,19 @@ public class UrlPathProvider : IUrlPathProvider
     /// <inheritdoc />
     public Uri GetAccessServiceOAuthCallbackPath(AccessService accessService)
     {
+        const string defaultPathTemplate = "/access/{customerId}/{accessService}/oauth2/callback";
+        
+        var template = GetTemplate(apiSettings.Auth.OAuthCallbackPathTemplateForDomain, defaultPathTemplate);
+        var populatedTemplate = template
+            .Replace("{customerId}", accessService.Customer.ToString())
+            .Replace("{accessService}", accessService.Name);
+        
         var baseUrl = GetCurrentBaseUrl();
-        var path = $"/auth/v2/access/{accessService.Customer}/{accessService.Name}/oauth2/callback";
         var builder = new UriBuilder(baseUrl)
         {
-            Path = path
+            Path = populatedTemplate
         };
-
+        
         return builder.Uri;
     }
 
@@ -121,25 +128,18 @@ public class UrlPathProvider : IUrlPathProvider
     /// <inheritdoc />
     public Uri GetGesturePostbackRelativePath(int customerId)
     {
+        const string defaultPathTemplate = "/access/{customerId}/gesture";
+        
+        var template = GetTemplate(apiSettings.Auth.GesturePathTemplateForDomain, defaultPathTemplate);
+        var populatedTemplate = template.Replace("{customerId}", customerId.ToString());
+        return new Uri(populatedTemplate, UriKind.Relative);
+    }
+
+    private string GetTemplate(Dictionary<string, string> pathTemplates, string defaultPathTemplate)
+    {
+        const string defaultKey = "Default";
         var request = httpContextAccessor.SafeHttpContext().Request;
         var host = request.Host.Value;
-
-        var template = GetPopulatedTemplate(host, customerId);
-        return new Uri(template, UriKind.Relative);
-    }
-    
-    private string GetPopulatedTemplate(string host, int customerId)
-    {
-        var template = GetTemplate(host);
-        return template.Replace("{customerId}", customerId.ToString());
-    }
-
-    private string GetTemplate(string host)
-    {
-        const string defaultPathTemplate = "/access/{customerId}/gesture";
-        const string defaultKey = "Default";
-
-        var pathTemplates = apiSettings.Auth.GesturePathTemplateForDomain;
 
         if (pathTemplates.TryGetValue(host, out var hostTemplate)) return hostTemplate;
         if (pathTemplates.TryGetValue(defaultKey, out var pathTemplate)) return pathTemplate;
@@ -147,7 +147,6 @@ public class UrlPathProvider : IUrlPathProvider
 
         // Replace any duplicate slashes after joining path elements
         var candidate = $"{apiSettings.PathBase}/{defaultPathTemplate}";
-        var duplicateSlashRegex = new Regex("(/)+", RegexOptions.Compiled);
         return duplicateSlashRegex.Replace(candidate, "$1");
     }
 

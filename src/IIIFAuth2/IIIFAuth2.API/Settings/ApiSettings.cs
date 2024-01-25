@@ -47,5 +47,17 @@ public class AuthSettings
     /// </summary>
     public int JwksTtl { get; set; } = 600;
 
+    /// <summary>
+    /// Dictionary that allows control of domain-specific significant gesture paths. Default value is
+    /// /access/{customerId}/gesture.
+    /// Replacement values: {customerId}
+    /// </summary>
     public Dictionary<string, string> GesturePathTemplateForDomain { get; set; } = new();
+    
+    /// <summary>
+    /// Dictionary that allows control of domain-specific oauth callback paths. Default value is
+    /// /access/{customerId}/{accessService}/oauth2/callback.
+    /// Replacement values: {customerId} and {accessService}
+    /// </summary>
+    public Dictionary<string, string> OAuthCallbackPathTemplateForDomain { get; set; } = new();
 }
