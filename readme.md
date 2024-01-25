@@ -30,16 +30,19 @@ docker compose -f docker-compose.local.yml up
 
 The following appSetting configuration values are supported:
 
-| Name                             | Description                                                  | Default                                         |
-| -------------------------------- | ------------------------------------------------------------ | ----------------------------------------------- |
-| OrchestratorRoot                 | Base URI for Orchestrator, used to generate links            |                                                 |
-| DefaultSignificantGestureTitle   | Fallback title to use on SignificantGesture.cshtml           | `"Click to continue"`                           |
-| DefaultSignificantGestureMessage | Fallback message to use on SignificantGesture.cshtml         | `"You will now be redirected to DLCS to login"` |
-| Auth__CookieNameFormat           | Name of issued cookie, `{0}` value replaced with customer Id | `"dlcs-auth2-{0}`                               |
-| Auth__SessionTtl                 | Default TTL for sessions + cookies (in seconds)              | 600                                             |
-| Auth__CookieDomains              | An optional list of domains to issue cookies for             |                                                 |
-| Auth__UseCurrentDomainForCookie  | Whether current domain is automatically added to auth token  | `true`                                          |
+| Name                               | Description                                                                                                           | Default                                         |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| OrchestratorRoot                   | Base URI for Orchestrator, used to generate links                                                                     |                                                 |
+| DefaultSignificantGestureTitle     | Fallback title to use on SignificantGesture.cshtml                                                                    | `"Click to continue"`                           |
+| DefaultSignificantGestureMessage   | Fallback message to use on SignificantGesture.cshtml                                                                  | `"You will now be redirected to DLCS to login"` |
+| Auth__CookieNameFormat             | Name of issued cookie, `{0}` value replaced with customer Id                                                          | `"dlcs-auth2-{0}`                               |
+| Auth__SessionTtl                   | Default TTL for sessions + cookies (in seconds)                                                                       | 600                                             |
+| Auth__RefreshThreshold             | UserSession expiry not refreshed if LastChecked within this number of secs                                            | 120                                             |
+| Auth__JwksTtl                      | How long to cache results of JWKS calls for, in secs                                                                  | 600                                             |
+| GesturePathTemplateForDomain       | Dictionary that allows control of domain-specific significant gesture paths. `{customerId}` replaced.                 |                                                 |
+| OAuthCallbackPathTemplateForDomain | Dictionary that allows control of domain-specific oauth2 callback paths. `{customerId}` + `{accessService}` replaced. |                                                 |
 
+> A note on Dictionarys for domain-specific paths. A key of `"Default"` serves as fallback but isn't necessary if the default value matches the canonical DLCS path.
 
 ## Migrations
 
