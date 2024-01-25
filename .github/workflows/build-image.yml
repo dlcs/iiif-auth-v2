@@ -61,4 +61,4 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           tags: ${{ steps.docker-meta.outputs.tags }}
           labels: ${{ steps.docker-meta.outputs.labels }}
-          push: true
+          push: ${{ github.actor != 'dependabot[bot]' }}
