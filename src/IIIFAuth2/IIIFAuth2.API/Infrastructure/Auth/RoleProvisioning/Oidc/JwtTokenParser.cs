@@ -80,6 +80,7 @@ public class JwtTokenHandler : IJwtTokenHandler
         var cacheKey = $"{jwksPath}:jwks";
         return await appCache.GetOrAddAsync(cacheKey, async () =>
         {
+            logger.LogDebug("Refreshing jwks cache from {JWKSPath}", jwksPath);
             var jwks = await httpClient.GetStringAsync(jwksPath, cancellationToken);
             return new JsonWebKeySet(jwks);
         }, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(authSettings.JwksTtl) });
