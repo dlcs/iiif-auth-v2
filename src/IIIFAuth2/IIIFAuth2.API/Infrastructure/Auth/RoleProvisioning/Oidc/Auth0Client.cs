@@ -87,7 +87,7 @@ public class Auth0Client : IAuth0Client
         
         var claimsPrincipal =
             await jwtTokenHandler.GetClaimsFromToken(auth0Token.IdToken, GetJwksUri(oidcConfiguration),
-                issuer, audience, cancellationToken);
+                issuer, audience, oidcConfiguration.ClientSecret, cancellationToken);
         if (claimsPrincipal == null) return Array.Empty<string>();
         
         var dlcsRoles = claimsConverter.GetDlcsRolesFromClaims(claimsPrincipal, oidcConfiguration);

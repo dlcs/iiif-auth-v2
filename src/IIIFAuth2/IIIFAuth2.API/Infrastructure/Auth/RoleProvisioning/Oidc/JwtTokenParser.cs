@@ -1,5 +1,6 @@
 ﻿using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
 using IIIFAuth2.API.Settings;
 using LazyCache;
 using Microsoft.Extensions.Caching.Memory;
@@ -17,10 +18,11 @@ public interface IJwtTokenHandler
     /// <param name="jwksUri">Path where jwks can be found</param>
     /// <param name="issuer">Valid "iss" value</param>
     /// <param name="audience">Valid "aud" value</param>
+    /// <param name="clientSecret">ClientSecret, if known. Used for symmetric validation</param>
     /// <param name="cancellationToken">Current cancellation token</param>
     /// <returns><see cref="ClaimsPrincipal"/> if jwt is valid, else null</returns>
     Task<ClaimsPrincipal?> GetClaimsFromToken(string jwtToken, Uri jwksUri, string issuer, string audience,
-        CancellationToken cancellationToken);
+        string? clientSecret, CancellationToken cancellationToken);
 }
 
 public class JwtTokenHandler : IJwtTokenHandler
@@ -41,17 +43,16 @@ public class JwtTokenHandler : IJwtTokenHandler
 
     /// <inheritdoc />
     public async Task<ClaimsPrincipal?> GetClaimsFromToken(string jwtToken, Uri jwksUri, string issuer,
-        string audience, CancellationToken cancellationToken)
+        string audience, string? clientSecret, CancellationToken cancellationToken)
     {
         try
         {
-            var jwks = await GetWebKeySetForDomain(jwksUri, cancellationToken);
-
+            var issuerSigningKeys = await GetSigningKeys(jwksUri, clientSecret, cancellationToken); 
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKeys = jwks.GetSigningKeys(),
+                IssuerSigningKeys = issuerSigningKeys,
                 ValidateIssuer = true,
                 ValidIssuer = issuer,
                 ValidateAudience = true,
@@ -73,6 +74,22 @@ public class JwtTokenHandler : IJwtTokenHandler
         }
 
         return null;
+    }
+    
+    private async Task<IList<SecurityKey>> GetSigningKeys(Uri jwksUri, string? clientSecret, CancellationToken 
+        cancellationToken)
+    {
+        // jwks used for "alg": "RS256"
+        var jwks = await GetWebKeySetForDomain(jwksUri, cancellationToken);
+        var issuerSigningKeys = jwks.GetSigningKeys();
+
+        if (!string.IsNullOrWhiteSpace(clientSecret))
+        {
+            // client-secret for "alg": "HS256"
+            issuerSigningKeys.Add(new SymmetricSecurityKey(Encoding.ASCII.GetBytes(clientSecret)));
+        }
+
+        return issuerSigningKeys;
     }
     
     private async Task<JsonWebKeySet> GetWebKeySetForDomain(Uri jwksPath, CancellationToken cancellationToken)
