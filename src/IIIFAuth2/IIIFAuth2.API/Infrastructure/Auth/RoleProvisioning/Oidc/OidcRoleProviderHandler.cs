@@ -105,6 +105,12 @@ public class OidcRoleProviderHandler
                 var secretsJson = await secretsManagerCache.GetSecretString(secretName);
                 var secret = JsonSerializer.Deserialize<Secrets>(secretsJson, Options);
                 configuration.ClientSecret = secret?.ClientSecret ?? string.Empty;
+
+                if (string.IsNullOrWhiteSpace(configuration.ClientSecret))
+                {
+                    logger.LogWarning("Fetched secretsmanager secret {SecretName} for {AccessService} but got no value",
+                        secretName, accessServiceId);
+                }
             }
             catch (Exception ex)
             {
