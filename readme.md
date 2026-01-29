@@ -1,6 +1,13 @@
 # IIIF Auth 2
 
-IIIF Auth v2 handles [IIIF Authorization Flow API 2.0](https://iiif.io/api/auth/2.0/) requests and is an implmementation of [DLCS RFC 012](https://github.com/dlcs/protagonist/blob/31bcd7db4d4856620b44b03e63d91d11e6832c62/docs/rfcs/012-auth-service.md)
+IIIF Auth v2 handles [IIIF Authorization Flow API 2.0](https://iiif.io/api/auth/2.0/) requests and is an implmementation of [DLCS RFC 012](https://github.com/dlcs/protagonist/blob/main/docs/rfcs/012-auth-service.md)
+
+## Role Provider Types
+
+The following role provider types are supported, this will be extended over time:
+
+* `clickthrough` - auth service will render agreement, on accepting the user is granted specified roles. Not external dependencies.
+* `oidc` - external authorization server is used for login, claims are mapped to DLCS roles, see [DLCS RFC 008](https://github.com/dlcs/protagonist/blob/main/docs/rfcs/008-more-access-control-oidc-oauth.md)
 
 ## Running
 
@@ -20,11 +27,23 @@ docker run -it --rm \
 docker compose up
 ```
 
-For local debugging the `docker-compose.local.yml` file can be used, this will start an empty Postgres instance.
+For local debugging there are 2 docker compose files available:
+* `docker-compose.db.yml` - runs an empty postgres instance. Running sln with `RunMigrations=true` will scaffold DB.
+* `docker-compose.local.yml` - runs the above and also an nginx container, which is:
+  * Running on `https://localhost:5040`.
+  * Proxying `/auth/v2/probe/*` and `/*` to localhost:5013. This is the http port for Orchestrator as defined in `launchSettings.json`
+  * Proxying `/auth/v2/*` to localhost:7149. This is the http port for iiif-auth-v2, as defined in `launchSettings.json`
 
 ```bash
-docker compose -f docker-compose.local.yml up
+# run postgres DB only
+$ docker compose -f docker-compose.db.yml up
+
+# run postgres DB and nginx proxy
+$ docker compose -f docker-compose.local.yml up
 ```
+
+> [!WARNING]
+> That nginx container uses a self-signed cert. This will show browser errors but is enough for local testing.
 
 ## Configuration
 
@@ -41,6 +60,7 @@ The following appSetting configuration values are supported:
 | Auth__JwksTtl                      | How long to cache results of JWKS calls for, in secs                                                                  | 600                                             |
 | GesturePathTemplateForDomain       | Dictionary that allows control of domain-specific significant gesture paths. `{customerId}` replaced.                 |                                                 |
 | OAuthCallbackPathTemplateForDomain | Dictionary that allows control of domain-specific oauth2 callback paths. `{customerId}` + `{accessService}` replaced. |                                                 |
+| RunMigrations                      | If true, EF migrations will be run when app runs                                                                      | `false`                                         |
 
 > A note on Dictionarys for domain-specific paths. A key of `"Default"` serves as fallback but isn't necessary if the default value matches the canonical DLCS path.
 
@@ -58,18 +78,10 @@ Migrations are applied on startup, regardless of environment, if `"RunMigrations
 
 ## Local Development
 
-This service is an extension of [DLCS Protagonist](https://github.com/dlcs/protagonist/) and once deployed will run under the same host as the main DLCS.
+This service is an extension of [DLCS Protagonist](https://github.com/dlcs/protagonist/) and when deployed will run under the same host as the main DLCS, with routing rules controlled at load-balancer level.
 
 Below are steps for running iiif-auth-v2 and Orchestrator locally:
 
-1. Create a `customer_cookie_domain` for required customer (e.g. 99). As orchestrator and iiif-auth-v2 will be running on different ports this is necessary as otherwise orchestrator won't see required cookies.
-   * `INSERT INTO customer_cookie_domains (customer, domains) values (99, 'localhost');`
-2. In iiif-auth-v2 set `"OrchestratorRoot": "https://localhost:5003"` appSetting (default from orchestrator launchSettings)
-3. In orchestrator set `"Auth__Auth2ServiceRoot": "https://localhost:7049/auth/v2/"` appSetting (default from orchestrator launchSettings)
-4. In orchestrator change the last line of `ConfigDrivenAuthPathGenerator.GetAuth2PathForRequest` to:
-```cs
-var auth2PathForRequest = request.GetDisplayUrl(path, includeQueryParams: false);
-return auth2PathForRequest.Contains("probe") ? auth2PathForRequest : auth2PathForRequest.Replace(host, "localhost:7049");
-```
-
-> Point 4 is a hack and should be addressed in a better manner. It is required as the default path rewrite rules won't work as all auth paths aren't on the root domain
+1. Run `docker compose -f docker-compose.local.yml up`
+2. In iiif-auth-v2 set `"OrchestratorRoot": "https://localhost:5040"` appSetting (nginx port)
+3. In orchestrator set `"Auth__Auth2ServiceRoot": "https://localhost:7049/auth/v2/"` appSetting (default from auth-services launchSettings)
