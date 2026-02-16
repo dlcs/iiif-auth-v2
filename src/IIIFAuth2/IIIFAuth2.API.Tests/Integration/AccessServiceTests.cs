@@ -20,7 +20,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
-    private static readonly IAuth0Client Auth0Client = A.Fake<IAuth0Client>();
+    private static readonly IAuthClient Auth0Client = A.Fake<IAuthClient>();
 
     public AccessServiceTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
@@ -30,7 +30,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
             .WithTestServices(services => 
                 services
                     .AddSingleton(A.Fake<IAmazonSecretsManager>())
-                    .AddScoped<IAuth0Client>(_ => Auth0Client))
+                    .AddScoped<IAuthClient>(_ => Auth0Client))
             .CreateClient(new WebApplicationFactoryClientOptions
             {
                 AllowAutoRedirect = false

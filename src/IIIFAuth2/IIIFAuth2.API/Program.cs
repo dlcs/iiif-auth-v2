@@ -32,7 +32,7 @@ try
         .AddAuthServices()
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
-        .AddMediatR(typeof(Program))
+        .AddMediatR(config => config.RegisterServicesFromAssemblyContaining<Program>())
         .AddCaching()
         .AddAws(builder.Configuration)
         .ConfigureAspnetMvc();

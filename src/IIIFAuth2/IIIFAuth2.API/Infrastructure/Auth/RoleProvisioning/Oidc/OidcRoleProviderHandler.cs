@@ -11,7 +11,7 @@ namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 /// </summary>
 public class OidcRoleProviderHandler
 {
-    private readonly IAuth0Client auth0Client;
+    private readonly IAuthClient auth0Client;
     private readonly SessionManagementService sessionManagementService;
     private readonly RoleProvisionGranter roleProvisionGranter;
     private readonly ISecretsManagerCache secretsManagerCache;
@@ -19,7 +19,7 @@ public class OidcRoleProviderHandler
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 
     public OidcRoleProviderHandler(
-        IAuth0Client auth0Client, 
+        IAuthClient auth0Client, 
         SessionManagementService sessionManagementService,
         RoleProvisionGranter roleProvisionGranter,
         ISecretsManagerCache secretsManagerCache,

@@ -12,15 +12,15 @@ using Microsoft.Net.Http.Headers;
 
 namespace IIIFAuth2.API.Tests.Infrastructure.Auth.RoleProvisioning.Oidc;
 
-public class Auth0ClientTests
+public class AuthClientTests
 {
-    private readonly Auth0Client sut;
+    private readonly AuthClient sut;
     private readonly IUrlPathProvider urlPathProvider;
     private readonly IJwtTokenHandler jwtTokenHandler;
     private readonly ClaimsConverter claimsConverter;
     private readonly ControllableHttpMessageHandler messageHandler;
 
-    public Auth0ClientTests()
+    public AuthClientTests()
     {
         urlPathProvider = A.Fake<IUrlPathProvider>();
         A.CallTo(() => urlPathProvider.GetAccessServiceOAuthCallbackPath(A<AccessService>._))
@@ -30,8 +30,8 @@ public class Auth0ClientTests
 
         messageHandler = new ControllableHttpMessageHandler();
 
-        sut = new Auth0Client(urlPathProvider, new HttpClient(messageHandler), jwtTokenHandler, claimsConverter,
-            new NullLogger<Auth0Client>());
+        sut = new AuthClient(urlPathProvider, new HttpClient(messageHandler), jwtTokenHandler, claimsConverter,
+            new NullLogger<AuthClient>());
     }
 
     [Theory]

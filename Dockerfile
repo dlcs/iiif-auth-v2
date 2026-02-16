@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY ["src/IIIFAuth2/IIIFAuth2.API/IIIFAuth2.API.csproj", "IIIFAuth2.API/"]
 RUN dotnet restore "IIIFAuth2.API/IIIFAuth2.API.csproj"
@@ -10,7 +10,7 @@ RUN dotnet build "IIIFAuth2.API.csproj" -c Release -o /app/build
 FROM build AS publish
 RUN dotnet publish "IIIFAuth2.API.csproj" -c Release -o /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:6.0-bullseye-slim AS base
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 
 LABEL maintainer="Donald Gray <donald.gray@digirati.com>"
 LABEL org.opencontainers.image.source=https://github.com/dlcs/iiif-auth-v2

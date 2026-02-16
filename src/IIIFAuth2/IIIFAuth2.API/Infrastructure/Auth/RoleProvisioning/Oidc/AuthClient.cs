@@ -1,6 +1,5 @@
 using System.Text.Json.Serialization;
-using Auth0.AuthenticationApi.Builders;
-using Auth0.AuthenticationApi.Models;
+using Microsoft.AspNetCore.WebUtilities;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Web;
@@ -8,43 +7,28 @@ using IIIFAuth2.API.Utils;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 
-public interface IAuth0Client
+public interface IAuthClient
 {
     /// <summary>
-    /// Get URI to redirect user for authorizing with auth0
+    /// Get URI to redirect user for authorizing with auth0 (and other ODIC compliant providers)
     /// </summary>
     /// <remarks>See https://auth0.com/docs/api/authentication#-get-authorize- </remarks>
     Uri GetAuthLoginUrl(OidcConfiguration oidcConfiguration, AccessService accessService, string state);
 
     /// <summary>
-    /// Exchange authentication code for access tokens for logged in user
+    /// Exchange authentication code for access tokens for logged-in user
     /// </summary>
     Task<IReadOnlyCollection<string>> GetDlcsRolesForCode(OidcConfiguration oidcConfiguration,
         AccessService accessService, string code, CancellationToken cancellationToken);
 }
 
-public class Auth0Client : IAuth0Client
+public class AuthClient(
+    IUrlPathProvider urlPathProvider,
+    HttpClient httpClient,
+    IJwtTokenHandler jwtTokenHandler,
+    ClaimsConverter claimsConverter,
+    ILogger<AuthClient> logger) : IAuthClient
 {
-    private readonly IUrlPathProvider urlPathProvider;
-    private readonly HttpClient httpClient;
-    private readonly IJwtTokenHandler jwtTokenHandler;
-    private readonly ClaimsConverter claimsConverter;
-    private readonly ILogger<Auth0Client> logger;
-
-    public Auth0Client(
-        IUrlPathProvider urlPathProvider,
-        HttpClient httpClient,
-        IJwtTokenHandler jwtTokenHandler,
-        ClaimsConverter claimsConverter,
-        ILogger<Auth0Client> logger)
-    {
-        this.urlPathProvider = urlPathProvider;
-        this.httpClient = httpClient;
-        this.jwtTokenHandler = jwtTokenHandler;
-        this.claimsConverter = claimsConverter;
-        this.logger = logger;
-    }
-    
     /// <summary>
     /// Get URI to redirect user for authorizing with auth0
     /// </summary>
@@ -53,20 +37,27 @@ public class Auth0Client : IAuth0Client
     {
         var callbackUrl = urlPathProvider.GetAccessServiceOAuthCallbackPath(accessService);
         
-        var additionalScopes = oidcConfiguration.Scopes?.Split(",", StringSplitOptions.RemoveEmptyEntries) ??
-                               Array.Empty<string>();
+        var additionalScopes = oidcConfiguration.Scopes?.Split(",", StringSplitOptions.RemoveEmptyEntries)
+                               .Where(s => !string.IsNullOrWhiteSpace(s))
+                               .ToList() ?? new List<string>();
 
-        /* don't use .WithRedirectUrl(Uri uri) and instead pass string. The former uses .OriginalString and will always
-         * include the port number (so https://dlcs.digirati.io/ => https://dlcs.digirati.io:443/). This differs from
-         * how the redirect URI is build for code exchange and causes 403 error */
-        var authBuilder = new AuthorizationUrlBuilder(oidcConfiguration.Domain)
-            .WithClient(oidcConfiguration.ClientId)
-            .WithRedirectUrl(callbackUrl.ToString())
-            .WithResponseType(AuthorizationResponseType.Code)
-            .WithState(state)
-            .WithScopes(additionalScopes.Append("openid").ToArray());
+        additionalScopes.Add("openid");
 
-        var loginUrl = authBuilder.Build();
+        var authorizationEndpoint = new UriBuilder(oidcConfiguration.Domain)
+        {
+            Path = "/authorize"
+        };
+
+        var queryParams = new Dictionary<string, string?>
+        {
+            { "client_id", oidcConfiguration.ClientId },
+            { "redirect_uri", callbackUrl.ToString() },
+            { "response_type", "code" },
+            { "state", state },
+            { "scope", string.Join(' ', additionalScopes) },
+        };
+
+        var loginUrl = new Uri(QueryHelpers.AddQueryString(authorizationEndpoint.Uri.ToString(), queryParams));
         logger.LogDebug("Generated auth0 login url {Auth0Url} for accessService {AccessServiceId}", loginUrl,
             accessService.Id);
         return loginUrl;
