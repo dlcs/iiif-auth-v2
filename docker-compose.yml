@@ -1,5 +1,3 @@
-version: "3.9"
-
 volumes:
   auth_postgres_data: {}
   auth_postgres_data_backups: {}
@@ -10,7 +8,7 @@ services:
     ports:
       - "8014:80"
     environment:
-      - ConnectionStrings__PostgreSQLConnection=Server=postgres;Port=5432;Database=${POSTGRES_DB};User Id=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};       
+      - ConnectionStrings__PostgreSQLConnection=Server=postgres;Port=5432;Database=${POSTGRES_DB};User Id=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};
 
   postgres:
     image: postgres:14
