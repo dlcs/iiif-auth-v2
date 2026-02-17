@@ -15,7 +15,7 @@
       <PackageReference Include="iiif-net" Version="0.2.1" />
       <PackageReference Include="JetBrains.Annotations" Version="2023.2.0" />
       <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
-      <PackageReference Include="MediatR" Version="14.0.0" />
+      <PackageReference Include="MediatR" Version="12.2.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.3">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
