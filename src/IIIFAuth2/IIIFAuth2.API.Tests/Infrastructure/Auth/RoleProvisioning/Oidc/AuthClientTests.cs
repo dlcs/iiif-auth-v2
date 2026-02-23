@@ -153,7 +153,7 @@ public class AuthClientTests
         
         // Assert
         A.CallTo(() => jwtTokenHandler.GetClaimsFromToken(idToken, jwksUri, "https://dlcs-dev.uk.auth0.com/", "test-id",
-            "test-secret", A<CancellationToken>._)).MustHaveHappened();
+            "test-secret", "auth0",A<CancellationToken>._)).MustHaveHappened();
     }
     
     [Fact]
@@ -171,7 +171,7 @@ public class AuthClientTests
             ClaimType = claimType,
         };
         A.CallTo(() => jwtTokenHandler.GetClaimsFromToken(idToken, A<Uri>._, A<string>._, A<string>._,
-                A<string>._, A<CancellationToken>._))
+                A<string>._, "auth0", A<CancellationToken>._))
             .Returns(new ClaimsPrincipal(new ClaimsIdentity()));
         
         var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK);
@@ -206,7 +206,7 @@ public class AuthClientTests
             }
         };
         A.CallTo(() => jwtTokenHandler.GetClaimsFromToken(idToken, A<Uri>._, A<string>._, A<string>._,
-                A<string>._, A<CancellationToken>._))
+                A<string>._, "auth0",A<CancellationToken>._))
             .Returns(new ClaimsPrincipal(new ClaimsIdentity(new []{new Claim(claimType, "foobar")})));
         
         var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK);

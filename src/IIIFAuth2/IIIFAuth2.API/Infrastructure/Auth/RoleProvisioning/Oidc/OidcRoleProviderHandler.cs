@@ -84,10 +84,9 @@ public class OidcRoleProviderHandler
 
     private static void ValidateProviderIsSupported(OidcConfiguration configuration)
     {
-        if (!configuration.Provider.Equals(OidcConfiguration.SupportedProviders.Auth0,
-                StringComparison.OrdinalIgnoreCase))
+        if (!OidcConfiguration.SupportedProviders.AuthTypes.Contains(configuration.Provider, StringComparer.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Only Auth0 is supported as oidc provider");
+            throw new InvalidOperationException("Only Auth0 or Entra are supported as oidc provider");
         }
     }
 
