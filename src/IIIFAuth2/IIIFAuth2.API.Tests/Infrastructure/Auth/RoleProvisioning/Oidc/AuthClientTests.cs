@@ -46,6 +46,7 @@ public class AuthClientTests
             Domain = "https://dlcs-dev.uk.auth0.com",
             ClientId = "test-id",
             Scopes = scopes,
+            Provider = "auth0"
         };
         
         var expected = new Uri("https://dlcs-dev.uk.auth0.com/authorize?client_id=test-id&redirect_uri=http%3A%2F%2Ftest.example%2Fcallback&response_type=code&state=foo&scope=openid");
@@ -67,6 +68,7 @@ public class AuthClientTests
             Domain = "https://dlcs-dev.uk.auth0.com",
             ClientId = "test-id",
             Scopes = "scope1,scope2,",
+            Provider = "auth0"
         };
         A.CallTo(() => urlPathProvider.GetAccessServiceOAuthCallbackPath(accessService))
             .Returns(new Uri("http://test.example/callback"));
@@ -91,6 +93,7 @@ public class AuthClientTests
             Domain = "https://dlcs-dev.uk.auth0.com",
             ClientId = "test-id",
             ClientSecret = "test-secret",
+            Provider = "auth0"
         };
         messageHandler.SetResponse(new HttpResponseMessage(HttpStatusCode.Forbidden));
         HttpRequestMessage request = null;
@@ -119,6 +122,7 @@ public class AuthClientTests
             Domain = "https://dlcs-dev.uk.auth0.com",
             ClientId = "test-id",
             ClientSecret = "test-secret",
+            Provider = "auth0",
         };
         messageHandler.SetResponse(new HttpResponseMessage(HttpStatusCode.Forbidden));
         
@@ -141,7 +145,9 @@ public class AuthClientTests
             Domain = "https://dlcs-dev.uk.auth0.com",
             ClientId = "test-id",
             ClientSecret = "test-secret",
+            Provider = "auth0",
         };
+
         var jwksUri = new Uri("https://dlcs-dev.uk.auth0.com/.well-known/jwks.json");
         var httpResponseMessage = new HttpResponseMessage(HttpStatusCode.OK);
         httpResponseMessage.Content =
@@ -169,6 +175,7 @@ public class AuthClientTests
             ClientId = "test-id",
             ClientSecret = "test-secret",
             ClaimType = claimType,
+            Provider = "auth0",
         };
         A.CallTo(() => jwtTokenHandler.GetClaimsFromToken(idToken, A<Uri>._, A<string>._, A<string>._,
                 A<string>._, "auth0", A<CancellationToken>._))
@@ -200,6 +207,7 @@ public class AuthClientTests
             ClientId = "test-id",
             ClientSecret = "test-secret",
             ClaimType = claimType,
+            Provider = "auth0",
             Mapping = new Dictionary<string, string[]>
             {
                 { "foobar", mappedRoles }

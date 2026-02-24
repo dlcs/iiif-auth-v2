@@ -20,27 +20,21 @@ public interface IJwtTokenHandler
     /// <param name="issuer">Valid "iss" value</param>
     /// <param name="audience">Valid "aud" value</param>
     /// <param name="clientSecret">ClientSecret, if known. Used for symmetric validation</param>
+    /// <param name="provider">Provider such as auth0 or entra </param>
     /// <param name="cancellationToken">Current cancellation token</param>
     /// <returns><see cref="ClaimsPrincipal"/> if jwt is valid, else null</returns>
     Task<ClaimsPrincipal?> GetClaimsFromToken(string jwtToken, Uri jwksUri, string issuer, string audience,
         string? clientSecret, string provider, CancellationToken cancellationToken);
 }
 
-public class JwtTokenHandler : IJwtTokenHandler
+public class JwtTokenHandler(
+    HttpClient httpClient,
+    IAppCache appCache,
+    IOptions<AuthSettings> authOptions,
+    ILogger<JwtTokenHandler> logger)
+    : IJwtTokenHandler
 {
-    private readonly HttpClient httpClient;
-    private readonly IAppCache appCache;
-    private readonly ILogger<JwtTokenHandler> logger;
-    private readonly AuthSettings authSettings;
-
-    public JwtTokenHandler(HttpClient httpClient, IAppCache appCache, IOptions<AuthSettings> authOptions,
-        ILogger<JwtTokenHandler> logger)
-    {
-        this.httpClient = httpClient;
-        this.appCache = appCache;
-        this.logger = logger;
-        authSettings = authOptions.Value;
-    }
+    private readonly AuthSettings authSettings = authOptions.Value;
 
     /// <inheritdoc />
     public async Task<ClaimsPrincipal?> GetClaimsFromToken(string jwtToken, Uri jwksUri, string issuer,
@@ -50,7 +44,7 @@ public class JwtTokenHandler : IJwtTokenHandler
 
         return provider?.ToLower() switch
         {
-            "entra" => await GetClaimsFromTokenEntra(jwtToken, jwksUri, issuer, audience, clientSecret, cancellationToken),
+            "entra" => await GetClaimsFromTokenEntra(jwtToken, jwksUri, audience, cancellationToken),
             _ => await ClaimsFromTokenAuth0(jwtToken, jwksUri, issuer, audience, clientSecret, cancellationToken)
 
         };
@@ -93,62 +87,19 @@ public class JwtTokenHandler : IJwtTokenHandler
 
         return null;
     }
-
-
-    private async Task<IList<SecurityKey>> GetSigningKeys(string algorithm, Uri jwksUri, string? clientSecret, CancellationToken 
-        cancellationToken)
-    {
-        // jwks used for "alg": "RS256"
-        var jwks = await GetWebKeySetForDomain(jwksUri, cancellationToken);
-        var issuerSigningKeys = jwks.GetSigningKeys();
-
-        if (!string.IsNullOrWhiteSpace(clientSecret) && algorithm.StartsWith("HS", StringComparison.OrdinalIgnoreCase))
-        {
-            // client-secret for "alg": "HS256"
-            issuerSigningKeys.Add(new SymmetricSecurityKey(Encoding.ASCII.GetBytes(clientSecret)));
-        }
-
-     
-        return issuerSigningKeys;
-    }
     
-    private async Task<JsonWebKeySet> GetWebKeySetForDomain(Uri jwksPath, CancellationToken cancellationToken)
+
+    private async Task<ClaimsPrincipal?> GetClaimsFromTokenEntra(string jwtToken, Uri jwksUri, string audience, CancellationToken cancellationToken)
     {
-        var cacheKey = $"{jwksPath}:jwks";
-        return await appCache.GetOrAddAsync(cacheKey, async () =>
-        {
-            logger.LogDebug("Refreshing jwks cache from {JWKSPath}", jwksPath);
-            var jwks = await httpClient.GetStringAsync(jwksPath, cancellationToken);
-            return new JsonWebKeySet(jwks);
-        }, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(authSettings.JwksTtl) });
-    }
-
-
-
-
-    private async Task<ClaimsPrincipal?> GetClaimsFromTokenEntra(string jwtToken, Uri jwksUri, string issuer, string audience,
-        string? clientSecret, CancellationToken cancellationToken)
-    {
-
-        var jwKeySet = await GetWebKeySetForDomain(jwksUri, cancellationToken);
-
-
-        //this does look kinda crumby
+        
         var domain = jwksUri.ToString().Replace(".well-known/openid-configuration", "");
         var jwksPath = new UriBuilder(domain + "discovery/v2.0/keys");
 
-        // 1. Manually fetch the JWKS JSON string
-       // using var httpClient = new HttpClient();
-        //string jwksJson = await httpClient.GetStringAsync(jwksPath);
 
-        // 2. Deserialize the JSON into a JsonWebKeySet
-        //var jwks = new JsonWebKeySet(jwksJson);
-       // var signingKeys = jwks.GetSigningKeys(); // Extracts the SecurityKeys
+        var jwks = await GetWebKeySetForDomain(jwksPath.Uri, cancellationToken);
+        var signingKeys = jwks.GetSigningKeys(); // Extracts the SecurityKeys
 
-       var jwks = await GetWebKeySetForDomain(jwksPath.Uri, cancellationToken);
-       var signingKeys = jwks.GetSigningKeys(); // Extracts the SecurityKeys
-
-        // 3. Define your validation parameters
+        // Define your validation parameters
         var validationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
@@ -161,11 +112,11 @@ public class JwtTokenHandler : IJwtTokenHandler
             ValidateIssuerSigningKey = true
         };
 
-        // 4. Perform the validation
+        // Perform the validation
         var tokenHandler = new JwtSecurityTokenHandler();
         try
         {
-            var principal = tokenHandler.ValidateToken(jwtToken, validationParameters, out var validatedToken);
+            var principal = tokenHandler.ValidateToken(jwtToken, validationParameters, out _);
             return principal;
         }
         catch (Exception ex)
@@ -173,4 +124,32 @@ public class JwtTokenHandler : IJwtTokenHandler
             throw new Exception($"Manual validation failed: {ex.Message}");
         }
     }
+
+
+    private async Task<IList<SecurityKey>> GetSigningKeys(string algorithm, Uri jwksUri, string? clientSecret, CancellationToken
+        cancellationToken)
+    {
+        // jwks used for "alg": "RS256"
+        var jwks = await GetWebKeySetForDomain(jwksUri, cancellationToken);
+        var issuerSigningKeys = jwks.GetSigningKeys();
+
+        if (!string.IsNullOrWhiteSpace(clientSecret) && algorithm.StartsWith("HS", StringComparison.OrdinalIgnoreCase))
+        {
+            // client-secret for "alg": "HS256"
+            issuerSigningKeys.Add(new SymmetricSecurityKey(Encoding.ASCII.GetBytes(clientSecret)));
+        }
+        return issuerSigningKeys;
+    }
+
+    private async Task<JsonWebKeySet> GetWebKeySetForDomain(Uri jwksPath, CancellationToken cancellationToken)
+    {
+        var cacheKey = $"{jwksPath}:jwks";
+        return await appCache.GetOrAddAsync(cacheKey, async () =>
+        {
+            logger.LogDebug("Refreshing jwks cache from {JWKSPath}", jwksPath);
+            var jwks = await httpClient.GetStringAsync(jwksPath, cancellationToken);
+            return new JsonWebKeySet(jwks);
+        }, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(authSettings.JwksTtl) });
+    }
+
 }
