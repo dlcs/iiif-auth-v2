@@ -106,7 +106,7 @@ public class OidcConfiguration : IProviderConfiguration
 
     public static class SupportedProviders
     {
-        public const string Auth0 = "auth0";
+        public static readonly string[] AuthTypes = ["auth0", "entra"];
     }
 }
 

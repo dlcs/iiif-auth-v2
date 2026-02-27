@@ -11,7 +11,7 @@ namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 /// </summary>
 public class OidcRoleProviderHandler
 {
-    private readonly IAuth0Client auth0Client;
+    private readonly IAuthClient auth0Client;
     private readonly SessionManagementService sessionManagementService;
     private readonly RoleProvisionGranter roleProvisionGranter;
     private readonly ISecretsManagerCache secretsManagerCache;
@@ -19,7 +19,7 @@ public class OidcRoleProviderHandler
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 
     public OidcRoleProviderHandler(
-        IAuth0Client auth0Client, 
+        IAuthClient auth0Client, 
         SessionManagementService sessionManagementService,
         RoleProvisionGranter roleProvisionGranter,
         ISecretsManagerCache secretsManagerCache,
@@ -84,10 +84,9 @@ public class OidcRoleProviderHandler
 
     private static void ValidateProviderIsSupported(OidcConfiguration configuration)
     {
-        if (!configuration.Provider.Equals(OidcConfiguration.SupportedProviders.Auth0,
-                StringComparison.OrdinalIgnoreCase))
+        if (!OidcConfiguration.SupportedProviders.AuthTypes.Contains(configuration.Provider, StringComparer.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException("Only Auth0 is supported as oidc provider");
+            throw new InvalidOperationException("Only Auth0 or Entra are supported as oidc provider");
         }
     }
 

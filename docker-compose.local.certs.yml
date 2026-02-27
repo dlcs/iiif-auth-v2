@@ -3,20 +3,24 @@ volumes:
   auth_postgres_data_backups: {}
 
 services:
-  api:
-    build: .
-    ports:
-      - "8014:8080"
-    environment:
-      - ConnectionStrings__PostgreSQLConnection=Server=postgres;Port=5432;Database=${POSTGRES_DB};User Id=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};
-
   postgres:
     image: postgres:14
     hostname: postgres
     ports:
-      - "5433:5432"
+      - "5430:5432"
     volumes:
       - auth_postgres_data:/var/lib/postgresql/data
       - auth_postgres_data_backups:/backups
     env_file:
       - .env
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: DockerfileLocalCerts  
+    ports:
+      - "5040:443"
+      - "5039:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      
