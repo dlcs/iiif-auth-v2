@@ -41,14 +41,14 @@ public class JwtTokenHandler(
         string audience, string? clientSecret, string? provider, CancellationToken cancellationToken)
     {
 
-
         return provider?.ToLower() switch
         {
             "entra" => await GetClaimsFromTokenEntra(jwtToken, jwksUri, audience, cancellationToken),
-            _ => await ClaimsFromTokenAuth0(jwtToken, jwksUri, issuer, audience, clientSecret, cancellationToken)
+            "auth0" => await ClaimsFromTokenAuth0(jwtToken, jwksUri, issuer, audience, clientSecret, cancellationToken),
+            _ => throw new NotSupportedException($"Provider is not supported {provider}")
 
         };
-        
+
     }
 
     private async Task<ClaimsPrincipal?> ClaimsFromTokenAuth0(string jwtToken, Uri jwksUri, string issuer, string audience,
