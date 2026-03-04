@@ -18,7 +18,9 @@ public class ClaimsConverter
     {
         try
         {
-            var claim = claimsPrincipal.Claims.SingleOrDefault(c => c.Type == oidcConfiguration.ClaimType);
+            var claimTypesToCheck = GetClaimTypes(oidcConfiguration.ClaimType);
+            var claim = claimsPrincipal.Claims.FirstOrDefault(c =>
+                claimTypesToCheck.Any(t => string.Equals(c.Type, t, StringComparison.OrdinalIgnoreCase)));
             if (claim == null)
             {
                 logger.LogInformation("ClaimsPrincipal {PrincipalId} does not have required claim '{ClaimType}'",
@@ -67,6 +69,24 @@ public class ClaimsConverter
                 "Unexpected error converting claims to DLCS role for ClaimsPrincipal {PrincipalId}",
                 claimsPrincipal.Identity);
             return ResultStatus<IReadOnlyCollection<string>>.Unsuccessful();;
+        }
+    }
+
+    private static IEnumerable<string> GetClaimTypes(string configuredClaimType)
+    {
+        yield return configuredClaimType;
+
+        // Common Entra role claim handling: with MapInboundClaims=false the claim arrives as "roles"
+        if (configuredClaimType.Equals(ClaimTypes.Role, StringComparison.OrdinalIgnoreCase) ||
+            configuredClaimType.EndsWith("/claims/role", StringComparison.OrdinalIgnoreCase))
+        {
+            yield return "roles";
+        }
+
+        if (configuredClaimType.Equals("roles", StringComparison.OrdinalIgnoreCase))
+        {
+            yield return ClaimTypes.Role;
+            yield return "http://schemas.microsoft.com/ws/2008/06/identity/claims/role";
         }
     }
 }

@@ -11,7 +11,7 @@ namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 /// </summary>
 public class OidcRoleProviderHandler
 {
-    private readonly IAuthClient auth0Client;
+    private readonly IOAuthClient auth0Client;
     private readonly SessionManagementService sessionManagementService;
     private readonly RoleProvisionGranter roleProvisionGranter;
     private readonly ISecretsManagerCache secretsManagerCache;
@@ -19,7 +19,7 @@ public class OidcRoleProviderHandler
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 
     public OidcRoleProviderHandler(
-        IAuthClient auth0Client, 
+        IOAuthClient auth0Client, 
         SessionManagementService sessionManagementService,
         RoleProvisionGranter roleProvisionGranter,
         ISecretsManagerCache secretsManagerCache,
@@ -45,7 +45,7 @@ public class OidcRoleProviderHandler
         var roleProvisionTokenId = await sessionManagementService.CreateRoleProvisionToken(customerId,
             Array.Empty<string>(), requestOrigin.ToString(), cancellationToken);
         
-        var loginUrl = auth0Client.GetAuthLoginUrl(configuration, accessService, roleProvisionTokenId);
+        var loginUrl = await auth0Client.GetAuthLoginUrl(configuration, accessService, roleProvisionTokenId, cancellationToken);
         return HandleRoleProvisionResponse.Redirect(loginUrl);
     }
 

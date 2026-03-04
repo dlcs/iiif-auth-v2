@@ -83,7 +83,7 @@ public static class ServiceCollectionX
             .AddSingleton<ClaimsConverter>()
             .AddScoped<SessionCleaner>();
 
-        services.AddHttpClient<IAuthClient, AuthClient>();
+        services.AddHttpClient<IOAuthClient, OAuthClient>();
 
         return serviceCollection;
     }

@@ -41,13 +41,6 @@ public class HandleAccessTokenRequestHandler : IRequestHandler<HandleAccessToken
             await sessionManagementService.TryGetSessionUserForCookie(request.CustomerId, request.Origin,
                 cancellationToken);
 
-        //Added for entra 
-        if (findSessionResponse.Status == GetSessionStatus.MissingCredentials)
-        {
-            findSessionResponse = await sessionManagementService.TryGetSessionUserForAccessToken(request.CustomerId,
-                cancellationToken);
-        }
-        
         return BuildResponse(findSessionResponse, request.MessageId);
     }
 

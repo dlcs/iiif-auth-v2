@@ -2,7 +2,6 @@
 using System.Security.Claims;
 using System.Text;
 using IIIFAuth2.API.Settings;
-using IIIFAuth2.API.Utils;
 using LazyCache;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
@@ -38,29 +37,14 @@ public class JwtTokenHandler(
 
     /// <inheritdoc />
     public async Task<ClaimsPrincipal?> GetClaimsFromToken(string jwtToken, Uri jwksUri, string issuer,
-        string audience, string? clientSecret, string? provider, CancellationToken cancellationToken)
-    {
-
-        return provider?.ToLower() switch
-        {
-            "entra" => await GetClaimsFromTokenEntra(jwtToken, jwksUri, audience, cancellationToken),
-            "auth0" => await ClaimsFromTokenAuth0(jwtToken, jwksUri, issuer, audience, clientSecret, cancellationToken),
-            _ => throw new NotSupportedException($"Provider is not supported {provider}")
-
-        };
-
-    }
-
-    private async Task<ClaimsPrincipal?> ClaimsFromTokenAuth0(string jwtToken, Uri jwksUri, string issuer, string audience,
-        string? clientSecret, CancellationToken cancellationToken)
+        string audience, string? clientSecret, string provider, CancellationToken cancellationToken)
     {
         try
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
+            var tokenHandler = new JwtSecurityTokenHandler { MapInboundClaims = false };
             var alg = tokenHandler.ReadJwtToken(jwtToken).Header.Alg;
-            var issuerSigningKeys = await GetSigningKeys(alg, jwksUri, clientSecret, cancellationToken); 
+            var issuerSigningKeys = await GetSigningKeys(alg, jwksUri, clientSecret, cancellationToken);
 
-            
             var tokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuerSigningKey = true,
@@ -73,56 +57,19 @@ public class JwtTokenHandler(
                 ValidateActor = false,
                 ValidateTokenReplay = false,
             };
-            var claimsPrincipal = tokenHandler.ValidateToken(jwtToken, tokenValidationParameters, out _);
-            return claimsPrincipal;
+
+            return tokenHandler.ValidateToken(jwtToken, tokenValidationParameters, out _);
         }
         catch (SecurityTokenException ste)
         {
-            logger.LogError(ste, "Received invalid jwt token");
+            logger.LogError(ste, "Received invalid {Provider} jwt token", provider);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unknown error validating jwt token");
+            logger.LogError(ex, "Unknown error validating {Provider} jwt token", provider);
         }
 
         return null;
-    }
-    
-
-    private async Task<ClaimsPrincipal?> GetClaimsFromTokenEntra(string jwtToken, Uri jwksUri, string audience, CancellationToken cancellationToken)
-    {
-        
-        var domain = jwksUri.ToString().Replace(".well-known/openid-configuration", "");
-        var jwksPath = new UriBuilder(domain + "discovery/v2.0/keys");
-
-
-        var jwks = await GetWebKeySetForDomain(jwksPath.Uri, cancellationToken);
-        var signingKeys = jwks.GetSigningKeys(); // Extracts the SecurityKeys
-
-        // Define your validation parameters
-        var validationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            // The issuer for v2.0 tokens usually follows this pattern:
-            ValidIssuer = $"{domain.EnsureEndsWith("/")}v2.0",
-            ValidateAudience = true,
-            ValidAudience = audience,
-            ValidateLifetime = true,
-            IssuerSigningKeys = signingKeys, // Use the keys manually loaded from the URL
-            ValidateIssuerSigningKey = true
-        };
-
-        // Perform the validation
-        var tokenHandler = new JwtSecurityTokenHandler();
-        try
-        {
-            var principal = tokenHandler.ValidateToken(jwtToken, validationParameters, out _);
-            return principal;
-        }
-        catch (Exception ex)
-        {
-            throw new Exception($"Manual validation failed: {ex.Message}");
-        }
     }
 
 
