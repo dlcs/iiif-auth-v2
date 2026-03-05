@@ -7,6 +7,7 @@ using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Settings;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
 using LazyCache;
+using LazyCache.Mocks;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -21,7 +22,7 @@ public class JwtTokenHandlerTests
     public JwtTokenHandlerTests()
     {
         messageHandler = new ControllableHttpMessageHandler();
-        IAppCache appCache1 = new CachingService();
+        IAppCache appCache1 = new MockCachingService();
 
         sut = new JwtTokenHandler(
             new HttpClient(messageHandler),
