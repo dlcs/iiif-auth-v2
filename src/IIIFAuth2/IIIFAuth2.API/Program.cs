@@ -3,7 +3,6 @@ using IIIFAuth2.API.Infrastructure;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Settings;
 using JetBrains.Annotations;
-using MediatR;
 using Serilog;
 
 // Prevent R# flagging View() as not found
@@ -42,6 +41,7 @@ try
     var app = builder.Build();
     app
         .UseSerilogRequestLogging()
+        .UseForwardedHeaders()
         .HandlePathBase(apiSettings.PathBase, app.Logger)
         .UseRouting()
         .TryRunMigrations(app.Configuration, app.Logger);
@@ -51,10 +51,9 @@ try
         app.UseDeveloperExceptionPage();
     }
 
-    app.UseForwardedHeaders();
     app.MapRazorPages();
     app.MapControllers();
-    app.UseEndpoints(endpoints => { endpoints.MapHealthChecks("/health"); });
+    app.MapHealthChecks("/health");
 
     app.Run();
 }

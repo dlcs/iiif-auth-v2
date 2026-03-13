@@ -36,10 +36,6 @@ public static class ServiceCollectionX
     public static IServiceCollection ConfigureAspnetMvc(this IServiceCollection services)
     {
         services
-            .Configure<ForwardedHeadersOptions>(opts =>
-            {
-                opts.ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto;
-            })
             .Configure<MvcOptions>(opts =>
             {
                 opts.Conventions.Add(new FeatureControllerModelConvention());
