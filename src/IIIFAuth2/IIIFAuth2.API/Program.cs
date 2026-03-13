@@ -34,7 +34,8 @@ try
         .AddMediatR(config => config.RegisterServicesFromAssemblyContaining<Program>())
         .AddCaching()
         .AddAws(builder.Configuration)
-        .ConfigureAspnetMvc();
+        .ConfigureAspnetMvc()
+        .ConfigureForwardedHeaders(builder.Configuration);
 
     var apiSettings = builder.Configuration.Get<ApiSettings>()!;
     
