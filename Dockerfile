@@ -12,7 +12,7 @@ RUN dotnet publish "IIIFAuth2.API.csproj" -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 
-RUN apt-get update && apt-get install -y libgssapi-krb5-2
+RUN apt-get update && apt-get install -y libgssapi-krb5-2 libkrb5-3 krb5-user
 
 LABEL maintainer="Donald Gray <donald.gray@digirati.com>"
 LABEL org.opencontainers.image.source=https://github.com/dlcs/iiif-auth-v2
