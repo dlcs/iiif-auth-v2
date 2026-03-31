@@ -40,7 +40,7 @@ public class HandleAccessTokenRequestHandler : IRequestHandler<HandleAccessToken
         var findSessionResponse =
             await sessionManagementService.TryGetSessionUserForCookie(request.CustomerId, request.Origin,
                 cancellationToken);
-        
+
         return BuildResponse(findSessionResponse, request.MessageId);
     }
 

@@ -26,6 +26,53 @@ public class ClaimsConverterTests
         result.Success.Should().BeFalse();
         result.Value.Should().BeNullOrEmpty();
     }
+
+    [Fact]
+    public void GetDlcsRolesFromClaims_ReturnsUnionOfMappedRoles_WhenMultipleClaims()
+    {
+        // Arrange
+        var claimsPrincipal = GetPrincipal(
+            new Claim("http://test.example/found", "foo"),
+            new Claim("http://test.example/found", "bar"));
+        var oidcConfig = new OidcConfiguration
+        {
+            ClaimType = "http://test.example/found",
+            Mapping = new Dictionary<string, string[]>
+            {
+                { "foo", new[] { "role1", "role2" } },
+                { "bar", new[] { "role2", "role3" } }
+            }
+        };
+
+        // Act
+        var result = sut.GetDlcsRolesFromClaims(claimsPrincipal, oidcConfig);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Value.Should().BeEquivalentTo(new[] { "role1", "role2", "role3" });
+    }
+
+    [Fact]
+    public void GetDlcsRolesFromClaims_ReturnsDistinctValues_WhenUseClaimWithDuplicates()
+    {
+        // Arrange
+        var claimsPrincipal = GetPrincipal(
+            new Claim("http://test.example/found", "foo"),
+            new Claim("http://test.example/found", "foo"),
+            new Claim("http://test.example/found", "bar"));
+        var oidcConfig = new OidcConfiguration
+        {
+            ClaimType = "http://test.example/found",
+            UnknownValueBehaviour = UnknownMappingValueBehaviour.UseClaim,
+        };
+
+        // Act
+        var result = sut.GetDlcsRolesFromClaims(claimsPrincipal, oidcConfig);
+
+        // Assert
+        result.Success.Should().BeTrue();
+        result.Value.Should().BeEquivalentTo(new[] { "foo", "bar" });
+    }
     
     [Fact]
     public void GetDlcsRolesFromClaims_ReturnsMappedValue_IfMappingFound()

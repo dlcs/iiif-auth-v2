@@ -3,12 +3,10 @@ using IIIFAuth2.API.Infrastructure;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Settings;
 using JetBrains.Annotations;
-using MediatR;
 using Serilog;
 
 // Prevent R# flagging View() as not found
 [assembly: AspMvcViewLocationFormat(@"~\Features\Access\Views\{0}.cshtml")]
-
 Log.Logger = new LoggerConfiguration()
     .WriteTo.Console()
     .CreateLogger();
@@ -32,16 +30,18 @@ try
         .AddAuthServices()
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
-        .AddMediatR(typeof(Program))
+        .AddMediatR(config => config.RegisterServicesFromAssemblyContaining<Program>())
         .AddCaching()
         .AddAws(builder.Configuration)
-        .ConfigureAspnetMvc();
+        .ConfigureAspnetMvc()
+        .ConfigureForwardedHeaders(builder.Configuration);
 
     var apiSettings = builder.Configuration.Get<ApiSettings>()!;
     
     var app = builder.Build();
     app
         .UseSerilogRequestLogging()
+        .UseForwardedHeaders()
         .HandlePathBase(apiSettings.PathBase, app.Logger)
         .UseRouting()
         .TryRunMigrations(app.Configuration, app.Logger);
@@ -51,10 +51,9 @@ try
         app.UseDeveloperExceptionPage();
     }
 
-    app.UseForwardedHeaders();
     app.MapRazorPages();
     app.MapControllers();
-    app.UseEndpoints(endpoints => { endpoints.MapHealthChecks("/health"); });
+    app.MapHealthChecks("/health");
 
     app.Run();
 }

@@ -6,11 +6,14 @@ using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Settings;
+using IIIFAuth2.API.Utils;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Razor;
+using Serilog;
+using Serilog.Extensions.Logging;
 
 namespace IIIFAuth2.API.Infrastructure;
 
@@ -33,10 +36,6 @@ public static class ServiceCollectionX
     public static IServiceCollection ConfigureAspnetMvc(this IServiceCollection services)
     {
         services
-            .Configure<ForwardedHeadersOptions>(opts =>
-            {
-                opts.ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto;
-            })
             .Configure<MvcOptions>(opts =>
             {
                 opts.Conventions.Add(new FeatureControllerModelConvention());
@@ -83,7 +82,7 @@ public static class ServiceCollectionX
             .AddSingleton<ClaimsConverter>()
             .AddScoped<SessionCleaner>();
 
-        services.AddHttpClient<IAuth0Client, Auth0Client>();
+        services.AddHttpClient<IOAuthClient, OAuthClient>();
 
         return serviceCollection;
     }
@@ -105,6 +104,48 @@ public static class ServiceCollectionX
             .AddDefaultAWSOptions(configuration.GetAWSOptions())
             .AddAWSService<IAmazonSecretsManager>()
             .AddSingleton<ISecretsManagerCache, SecretsManagerCache>();
+
+    /// <summary>
+    /// Configures host to use x-forwarded-host and x-forwarded-proto to set httpContext.Request.Host and .Scheme
+    /// respectively.
+    /// If "KnownNetworks" configuration key found, this will be used to set ForwardedHeadersOptions.KnownNetworks 
+    /// </summary>
+    /// <remarks>
+    /// If "KnownNetworks" key not found, all networks are allowed. This maintains the behaviour that was present in
+    /// dotnet until .NET 8.0.17 + .NET 9.0.6 release and so avoids breaking changes.
+    /// If "KnownNetworks" key is found then the default is maintained and any CIDR addresses are added
+    /// </remarks>
+    public static IServiceCollection ConfigureForwardedHeaders(this IServiceCollection services,
+        IConfiguration configuration)
+    {
+        const string configurationKey = "KnownNetworks";
+        const string allNetworks = "AllNetworks";
+        var knownNetworks = configuration.GetValue(configurationKey, allNetworks)!;
+
+        var logger = new SerilogLoggerFactory(Log.Logger).CreateLogger("ServiceCollection");
+
+        // Use x-forwarded-host and x-forwarded-proto to set httpContext.Request.Host and .Scheme respectively
+        return services.Configure<ForwardedHeadersOptions>(opts =>
+        {
+            opts.ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto;
+
+            if (knownNetworks.Equals(allNetworks))
+            {
+                logger.LogWarning("Forwarded header values accepted from all networks and proxies");
+                opts.KnownIPNetworks.Clear();
+                opts.KnownProxies.Clear();
+            }
+            else
+            {
+                logger.LogInformation("Forwarded header values accepted from networks: {KnownNetworks}", knownNetworks);
+                foreach (var kn in knownNetworks.SplitSeparatedString(","))
+                {
+                    opts.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(kn));
+                }
+            }
+        });
+    }
+
 }
 
 /// <summary>

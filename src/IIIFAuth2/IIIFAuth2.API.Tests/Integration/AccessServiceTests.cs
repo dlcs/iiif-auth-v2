@@ -20,7 +20,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
-    private static readonly IAuth0Client Auth0Client = A.Fake<IAuth0Client>();
+    private static readonly IOAuthClient AuthClient = A.Fake<IOAuthClient>();
 
     public AccessServiceTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
@@ -30,7 +30,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
             .WithTestServices(services => 
                 services
                     .AddSingleton(A.Fake<IAmazonSecretsManager>())
-                    .AddScoped<IAuth0Client>(_ => Auth0Client))
+                    .AddScoped<IOAuthClient>(_ => AuthClient))
             .CreateClient(new WebApplicationFactoryClientOptions
             {
                 AllowAutoRedirect = false
@@ -252,7 +252,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         // Arrange
         var path = $"/access/99/oidc?origin={httpClient.BaseAddress}";
         var authUri = new Uri("http://sample.idp/authorize");
-        A.CallTo(() => Auth0Client.GetAuthLoginUrl(A<OidcConfiguration>._, A<AccessService>._, A<string>._))
+        A.CallTo(() => AuthClient.GetAuthLoginUrl(A<OidcConfiguration>._, A<AccessService>._, A<string>._, A<CancellationToken>._))
             .Returns(authUri);
         
         // Act
@@ -332,7 +332,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
             nameof(AccessService_OAuth2Callback_RendersSignificantGestureView_WithRoleProvisionToken_IfDifferentHost);
         var path = $"/access/99/oidc/oauth2/callback?state={Uri.EscapeDataString(stateToken.Id)}&code={code}";
         A.CallTo(() =>
-                Auth0Client.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
+                AuthClient.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
                     A<CancellationToken>._))
             .Returns(new List<string> { DatabaseFixture.OidcRoleUri });
             
@@ -359,7 +359,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
             nameof(AccessService_OAuth2Callback_RendersSignificantGestureView_WithRoleProvisionToken_IfDifferentHost);
         var path = $"/access/99/oidc/oauth2/callback?state={Uri.EscapeDataString(stateToken.Id)}&code={code}";
         A.CallTo(() =>
-                Auth0Client.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
+                AuthClient.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
                     A<CancellationToken>._))
             .Returns(new List<string> { DatabaseFixture.OidcRoleUri });
             
@@ -396,7 +396,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         const string code = nameof(AccessService_OAuth2Callback_CreatesSessionAndSetsCookie_IfSameHost);
         var path = $"/access/99/oidc/oauth2/callback?state={Uri.EscapeDataString(stateToken.Id)}&code={code}";
         A.CallTo(() =>
-                Auth0Client.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
+                AuthClient.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
                     A<CancellationToken>._))
             .Returns(new List<string> { DatabaseFixture.OidcRoleUri });
             
@@ -436,7 +436,7 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
         const string code = nameof(AccessService_Oidc_RendersWindowClose_IfSameHost);
         var path = $"/access/99/oidc/oauth2/callback?state={Uri.EscapeDataString(stateToken.Id)}&code={code}";
         A.CallTo(() =>
-                Auth0Client.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
+                AuthClient.GetDlcsRolesForCode(A<OidcConfiguration>._, A<AccessService>._, code,
                     A<CancellationToken>._))
             .Returns(new List<string> { DatabaseFixture.OidcRoleUri });
             
