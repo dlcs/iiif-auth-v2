@@ -4,12 +4,12 @@ volumes:
 
 services:
   postgres:
-    image: postgres:14
+    image: postgres:18
     hostname: postgres
     ports:
       - "5430:5432"
     volumes:
-      - auth_postgres_data:/var/lib/postgresql/data
+      - auth_postgres_data:/var/lib/postgresql/docker
       - auth_postgres_data_backups:/backups
     env_file:
       - .env

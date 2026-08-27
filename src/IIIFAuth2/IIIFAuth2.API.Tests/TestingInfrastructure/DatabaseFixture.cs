@@ -7,7 +7,7 @@ using Testcontainers.PostgreSql;
 namespace IIIFAuth2.API.Tests.TestingInfrastructure;
 
 /// <summary>
-/// Xunit fixture that manages lifecycle for Postgres 13 container with migrations applied.
+/// Xunit fixture that manages lifecycle for Postgres 18 container with migrations applied.
 /// </summary>
 public class DatabaseFixture : IAsyncLifetime
 {
@@ -30,7 +30,7 @@ public class DatabaseFixture : IAsyncLifetime
     public DatabaseFixture()
     {
         var postgresBuilder = new PostgreSqlBuilder()
-            .WithImage("postgres:13-alpine")
+            .WithImage("postgres:18-alpine")
             .WithDatabase("db")
             .WithUsername("postgres")
             .WithPassword("postgtes_pword")
