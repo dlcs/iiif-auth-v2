@@ -126,9 +126,9 @@ public class DatabaseFixture : IAsyncLifetime
             AccessServiceId = oidcAccessService.Id
         });
         ClickthroughAccessId = clickthroughAccessService.Id;
-        ClickthroughRoleProviderId = clickthroughAccessService.RoleProviderId.Value;
+        ClickthroughRoleProviderId = clickthroughAccessService.RoleProviderId!.Value;
         OidcAccessId = oidcAccessService.Id;
-        OidcRoleProviderId = oidcAccessService.RoleProviderId.Value;
+        OidcRoleProviderId = oidcAccessService.RoleProviderId!.Value;
 
         DbContext.CustomerCookieDomains.Add(new CustomerCookieDomain
         {
