@@ -27,12 +27,13 @@ docker run -it --rm \
 docker compose up
 ```
 
-For local debugging there are 2 docker compose files available:
+For local debugging there are 3 docker compose files available:
 * `docker-compose.db.yml` - runs an empty postgres instance. Running sln with `RunMigrations=true` will scaffold DB.
 * `docker-compose.local.yml` - runs the above and also an nginx container, which is:
   * Running on `https://localhost:5040`.
   * Proxying `/auth/v2/probe/*` and `/*` to localhost:5013. This is the http port for Orchestrator as defined in `launchSettings.json`
   * Proxying `/auth/v2/*` to localhost:7149. This is the http port for iiif-auth-v2, as defined in `launchSettings.json`
+* `docker-compose.local.certs.yml` - same as `docker-compose.local.yml` but nginx uses your local .NET dev certificate rather than a self-signed one, avoiding browser errors. See [Using .NET dev certificates](#using-net-dev-certificates).
 
 ```bash
 # run postgres DB only
@@ -40,10 +41,33 @@ $ docker compose -f docker-compose.db.yml up
 
 # run postgres DB and nginx proxy
 $ docker compose -f docker-compose.local.yml up
+
+# run postgres DB and nginx proxy, using .NET dev certificates
+$ docker compose -f docker-compose.local.certs.yml up
 ```
 
 > [!WARNING]
-> That nginx container uses a self-signed cert. This will show browser errors but is enough for local testing.
+> The nginx container in `docker-compose.local.yml` uses a self-signed cert. This will show browser errors but is enough for local testing.
+
+### Using .NET dev certificates
+
+`docker-compose.local.certs.yml` mounts `nginx/certs/` into the nginx container at `/etc/nginx/ssl`, and expects `nginx/certs/cert.pem` and `nginx/certs/key.pem` to exist, these need to be exported from your trusted dotnet dev certificate before running:
+
+```bash
+# ensure a trusted dev certificate exists
+$ dotnet dev-certs https --trust
+
+# export as PEM - this writes nginx/certs/cert.pem and nginx/certs/cert.key
+$ dotnet dev-certs https --export-path nginx/certs/cert.pem --format Pem --no-password
+
+# rename key to the name expected by DockerfileLocalCerts
+$ mv nginx/certs/cert.key nginx/certs/key.pem
+```
+
+> [!NOTE]
+> The private key is exported unencrypted, don't share it. 
+> 
+> The certificate is mounted at runtime, if the dev certificate is regenerated, re-export and restart the nginx container.
 
 ## Configuration
 

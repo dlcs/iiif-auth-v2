@@ -17,7 +17,9 @@ services:
   nginx:
     build:
       context: ./nginx
-      dockerfile: DockerfileLocalCerts  
+      dockerfile: DockerfileLocalCerts
+    volumes:
+      - ./nginx/certs:/etc/nginx/ssl:ro
     ports:
       - "5040:443"
       - "5039:80"

@@ -1,11 +1,8 @@
 FROM nginx:alpine
 
 # Create SSL directory
+# .NET dev certificates (already trusted by browser) are mounted here at runtime, see docker-compose.local.certs.yml
 RUN mkdir -p /etc/nginx/ssl
-
-# Copy .NET dev certificates (already trusted by browser)
-COPY certs/cert.pem /etc/nginx/ssl/cert.pem
-COPY certs/key.pem /etc/nginx/ssl/key.pem
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
