@@ -85,3 +85,15 @@ Below are steps for running iiif-auth-v2 and Orchestrator locally:
 1. Run `docker compose -f docker-compose.local.yml up`
 2. In iiif-auth-v2 set `"OrchestratorRoot": "https://localhost:5040"` appSetting (nginx port)
 3. In orchestrator set `"Auth__Auth2ServiceRoot": "https://localhost:7049/auth/v2/"` appSetting (default from auth-services launchSettings)
+4. When making Orchestrator requests use the nginx port `:5040`, rather than the standard dotnet launchSettings port. This ensures that auth + orchestrator are on same port and avoids any cookie issues.
+
+### One Off
+
+You'll need to setup an access service and role provider locally, see [bootstrap.sql](./scripts/sql/bootstrap.sql) for example of setting up clickthrough provider.
+
+### Testing
+
+There's a sample auth client available at https://tomcrane.github.io/iiif-auth-client/ that is useful for testing. This shows verbose logging to help diagnose and track any issues.
+
+* https://tomcrane.github.io/iiif-auth-client/?image=https://localhost:5040/iiif-img/{asset-id}/info.json
+* https://tomcrane.github.io/iiif-auth-client/?manifest=https://localhost:5040/iiif-manifest/{asset-id}
