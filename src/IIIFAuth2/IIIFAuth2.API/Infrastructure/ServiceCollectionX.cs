@@ -1,6 +1,5 @@
 ﻿using Amazon.SecretsManager;
 using Amazon.SecretsManager.Extensions.Caching;
-using AWSSDK;
 using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
@@ -12,6 +11,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Razor;
+using Microsoft.OpenApi;
 using Serilog;
 using Serilog.Extensions.Logging;
 
@@ -52,6 +52,23 @@ public static class ServiceCollectionX
         
         services.AddControllers();
         services.AddRazorPages();
+        return services;
+    }
+
+    /// <summary>
+    /// Add Swagger/OpenAPI generation and UI
+    /// </summary>
+    public static IServiceCollection AddSwagger(this IServiceCollection services)
+    {
+        services.AddEndpointsApiExplorer();
+        services.AddSwaggerGen(opts =>
+        {
+            opts.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "IIIF Auth2 API",
+                Version = "v1"
+            });
+        });
         return services;
     }
 
