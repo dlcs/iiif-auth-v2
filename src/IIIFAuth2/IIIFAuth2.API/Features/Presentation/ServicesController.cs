@@ -17,20 +17,20 @@ public class ServicesController : AuthBaseController
     }
     
     /// <summary>
-    /// Generate a IIIF Services Description for auth services for given AssetId and Role.
+    /// Generate a IIIF Services Description for auth services for given DeliverableId and Role.
     /// No check is done to validate that the specified resource has the given role - this is an outside concern
     /// </summary>
-    /// <param name="assetId">Id of DLCS asset to generate service description for</param>
+    /// <param name="deliverableId">Id of deliverable to generate service description for</param>
     /// <param name="roles">Comma delimited list of roles that asset has</param>
-    /// <returns>IIIF Service Description for specified asset</returns>
+    /// <returns>IIIF Service Description for specified deliverable</returns>
     [HttpGet]
-    [Route("{**assetId}")]
+    [Route("{**deliverableId}")]
     public Task<IActionResult> GetServicesDescription(
-        [FromRoute] string assetId,
+        [FromRoute] string deliverableId,
         [FromQuery] string roles,
         CancellationToken cancellationToken)
     {
-        return HandleRequest(() => new GetServicesDescription(assetId, roles),
+        return HandleRequest(() => new GetServicesDescription(deliverableId, roles),
             errorTitle: "Error getting IIIF services",
             cancellationToken: cancellationToken);
     }

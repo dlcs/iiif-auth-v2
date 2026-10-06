@@ -267,6 +267,117 @@ public class VerifyAccessTests : IClassFixture<AuthWebApplicationFactory>
         sessionUser.Entity.LastChecked.Should().BeCloseTo(lastChecked, TimeSpan.FromMilliseconds(100));
     }
 
+    [Fact]
+    public async Task VerifyAccessAdjunct_Returns400_IfRolesMissing()
+    {
+        // Arrange
+        const string path = "verifyaccess/99/2/assetname/adjunct-1";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task VerifyAccessAdjunct_Returns400_IfAssetIdInvalid()
+    {
+        // Arrange
+        const string path = "verifyaccess/not-a-customer/2/assetname/adjunct-1?roles=hello";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task VerifyAccessAdjunct_Returns401_IfNoCookie()
+    {
+        // Arrange
+        const string path = "verifyaccess/99/2/foo/adjunct-1?roles=clickthrough";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task VerifyAccessAdjunct_Returns401_IfCookieProvidedWithId_ButIdNotInDatabase()
+    {
+        // Arrange
+        const string path = "verifyaccess/99/2/foo/adjunct-1?roles=clickthrough";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", "dlcs-auth2-99=id=123456789;");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task VerifyAccessAdjunct_Returns401_IfCookieForExpiredSession()
+    {
+        // Arrange
+        const string cookieId = nameof(VerifyAccessAdjunct_Returns401_IfCookieForExpiredSession);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(cookieId, expires: DateTime.UtcNow.AddMinutes(-10)));
+        await dbContext.SaveChangesAsync();
+
+        const string path = "verifyaccess/99/2/foo/adjunct-1?roles=clickthrough";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task VerifyAccessAdjunct_Returns403_IfCookieProvidedWithId_ButSessionDoesNotHaveRoles()
+    {
+        // Arrange
+        const string cookieId = nameof(VerifyAccessAdjunct_Returns403_IfCookieProvidedWithId_ButSessionDoesNotHaveRoles);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(cookieId));
+        await dbContext.SaveChangesAsync();
+
+        const string path = "verifyaccess/99/2/foo/adjunct-1?roles=foo";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task VerifyAccessAdjunct_Returns200_IfCookieValid()
+    {
+        // Arrange
+        const string cookieId = nameof(VerifyAccessAdjunct_Returns200_IfCookieValid);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(cookieId));
+        await dbContext.SaveChangesAsync();
+
+        const string path = "verifyaccess/99/2/foo/adjunct-1?roles=clickthrough";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     private static SessionUser CreateSessionUser(string cookieId, int customer = 99, string origin = "http://localhost/",
         DateTime? expires = null, DateTime? lastChecked = null)
         => new()

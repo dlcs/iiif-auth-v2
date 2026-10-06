@@ -23,7 +23,7 @@ public class ProbeController : AuthBaseController
     /// Generate a IIIF Probe Service Response by validating Bearer token. Used for both Assets
     /// ({customer}/{space}/{asset}) and Adjuncts ({customer}/{space}/{asset}/{adjunctId})
     /// </summary>
-    /// <param name="deliverableId">Id of DLCS asset or adjunct to get probe service result for</param>
+    /// <param name="deliverableId">Id of DLCS deliverable to get probe service result for</param>
     /// <param name="roles">Comma delimited list of roles that asset has</param>
     [HttpGet]
     [Route("probe_internal/{**deliverableId}")]
@@ -46,7 +46,7 @@ public class ProbeController : AuthBaseController
         catch (FormatException fmtEx)
         {
             Logger.LogDebug(fmtEx, "Format exception processing probe service request");
-            return GenerateErrorResult(HttpStatusCode.BadRequest, "Provided AssetId is invalid format");
+            return GenerateErrorResult(HttpStatusCode.BadRequest, "Provided DeliverableId is invalid format");
         }
         catch (Exception ex)
         {

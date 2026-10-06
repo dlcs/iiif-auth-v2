@@ -138,12 +138,35 @@ public class AccessServiceConverterTests
         };
         
         // Act
-        var actual = accessServices.ToProbeService(new FakePathProvider(), new AssetId(99, 10, "foo"));
-        
+        var actual = accessServices.ToProbeService(new FakePathProvider(), new DeliverableId(99, 10, "foo"));
+
         // Assert
         actual.Should().BeEquivalentTo(expected);
     }
-    
+
+    [Fact]
+    public void ToProbeService_UsesAdjunctId_IfAdjunct()
+    {
+        // Arrange
+        var accessServices = new List<AccessService>
+        {
+            new()
+            {
+                Id = Guid.Empty,
+                Profile = "active",
+                Customer = 99,
+                Name = "test access service",
+            }
+        };
+
+        // Act
+        var actual = accessServices.ToProbeService(new FakePathProvider(),
+            new DeliverableId(99, 10, "foo", "adjunct-1"));
+
+        // Assert
+        actual.Id.Should().Be("http://orchestrator.example/probe/99/10/foo/adjunct-1");
+    }
+
     [Fact]
     public void ToProbeService_ConvertMultipleServices()
     {
@@ -209,7 +232,7 @@ public class AccessServiceConverterTests
         };
         
         // Act
-        var actual = accessServices.ToProbeService(new FakePathProvider(), new AssetId(99, 10, "foo"));
+        var actual = accessServices.ToProbeService(new FakePathProvider(), new DeliverableId(99, 10, "foo"));
         
         // Assert
         actual.Should().BeEquivalentTo(expected);
@@ -217,8 +240,8 @@ public class AccessServiceConverterTests
 
     private class FakePathProvider : IUrlPathProvider
     {
-        public Uri GetOrchestratorProbeServicePath(AssetId assetId)
-            => new($"http://orchestrator.example/probe/{assetId}");
+        public Uri GetOrchestratorProbeServicePath(DeliverableId deliverableId)
+            => new($"http://orchestrator.example/probe/{deliverableId}");
 
         public Uri GetAccessServicePath(AccessService accessService)
             => new($"http://test.example/access/{accessService.Name}");

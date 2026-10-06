@@ -9,11 +9,11 @@ namespace IIIFAuth2.API.Models.Converters;
 
 public static class AccessServiceConverter
 {
-    public static AuthProbeService2 ToProbeService(this ICollection<AccessService> accessServices, IUrlPathProvider pathProvider, AssetId assetId)
+    public static AuthProbeService2 ToProbeService(this ICollection<AccessService> accessServices, IUrlPathProvider pathProvider, DeliverableId deliverableId)
     {
         var probeService = new AuthProbeService2
         {
-            Id = pathProvider.GetOrchestratorProbeServicePath(assetId).ToString(),
+            Id = pathProvider.GetOrchestratorProbeServicePath(deliverableId).ToString(),
             Service = new List<IService>(accessServices.Count),
         };
 

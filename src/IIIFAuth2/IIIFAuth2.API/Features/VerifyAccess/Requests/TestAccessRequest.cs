@@ -10,13 +10,13 @@ namespace IIIFAuth2.API.Features.VerifyAccess.Requests;
 /// </summary>
 public class TestAccessRequest : IRequest<HttpStatusCode>
 {
-    public AssetId AssetId { get; }
-    
+    public DeliverableId DeliverableId { get; }
+
     public IReadOnlyCollection<string> Roles { get; }
 
-    public TestAccessRequest(string assetId, string roles)
+    public TestAccessRequest(string deliverableId, string roles)
     {
-        AssetId = AssetId.FromString(assetId);
+        DeliverableId = DeliverableId.FromString(deliverableId);
         Roles = roles.Split(",", StringSplitOptions.RemoveEmptyEntries);
     }
 }
@@ -33,7 +33,7 @@ public class GetAccessTestResultHandler : IRequestHandler<TestAccessRequest, Htt
     public async Task<HttpStatusCode> Handle(TestAccessRequest request, CancellationToken cancellationToken)
     {
         var tryGetSessionResponse =
-            await sessionManagementService.TryGetSessionUserForCookie(request.AssetId.Customer, null,
+            await sessionManagementService.TryGetSessionUserForCookie(request.DeliverableId.Customer, null,
                 cancellationToken);
 
         var statusCode = AccessStatusCodeHelpers.GetStatusCode(tryGetSessionResponse, request.Roles);

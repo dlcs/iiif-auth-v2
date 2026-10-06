@@ -13,13 +13,13 @@ namespace IIIFAuth2.API.Features.Probe.Requests;
 /// </summary>
 public class GetProbeServiceDescription : IRequest<AuthProbeResult2>
 {
-    public AssetId AssetId { get; }
-    
+    public DeliverableId DeliverableId { get; }
+
     public IReadOnlyCollection<string> Roles { get; }
 
-    public GetProbeServiceDescription(string assetId, string roles)
+    public GetProbeServiceDescription(string deliverableId, string roles)
     {
-        AssetId = AssetId.FromString(assetId);
+        DeliverableId = DeliverableId.FromString(deliverableId);
         Roles = roles.Split(",", StringSplitOptions.RemoveEmptyEntries);
     }
 }
@@ -36,7 +36,7 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetProbeServiceDesc
     public async Task<AuthProbeResult2> Handle(GetProbeServiceDescription request, CancellationToken cancellationToken)
     {
         var findSessionResponse =
-            await sessionManagementService.TryGetSessionUserForAccessToken(request.AssetId.Customer, cancellationToken);
+            await sessionManagementService.TryGetSessionUserForAccessToken(request.DeliverableId.Customer, cancellationToken);
 
         var authProbeResult = BuildProbeResultResponse(findSessionResponse, request.Roles);
         return authProbeResult;
