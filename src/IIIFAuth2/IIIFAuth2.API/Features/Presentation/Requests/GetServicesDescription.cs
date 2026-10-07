@@ -10,17 +10,17 @@ using MediatR;
 namespace IIIFAuth2.API.Features.Presentation.Requests;
 
 /// <summary>
-/// Request to generate IIIF Services definition for auth services for specified asset + roles  
+/// Request to generate IIIF Services definition for auth services for specified deliverable + roles
 /// </summary>
 public class GetServicesDescription : IRequest<IIIFResourceResponse>
 {
-    public AssetId AssetId { get; }
-    
+    public DeliverableId DeliverableId { get; }
+
     public IReadOnlyCollection<string> Roles { get; }
 
-    public GetServicesDescription(string assetId, string roles)
+    public GetServicesDescription(string deliverableId, string roles)
     {
-        AssetId = AssetId.FromString(assetId);
+        DeliverableId = DeliverableId.FromString(deliverableId);
         Roles = roles.Split(",", StringSplitOptions.RemoveEmptyEntries);
     }
 }
@@ -43,7 +43,7 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
     
     public async Task<IIIFResourceResponse> Handle(GetServicesDescription request, CancellationToken cancellationToken)
     {
-        var customerId = request.AssetId.Customer;
+        var customerId = request.DeliverableId.Customer;
         var rolesAccessServiceIds = await GetAccessServiceIdsForRoles(request, customerId);
         
         if (rolesAccessServiceIds.IsNullOrEmpty()) return IIIFResourceResponse.NotFound("Requested roles not found");
@@ -65,7 +65,7 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
 
         try
         {
-            var probeService = accessServices.ToProbeService(urlPathProvider, request.AssetId);
+            var probeService = accessServices.ToProbeService(urlPathProvider, request.DeliverableId);
             return IIIFResourceResponse.Success(probeService);
         }
         catch (Exception ex)

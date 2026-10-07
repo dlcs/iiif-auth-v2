@@ -17,19 +17,20 @@ public class VerifyAccessController : AuthBaseController
     }
 
     /// <summary>
-    /// Generate a status-code response by validating cookie associated with request  
+    /// Generate a status-code response by validating cookie associated with request. Used for both Assets
+    /// ({customer}/{space}/{asset}) and Adjuncts ({customer}/{space}/{asset}/{adjunctId})
     /// </summary>
-    /// <param name="assetId">Id of DLCS asset to check access for</param>
+    /// <param name="deliverableId">Id of DLCS deliverable to check access for</param>
     /// <param name="roles">Comma delimited list of roles that asset has</param>
     [HttpGet]
-    [Route("{**assetId}")]
+    [Route("{**deliverableId}")]
     public async Task<IActionResult> VerifyAccess(
-        [FromRoute] string assetId,
+        [FromRoute] string deliverableId,
         [FromQuery] string roles,
         CancellationToken cancellationToken)
         => await HandleRequest(async () =>
         {
-            var testAccessRequest = new TestAccessRequest(assetId, roles);
+            var testAccessRequest = new TestAccessRequest(deliverableId, roles);
             var statusCode = await Mediator.Send(testAccessRequest, cancellationToken);
             return StatusCode((int)statusCode);
         });

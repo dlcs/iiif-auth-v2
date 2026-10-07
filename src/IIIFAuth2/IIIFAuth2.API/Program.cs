@@ -34,7 +34,8 @@ try
         .AddCaching()
         .AddAws(builder.Configuration)
         .ConfigureAspnetMvc()
-        .ConfigureForwardedHeaders(builder.Configuration);
+        .ConfigureForwardedHeaders(builder.Configuration)
+        .AddSwagger();
 
     var apiSettings = builder.Configuration.Get<ApiSettings>()!;
     
@@ -49,6 +50,8 @@ try
     if (app.Environment.IsDevelopment())
     {
         app.UseDeveloperExceptionPage();
+        app.UseSwagger();
+        app.UseSwaggerUI();
     }
 
     app.MapRazorPages();

@@ -12,7 +12,7 @@ public interface IUrlPathProvider
     /// <summary>
     /// Get the path for Orchestrator probe service - this will be the publicly called endpoint
     /// </summary>
-    Uri GetOrchestratorProbeServicePath(AssetId assetId);
+    Uri GetOrchestratorProbeServicePath(DeliverableId deliverableId);
 
     /// <summary>
     /// Get the path for AccessService
@@ -55,10 +55,10 @@ public class UrlPathProvider : IUrlPathProvider
     }
     
     /// <inheritdoc />
-    public Uri GetOrchestratorProbeServicePath(AssetId assetId)
+    public Uri GetOrchestratorProbeServicePath(DeliverableId deliverableId)
     {
         var orchestratorUrl = apiSettings.OrchestratorRoot;
-        var path = $"/auth/v2/probe/{assetId}";
+        var path = $"/auth/v2/probe/{deliverableId}";
         var builder = new UriBuilder(orchestratorUrl)
         {
             Path = path

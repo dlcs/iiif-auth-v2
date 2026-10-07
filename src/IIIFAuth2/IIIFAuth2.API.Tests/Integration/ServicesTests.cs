@@ -139,7 +139,58 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
         var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
         probeService.Should().BeEquivalentTo(expected);
     }
-    
+
+    [Fact]
+    public async Task GetServicesDescription_ReturnsServicesDescription_ForAdjunct_IfRoleAndAccessServiceFound()
+    {
+        // Arrange
+        var path = $"services/99/2/asset/adjunct-1?roles={DatabaseFixture.ClickthroughRoleUri}";
+
+        var expected = new AuthProbeService2
+        {
+            Id = "https://orchestrator.testing/auth/v2/probe/99/2/asset/adjunct-1",
+            Service = new List<IService>
+            {
+                new AuthAccessService2
+                {
+                    Id = "http://localhost/auth/v2/access/99/clickthrough",
+                    Profile = "active",
+                    Service = new List<IService>
+                    {
+                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/access/99/token", },
+                        new AuthLogoutService2
+                        {
+                            Id = "http://localhost/auth/v2/99/clickthrough/logout",
+                            Label = new LanguageMap("en", $"Logout of {DatabaseFixture.ClickthroughService}")
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        probeService.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task GetServicesDescription_Returns400_IfTooManyPathSegments()
+    {
+        // Arrange
+        var path = $"services/99/2/asset/adjunct-1/extra?roles={DatabaseFixture.ClickthroughRoleUri}";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     [Fact]
     public async Task GetServicesDescription_ReturnsServicesDescription_SingleService_IfMultipleRoles_OneNotFound()
     {

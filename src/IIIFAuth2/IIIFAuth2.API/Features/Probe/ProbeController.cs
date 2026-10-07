@@ -20,14 +20,15 @@ public class ProbeController : AuthBaseController
     }
 
     /// <summary>
-    /// Generate a IIIF Probe Service Response by validating Bearer token  
+    /// Generate a IIIF Probe Service Response by validating Bearer token. Used for both Assets
+    /// ({customer}/{space}/{asset}) and Adjuncts ({customer}/{space}/{asset}/{adjunctId})
     /// </summary>
-    /// <param name="assetId">Id of DLCS asset to get probe service result for</param>
+    /// <param name="deliverableId">Id of DLCS deliverable to get probe service result for</param>
     /// <param name="roles">Comma delimited list of roles that asset has</param>
     [HttpGet]
-    [Route("probe_internal/{**assetId}")]
+    [Route("probe_internal/{**deliverableId}")]
     public async Task<IActionResult> ProbeService(
-        [FromRoute] string assetId,
+        [FromRoute] string deliverableId,
         [FromQuery] string roles,
         CancellationToken cancellationToken)
     {
@@ -38,14 +39,14 @@ public class ProbeController : AuthBaseController
                 return GenerateErrorResult(HttpStatusCode.BadRequest, "Required roles query parameter missing");
             }
 
-            var probeServiceRequest = new GetProbeServiceDescription(assetId, roles);
+            var probeServiceRequest = new GetProbeServiceDescription(deliverableId, roles);
             var probeServiceResult = await Mediator.Send(probeServiceRequest, cancellationToken);
             return IIIFContent(probeServiceResult);
         }
         catch (FormatException fmtEx)
-        {   
+        {
             Logger.LogDebug(fmtEx, "Format exception processing probe service request");
-            return GenerateErrorResult(HttpStatusCode.BadRequest, "Provided AssetId is invalid format");
+            return GenerateErrorResult(HttpStatusCode.BadRequest, "Provided DeliverableId is invalid format");
         }
         catch (Exception ex)
         {
@@ -53,7 +54,7 @@ public class ProbeController : AuthBaseController
             return GenerateErrorResult(HttpStatusCode.InternalServerError, "Unexpected error");
         }
     }
-    
+
     private ContentResult GenerateErrorResult(HttpStatusCode statusCode, string note)
     {
         var heading = statusCode == HttpStatusCode.BadRequest ? "Bad Request" : "Unexpected Error";

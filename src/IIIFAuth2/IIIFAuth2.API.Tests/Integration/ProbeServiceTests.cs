@@ -301,6 +301,144 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
             .And.Contain("secure;");
     }
 
+    [Fact]
+    public async Task GetAdjunctProbeService_Returns400StatusProperty_IfRolesMissing()
+    {
+        // Arrange
+        const string path = "probe_internal/99/2/assetname/adjunct-1";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(400, "BadRequest (400) expected");
+    }
+
+    [Fact]
+    public async Task GetAdjunctProbeService_Returns400StatusProperty_IfAssetIdInvalid()
+    {
+        // Arrange
+        const string path = "probe_internal/not-a-customer/2/assetname/adjunct-1?roles=hello";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(400, "BadRequest (400) expected");
+    }
+
+    [Fact]
+    public async Task GetAdjunctProbeService_Returns401StatusProperty_IfNoBearerToken()
+    {
+        // Arrange
+        const string path = "probe_internal/99/2/foo/adjunct-1?roles=clickthrough";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(401, "Unauthorized (401) expected");
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Missing credentials");
+        authProbeResult.Note["en"].Should().ContainSingle(s => s == "Authorising credentials not found");
+    }
+
+    [Fact]
+    public async Task GetAdjunctProbeService_Returns401StatusProperty_IfBearerTokenProvided_ButNotInDatabase()
+    {
+        // Arrange
+        const string path = "probe_internal/99/2/foo/adjunct-1?roles=clickthrough";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Authorization", "Bearer foo-bar");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(401, "Unauthorized (401) expected");
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Invalid credentials");
+        authProbeResult.Note["en"].Should().ContainSingle(s => s == "Authorising credentials invalid");
+    }
+
+    [Fact]
+    public async Task GetAdjunctProbeService_Returns401StatusProperty_IfBearerTokenProvidedForExpiredSession()
+    {
+        // Arrange
+        const string accessToken =
+            nameof(GetAdjunctProbeService_Returns401StatusProperty_IfBearerTokenProvidedForExpiredSession);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken, expires: DateTime.UtcNow.AddMinutes(-10)));
+        await dbContext.SaveChangesAsync();
+
+        const string path = "probe_internal/99/2/foo/adjunct-1?roles=clickthrough";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Authorization", $"Bearer {accessToken}");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(401, "Unauthorized (401) expected");
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Expired session");
+        authProbeResult.Note["en"].Should().ContainSingle(s => s == "Session has expired");
+    }
+
+    [Fact]
+    public async Task GetAdjunctProbeService_Returns403StatusProperty_IfBearerTokenValid_ButMissingRequiredRoles()
+    {
+        // Arrange
+        const string accessToken =
+            nameof(GetAdjunctProbeService_Returns403StatusProperty_IfBearerTokenValid_ButMissingRequiredRoles);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken));
+        await dbContext.SaveChangesAsync();
+
+        const string path = "probe_internal/99/2/foo/adjunct-1?roles=clickthrough";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Authorization", $"Bearer {accessToken}");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(403, "Forbidden (403) expected");
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Forbidden");
+        authProbeResult.Note["en"].Should().ContainSingle(s => s == "Session does not have required roles");
+    }
+
+    [Fact]
+    public async Task GetAdjunctProbeService_Returns200StatusProperty_IfBearerTokenValid_AndHasRequiredRoles()
+    {
+        // Arrange
+        const string accessToken =
+            nameof(GetAdjunctProbeService_Returns200StatusProperty_IfBearerTokenValid_AndHasRequiredRoles);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken));
+        await dbContext.SaveChangesAsync();
+
+        const string path = "probe_internal/99/2/foo/adjunct-1?roles=clickthrough,foo";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Authorization", $"Bearer {accessToken}");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(200, "OK (200) expected");
+        authProbeResult.Heading.Should().BeNull();
+        authProbeResult.Note.Should().BeNull();
+    }
+
     private static SessionUser CreateSessionUser(string accessToken, int customer = 99, DateTime? expires = null,
         DateTime? lastChecked = null)
         => new()
