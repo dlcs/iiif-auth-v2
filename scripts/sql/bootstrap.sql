@@ -7,8 +7,8 @@ WITH
     access_service_id AS (SELECT gen_random_uuid() AS id),
     -- create a role provder
     insert_role_provider AS (
-        INSERT INTO role_providers (id, configuration)
-            SELECT id, '{"default": {"config": "Clickthrough"}}'
+        INSERT INTO role_providers (id, customer, configuration)
+            SELECT id, 7, '{"default": {"config": "Clickthrough"}}'
             FROM role_provider_id
             RETURNING *
     ),
