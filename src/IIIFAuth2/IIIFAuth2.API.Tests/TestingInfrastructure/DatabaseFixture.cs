@@ -70,6 +70,7 @@ public class DatabaseFixture : IAsyncLifetime
     {
         var clickthroughRoleProvider = new RoleProvider
         {
+            Customer = Customer,
             Configuration = new RoleProviderConfiguration
             {
                 [RoleProviderConfiguration.DefaultKey] = new ClickthroughConfiguration
@@ -80,6 +81,7 @@ public class DatabaseFixture : IAsyncLifetime
         };
         var oidcRoleProvider = new RoleProvider
         {
+            Customer = Customer,
             Configuration = new RoleProviderConfiguration
             {
                 [RoleProviderConfiguration.DefaultKey] = new OidcConfiguration
