@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Headers;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Settings;
 using IIIFAuth2.API.Utils;
+using IIIFAuth2.Core.Data.Entities;
 using Microsoft.Extensions.Options;
 
 namespace IIIFAuth2.API.Infrastructure.Auth;

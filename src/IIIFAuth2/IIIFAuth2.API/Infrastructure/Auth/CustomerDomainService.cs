@@ -1,5 +1,5 @@
-﻿using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Utils;
+﻿using IIIFAuth2.API.Utils;
+using IIIFAuth2.Core.Data;
 
 namespace IIIFAuth2.API.Infrastructure.Auth;
 

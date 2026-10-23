@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.WebUtilities;
-using IIIFAuth2.API.Models.Domain;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Utils;
+using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Core.Models.Domain;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 

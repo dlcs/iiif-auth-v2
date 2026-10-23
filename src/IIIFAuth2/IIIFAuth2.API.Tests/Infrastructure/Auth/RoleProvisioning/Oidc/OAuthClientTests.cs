@@ -2,11 +2,11 @@
 using System.Security.Claims;
 using System.Text;
 using FakeItEasy;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Infrastructure.Web;
-using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
+using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Core.Models.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
 
 

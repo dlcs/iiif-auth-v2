@@ -1,6 +1,5 @@
 ﻿using Amazon.SecretsManager;
 using Amazon.SecretsManager.Extensions.Caching;
-using IIIFAuth2.API.Data;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
@@ -19,15 +18,6 @@ namespace IIIFAuth2.API.Infrastructure;
 
 public static class ServiceCollectionX
 {
-    /// <summary>
-    /// Add required health checks
-    /// </summary>
-    public static IServiceCollection AddAuthServicesHealthChecks(this IServiceCollection services)
-    {
-        services.AddHealthChecks().AddDbContextCheck<AuthServicesContext>();
-        return services;
-    }
-    
     /// <summary>
     /// Configure AspNet - controllers, razorViews etc
     /// </summary>

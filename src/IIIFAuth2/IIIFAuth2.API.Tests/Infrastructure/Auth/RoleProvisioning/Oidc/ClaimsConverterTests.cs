@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
-using IIIFAuth2.API.Models.Domain;
+using IIIFAuth2.Core.Models.Domain;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace IIIFAuth2.API.Tests.Infrastructure.Auth.RoleProvisioning.Oidc;

@@ -9,7 +9,7 @@ on:
   pull_request:
 
 jobs:
-  build-push:
+  test:
     runs-on: ubuntu-latest
 
     steps:
@@ -24,13 +24,29 @@ jobs:
       - id: dotnet-test
         run: dotnet test ./src/IIIFAuth2/ /p:Configuration=Release --verbosity normal
 
+  build-push:
+    runs-on: ubuntu-latest
+    needs: test
+
+    strategy:
+      matrix:
+        include:
+          - dockerfile: Dockerfile
+            image: ghcr.io/dlcs/iiif-auth-2
+          - dockerfile: Dockerfile.Management
+            image: ghcr.io/dlcs/iiif-auth-2-management
+
+    steps:
+      - id: checkout
+        uses: actions/checkout@v7
+
       - id: buildx        
         uses: docker/setup-buildx-action@v4
 
       - id: docker-meta        
         uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/dlcs/iiif-auth-2
+          images: ${{ matrix.image }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -43,9 +59,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            ${{ runner.os }}-buildx-${{ matrix.dockerfile }}-
 
       - id: ghcr-login
         uses: docker/login-action@v4
@@ -58,6 +74,7 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: .
+          file: ${{ matrix.dockerfile }}
           builder: ${{ steps.buildx.outputs.name }}
           tags: ${{ steps.docker-meta.outputs.tags }}
           labels: ${{ steps.docker-meta.outputs.labels }}

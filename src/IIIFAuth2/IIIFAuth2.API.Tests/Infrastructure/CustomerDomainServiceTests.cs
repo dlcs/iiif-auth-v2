@@ -1,8 +1,9 @@
 ﻿using FakeItEasy;
-using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
+using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Tests.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging.Abstractions;
 

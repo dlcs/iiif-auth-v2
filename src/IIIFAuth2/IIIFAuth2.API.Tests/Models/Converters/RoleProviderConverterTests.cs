@@ -1,5 +1,5 @@
-﻿using IIIFAuth2.API.Models.Converters;
-using IIIFAuth2.API.Models.Domain;
+﻿using IIIFAuth2.Core.Models.Converters;
+using IIIFAuth2.Core.Models.Domain;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json.Serialization;

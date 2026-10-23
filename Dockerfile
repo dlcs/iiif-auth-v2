@@ -1,6 +1,7 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY ["src/IIIFAuth2/IIIFAuth2.API/IIIFAuth2.API.csproj", "IIIFAuth2.API/"]
+COPY ["src/IIIFAuth2/IIIFAuth2.Core/IIIFAuth2.Core.csproj", "IIIFAuth2.Core/"]
 RUN dotnet restore "IIIFAuth2.API/IIIFAuth2.API.csproj"
 
 COPY src/IIIFAuth2/ .

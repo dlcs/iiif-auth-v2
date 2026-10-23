@@ -1,7 +1,7 @@
-using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Infrastructure;
+﻿using IIIFAuth2.API.Infrastructure;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Settings;
+using IIIFAuth2.Core.Data;
 using JetBrains.Annotations;
 using Serilog;
 
@@ -44,8 +44,7 @@ try
         .UseSerilogRequestLogging()
         .UseForwardedHeaders()
         .HandlePathBase(apiSettings.PathBase, app.Logger)
-        .UseRouting()
-        .TryRunMigrations(app.Configuration, app.Logger);
+        .UseRouting();
 
     if (app.Environment.IsDevelopment())
     {

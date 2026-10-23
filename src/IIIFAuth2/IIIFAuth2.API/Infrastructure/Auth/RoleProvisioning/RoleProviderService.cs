@@ -1,8 +1,8 @@
-﻿using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Data.Entities;
-using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
-using IIIFAuth2.API.Models.Domain;
+﻿using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Utils;
+using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Core.Models.Domain;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 
