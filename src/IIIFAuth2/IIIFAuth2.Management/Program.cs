@@ -1,5 +1,6 @@
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Management.Infrastructure;
+using IIIFAuth2.Management.Infrastructure.Aws;
 using IIIFAuth2.Management.Settings;
 using Serilog;
 
@@ -20,6 +21,7 @@ try
             .Enrich.WithCorrelationIdHeader());
 
     var managementSettings = builder.Configuration.Get<ManagementSettings>()!;
+    var awsSettings = builder.Configuration.GetSection(AWSSettings.SettingsName).Get<AWSSettings>() ?? new AWSSettings();
 
     builder.Services
         .ConfigureOptions(builder.Configuration)
@@ -30,6 +32,8 @@ try
         .AddLazyCache()
         .AddDlcsApiClient(managementSettings.Dlcs)
         .AddSwagger()
+        .AddAws(builder.Configuration, builder.Environment)
+        .AddBackgroundServices(awsSettings)
         .AddDelegatedAuthHandler(opts => opts.Realm = "DLCS-API");
 
     builder.Services.AddAuthorization();

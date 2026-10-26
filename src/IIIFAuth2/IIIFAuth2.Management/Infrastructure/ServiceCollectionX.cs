@@ -1,6 +1,9 @@
 using System.Net.Http.Headers;
+using IIIFAuth2.Management.Features.CustomerCreation;
+using IIIFAuth2.Management.Infrastructure.Aws;
 using IIIFAuth2.Management.Infrastructure.Auth;
 using IIIFAuth2.Management.Infrastructure.Dlcs;
+using IIIFAuth2.Management.Infrastructure.Sqs;
 using IIIFAuth2.Management.Settings;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.OpenApi;
@@ -15,6 +18,38 @@ public static class ServiceCollectionX
     public static IServiceCollection ConfigureOptions(this IServiceCollection services,
         ConfigurationManager configuration)
         => services.Configure<ManagementSettings>(configuration);
+
+    /// <summary>
+    /// Add AWS dependencies, uses LocalStack if configured
+    /// </summary>
+    public static IServiceCollection AddAws(this IServiceCollection services, IConfiguration configuration,
+        IHostEnvironment environment)
+    {
+        services
+            .AddSingleton<SqsListener>()
+            .AddSingleton<SqsQueueUtilities>()
+            .SetupAWS(configuration, environment)
+            .WithAmazonSQS();
+
+        return services;
+    }
+
+    /// <summary>
+    /// Add background SQS listeners. A listener is only added if the corresponding queue name is configured.
+    /// </summary>
+    public static IServiceCollection AddBackgroundServices(this IServiceCollection services, AWSSettings aws)
+    {
+        if (!string.IsNullOrEmpty(aws.SQS.CustomerCreatedQueueName))
+        {
+            services
+                .AddHostedService(sp =>
+                    ActivatorUtilities.CreateInstance<BackgroundListenerService<CustomerCreatedMessageHandler>>(sp,
+                        aws.SQS.CustomerCreatedQueueName))
+                .AddScoped<CustomerCreatedMessageHandler>();
+        }
+
+        return services;
+    }
 
     /// <summary>
     /// Add <see cref="IDlcsApiClient"/> to services collection.

@@ -107,6 +107,13 @@ The following appSetting configuration values are supported by `IIIFAuth2.Manage
 | Dlcs__ApiDefaultTimeoutMs | Timeout for requests to DLCS API, in ms                                    | 30000   |
 | AuthCacheTtl             | How long to cache successful credential checks for, in secs                 | 60      |
 | RunMigrations            | If true, EF migrations will be run when app runs                            | `false` |
+| AWS__SQS__CustomerCreatedQueueName | Name of SQS queue receiving DLCS customer-created notifications. Listener not started if empty |  |
+| AWS__SQS__WaitTimeSecs   | Long-polling wait time for SQS receive, in secs                             | 20      |
+| AWS__SQS__MaxNumberOfMessages | Max messages to fetch from SQS per request (1-10)                      | 10      |
+| AWS__UseLocalStack       | If true, and environment is Development, use LocalStack for SQS             | `false` |
+| AWS__SQS__ServiceUrl     | SQS service URL, only used with LocalStack                                  | `http://localhost:4566/` |
+
+When a customer-created notification is received, a default `clickthrough` role-provider, access-service and role are created for that customer (see [bootstrap.sql](scripts/sql/bootstrap.sql) for equivalent SQL). The role id is `https://api.dlcs.io/customers/{id}/roles/clickthrough`. This is a no-op if the customer already has a `clickthrough` access-service.
 
 All management routes are in the format `/customers/{customerId}/...`. Requests are authenticated by forwarding the provided `Authorization` header to DLCS API `/customers/{customerId}` - a 200 response means the request is authenticated.
 
