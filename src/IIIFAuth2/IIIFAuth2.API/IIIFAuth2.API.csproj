@@ -7,9 +7,9 @@
     </PropertyGroup>
 
     <ItemGroup> 
-      <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
-      <PackageReference Include="AWSSDK.SecretsManager.Caching" Version="1.0.5" />
-      <PackageReference Include="AWSSDK.SecurityToken" Version="3.7.300.38" />
+      <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.100.8" />
+      <PackageReference Include="AWSSDK.SecretsManager.Caching" Version="3.0.0" />
+      <PackageReference Include="AWSSDK.SecurityToken" Version="4.0.101.6" />
       <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="11.6.0" />
       <PackageReference Include="JetBrains.Annotations" Version="2023.2.0" />
       <PackageReference Include="LazyCache.AspNetCore" Version="2.4.0" />
