@@ -1,5 +1,5 @@
 -- Create a 'clickthrough' role
--- This is an example config for Customer 7, creating role 'https://api.dlcs.digirati.io/customers/7/roles/clickthrough'
+-- This is an example config for Customer 7, creating role 'https://api.dlcs.io/customers/7/roles/clickthrough'
 begin transaction ;
 
 WITH
@@ -21,7 +21,7 @@ WITH
     )
 -- and finally a role
 INSERT INTO roles (id, customer, access_service_id, name)
-SELECT 'https://api.dlcs.digirati.io/customers/7/roles/clickthrough', 7, id, 'clickthrough'
+SELECT 'https://api.dlcs.io/customers/7/roles/clickthrough', 7, id, 'clickthrough'
 FROM access_service_id;
 
 rollback ;
