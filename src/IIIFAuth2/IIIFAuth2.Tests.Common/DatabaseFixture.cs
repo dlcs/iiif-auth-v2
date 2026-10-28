@@ -1,4 +1,5 @@
-﻿using IIIFAuth2.Core.Data;
+﻿using System.Diagnostics.CodeAnalysis;
+using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
 using IIIFAuth2.Core.Models.Domain;
 using Microsoft.EntityFrameworkCore;
@@ -53,11 +54,13 @@ public class DatabaseFixture : IAsyncLifetime
         }
         catch (Exception ex)
         {
+            // ReSharper disable once UnusedVariable
             var m = ex.Message;
             throw;
         }
     }
 
+    [SuppressMessage("Security", "EF1002:Risk of vulnerability to SQL injection.")]
     public void CleanUp()
     {
         DbContext.Database.ExecuteSqlRaw("DELETE FROM session_users;");

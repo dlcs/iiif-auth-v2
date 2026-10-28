@@ -100,7 +100,7 @@ public class RoleProviderService
         }
         
         var currentRequest = httpContextAccessor.SafeHttpContext().Request;
-        var host = currentRequest.Host.Value;
+        var host = currentRequest.Host.Value ?? string.Empty;
         logger.LogTrace("Getting provider configuration for host {Host}", host);
         
         var providerConfiguration = roleProvider.Configuration.GetConfiguration(host);

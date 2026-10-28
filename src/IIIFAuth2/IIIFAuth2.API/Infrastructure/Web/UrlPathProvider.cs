@@ -139,7 +139,7 @@ public class UrlPathProvider : IUrlPathProvider
     {
         const string defaultKey = "Default";
         var request = httpContextAccessor.SafeHttpContext().Request;
-        var host = request.Host.Value;
+        var host = request.Host.Value ?? string.Empty;
 
         if (pathTemplates.TryGetValue(host, out var hostTemplate)) return hostTemplate;
         if (pathTemplates.TryGetValue(defaultKey, out var pathTemplate)) return pathTemplate;

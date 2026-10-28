@@ -7,8 +7,8 @@ namespace IIIFAuth2.Management.Tests.TestingInfrastructure;
 
 public class ManagementWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private readonly Dictionary<string, string> configuration = new();
-    private Action<IServiceCollection>? configureTestServices = null;
+    private readonly Dictionary<string, string?> configuration = new();
+    private Action<IServiceCollection>? configureTestServices;
 
     /// <summary>
     /// Specify connection string to use for dbContext when building services
