@@ -1,0 +1,42 @@
+@page
+@model CallsModel
+@{
+    ViewData["Title"] = "Downstream calls";
+}
+
+<h1>Downstream calls to iiif-auth-v2</h1>
+<p class="hint">All requests made by the fake Orchestrator endpoints, most recent first (last 200 kept).</p>
+<form method="post" asp-page-handler="Clear">
+    <a asp-page="/Calls">Refresh</a>
+    <button type="submit">Clear</button>
+</form>
+
+<table>
+    <thead>
+    <tr><th>#</th><th>Time (UTC)</th><th>Request</th><th>Status</th><th>ms</th><th>Details</th></tr>
+    </thead>
+    <tbody>
+    @foreach (var entry in Model.Entries)
+    {
+        var statusClass = entry.StatusCode is >= 200 and < 300 ? "ok" : "error";
+        <tr>
+            <td>@entry.Id</td>
+            <td>@entry.Timestamp.ToString("HH:mm:ss.fff")</td>
+            <td><code>@entry.Method @entry.Url</code></td>
+            <td class="@statusClass">@(entry.StatusCode?.ToString() ?? "failed")</td>
+            <td>@entry.DurationMs</td>
+            <td>
+                <details>
+                    <summary>headers + body</summary>
+                    <strong>Request headers</strong>
+                    <pre>@string.Join("\n", entry.RequestHeaders.Select(h => $"{h.Key}: {h.Value}"))</pre>
+                    <strong>Response headers</strong>
+                    <pre>@string.Join("\n", entry.ResponseHeaders.Select(h => $"{h.Key}: {h.Value}"))</pre>
+                    <strong>Response body</strong>
+                    <pre>@(entry.Error ?? entry.ResponseBody)</pre>
+                </details>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

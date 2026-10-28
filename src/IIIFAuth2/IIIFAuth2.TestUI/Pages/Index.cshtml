@@ -1,0 +1,85 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Setup";
+}
+
+<h1>Setup deliverable</h1>
+<p class="hint">
+    Register a deliverable and the roles it requires. This stands in for the Asset/Adjunct roles Orchestrator reads from
+    the DLCS database. Downstream iiif-auth-v2 calls go to <code>@Model.AuthServiceRoot</code> (<code>AuthServiceRoot</code> appSetting).
+</p>
+
+<form method="post">
+    <fieldset>
+        <legend>Deliverable</legend>
+        <label for="DeliverableId">Deliverable Id</label>
+        <input type="text" asp-for="DeliverableId" placeholder="1/2/foo"/>
+        <span class="error" asp-validation-for="DeliverableId"></span>
+        <div class="hint">
+            <code>{customer}/{space}/{asset}</code> for Assets (e.g. <code>1/2/foo</code>) or
+            <code>{customer}/{space}/{asset}/{adjunct}</code> for Adjuncts (e.g. <code>99/100/page1.jpg/mets.xml</code>).
+            Not validated, so invalid formats can be tested.
+        </div>
+    </fieldset>
+
+    <fieldset>
+        <legend>Roles</legend>
+        @if (Model.KnownRoles.Error != null)
+        {
+            <p class="warn">Unable to load roles from database: @Model.KnownRoles.Error</p>
+        }
+        else if (Model.KnownRoles.Roles.Count == 0)
+        {
+            <p class="warn">No roles found in database <code>roles</code> table.</p>
+        }
+        else
+        {
+            <p class="hint">Roles from database <code>roles</code> table:</p>
+            @foreach (var role in Model.KnownRoles.Roles)
+            {
+                <label>
+                    <input type="checkbox" name="SelectedRoles" value="@role.Id" checked="@Model.SelectedRoles.Contains(role.Id)"/>
+                    customer <strong>@role.Customer</strong> - @role.Name <code>@role.Id</code>
+                </label>
+            }
+        }
+
+        <label for="AdditionalRoles">Additional roles (one per line). Use these to simulate roles not known to iiif-auth-v2.</label>
+        <textarea asp-for="AdditionalRoles" rows="3" placeholder="https://api.dlcs.io/customers/1/roles/unknown"></textarea>
+        <div class="hint">No roles = an open asset (the fake Orchestrator doesn't call iiif-auth-v2).</div>
+    </fieldset>
+
+    <button type="submit">Save and go to auth flow</button>
+</form>
+
+<h2>Registered deliverables</h2>
+@if (Model.Deliverables.Count == 0)
+{
+    <p class="hint">None yet. Deliverables are held in memory and lost on restart.</p>
+}
+else
+{
+    <table>
+        <thead>
+        <tr><th>Deliverable Id</th><th>Roles</th><th></th></tr>
+        </thead>
+        <tbody>
+        @foreach (var deliverable in Model.Deliverables)
+        {
+            <tr>
+                <td><code>@deliverable.Id</code></td>
+                <td>@foreach (var role in deliverable.Roles) { <div><code>@role</code></div> }</td>
+                <td>
+                    <a asp-page="/Flow" asp-route-id="@deliverable.Id">Auth flow</a> |
+                    <a href="/manifest/@deliverable.Id" target="_blank">Manifest</a> |
+                    <a asp-page="/Index" asp-route-id="@deliverable.Id">Edit</a> |
+                    <form method="post" asp-page-handler="Delete" asp-route-id="@deliverable.Id" style="display: inline">
+                        <button type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

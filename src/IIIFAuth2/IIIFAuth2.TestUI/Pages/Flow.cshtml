@@ -1,0 +1,59 @@
+@page
+@model FlowModel
+@{
+    ViewData["Title"] = "Auth flow";
+}
+
+@if (Model.Deliverable == null)
+{
+    <p class="error">Deliverable not registered. <a asp-page="/Index">Set one up</a> first (deliverables are lost on restart).</p>
+    return;
+}
+
+<h1>Auth flow: <code>@Model.Deliverable.Id</code></h1>
+<p class="hint">
+    Roles: @(Model.Deliverable.Roles.Count == 0 ? "none (open)" : Model.Deliverable.RolesString)
+    | <a href="/manifest/@Model.Deliverable.Id" target="_blank">Manifest</a>
+    | <a asp-page="/Index" asp-route-id="@Model.Deliverable.Id">Edit</a>
+</p>
+
+<div class="cols">
+    <div>
+        <h2>Client</h2>
+        <label>
+            <input type="checkbox" id="rewriteProbe" checked/>
+            Send probe requests to this Test UI's fake Orchestrator, regardless of the probe service host
+            (iiif-auth-v2 <code>OrchestratorRoot</code>)
+        </label>
+        <div>
+            <button type="button" id="runAll"><strong>Run full flow</strong></button>
+            <button type="button" id="start">Load manifest + probe</button>
+            <button type="button" id="probe">Probe</button>
+            <button type="button" id="loadContent">Load content (verifyaccess)</button>
+            <button type="button" id="clearLog">Clear log</button>
+        </div>
+        <label for="token">Access token (sent as Bearer token to probe service; editable)</label>
+        <input type="text" id="token" placeholder="none"/>
+
+        <h2>Access services</h2>
+        <div id="accessServices" class="hint">Start the flow to discover access services.</div>
+
+        <h2>Content</h2>
+        <div id="content" class="hint">Not loaded.</div>
+    </div>
+    <div>
+        <h2>Log</h2>
+        <p class="hint">Client steps, with downstream calls made to iiif-auth-v2 indented in purple.</p>
+        <div id="log"></div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        window.authFlowConfig = {
+            manifestUrl: @Json.Serialize($"/manifest/{Model.Deliverable.Id}"),
+            lastCallId: @Model.LastCallId
+        };
+    </script>
+    <script src="~/js/auth-flow.js" asp-append-version="true"></script>
+}
