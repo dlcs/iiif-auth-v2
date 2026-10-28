@@ -48,7 +48,14 @@ public class ManagementWebApplicationFactory : WebApplicationFactory<Program>
         var projectDir = Directory.GetCurrentDirectory();
         var configPath = Path.Combine(projectDir, "appsettings.Testing.json");
 
+        // Host configuration is applied before Program.cs runs so is visible to settings read eagerly at startup.
+        // App configuration is applied at Build() but takes precedence over the app's own appsettings files.
         builder
+            .ConfigureHostConfiguration(conf =>
+            {
+                conf.AddJsonFile(configPath);
+                conf.AddInMemoryCollection(configuration);
+            })
             .ConfigureAppConfiguration((context, conf) =>
             {
                 conf.AddJsonFile(configPath);
