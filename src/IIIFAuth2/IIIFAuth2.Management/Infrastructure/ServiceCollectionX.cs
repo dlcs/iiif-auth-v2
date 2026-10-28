@@ -56,6 +56,11 @@ public static class ServiceCollectionX
     /// </summary>
     public static IServiceCollection AddDlcsApiClient(this IServiceCollection services, DlcsSettings dlcsSettings)
     {
+        if (dlcsSettings.ApiRoot is not { IsAbsoluteUri: true })
+        {
+            throw new InvalidOperationException("Dlcs:ApiRoot configuration is required and must be an absolute URI");
+        }
+
         services
             .AddScoped<AmbientAuthHandler>()
             .AddHttpClient<IDlcsApiClient, DlcsApiClient>(client =>
