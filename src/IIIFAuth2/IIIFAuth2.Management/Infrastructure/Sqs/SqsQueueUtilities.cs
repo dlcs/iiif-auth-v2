@@ -23,7 +23,8 @@ public class SqsQueueUtilities(
     /// <returns>SQS URL for queue</returns>
     public async Task<string> GetQueueUrl(string queueName, CancellationToken cancellationToken = default)
     {
-        // Having this here isn't great; alternative is a different entrypoint with similar logic
+        // If we're using localStack be lenient around retries to give it time to startup all internal services.
+        // this doesn't contain the IsDevelopment() check used at registration time as it's for a different purpose 
         var usingLocalStack = options.UseLocalStack;
         var count = 0;
 
