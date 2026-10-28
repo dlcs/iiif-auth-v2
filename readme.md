@@ -9,13 +9,23 @@ The following role provider types are supported, this will be extended over time
 * `clickthrough` - auth service will render agreement, on accepting the user is granted specified roles. Not external dependencies.
 * `oidc` - external authorization server is used for login, claims are mapped to DLCS roles, see [DLCS RFC 008](https://github.com/dlcs/protagonist/blob/main/docs/rfcs/008-more-access-control-oidc-oauth.md)
 
+## Projects
+
+The solution contains the following projects:
+
+* `IIIFAuth2.API` - public API, handles IIIF Auth 2 requests (probe, access, token etc) and verify-access requests.
+* `IIIFAuth2.Management` - internal management API for updating auth configuration. Owns DB migrations.
+* `IIIFAuth2.Core` - shared EF context, entities, migrations and domain models.
+* `IIIFAuth2.Tests.Common` - shared test infrastructure (e.g. Postgres `DatabaseFixture`).
+
 ## Running
 
-There is a Dockerfile and docker-compose file for running app:
+There are Dockerfiles for each app and a docker-compose file for running both:
 
 ```bash
-# build docker image
+# build docker images
 docker build -t iiif-auth-2:local .  
+docker build -t iiif-auth-2-management:local -f Dockerfile.Management .
 
 # run image
 docker run -it --rm \
@@ -23,12 +33,12 @@ docker run -it --rm \
     -p "8014:80" \
     iiif-auth-2:local
 
-# run via docker-compose
+# run via docker-compose - management runs migrations and is available on port 8015
 docker compose up
 ```
 
 For local debugging there are 3 docker compose files available:
-* `docker-compose.db.yml` - runs an empty postgres instance. Running sln with `RunMigrations=true` will scaffold DB.
+* `docker-compose.db.yml` - runs an empty postgres instance. Running `IIIFAuth2.Management` with `RunMigrations=true` will scaffold DB.
 * `docker-compose.local.yml` - runs the above and also an nginx container, which is:
   * Running on `https://localhost:5040`.
   * Proxying `/auth/v2/probe/*` and `/*` to localhost:5013. This is the http port for Orchestrator as defined in `launchSettings.json`
@@ -84,9 +94,28 @@ The following appSetting configuration values are supported:
 | Auth__JwksTtl                      | How long to cache results of JWKS calls for, in secs                                                                  | 600                                             |
 | GesturePathTemplateForDomain       | Dictionary that allows control of domain-specific significant gesture paths. `{customerId}` replaced.                 |                                                 |
 | OAuthCallbackPathTemplateForDomain | Dictionary that allows control of domain-specific oauth2 callback paths. `{customerId}` + `{accessService}` replaced. |                                                 |
-| RunMigrations                      | If true, EF migrations will be run when app runs                                                                      | `false`                                         |
 
 > A note on Dictionarys for domain-specific paths. A key of `"Default"` serves as fallback but isn't necessary if the default value matches the canonical DLCS path.
+
+### Management
+
+The following appSetting configuration values are supported by `IIIFAuth2.Management`:
+
+| Name                     | Description                                                                 | Default |
+| ------------------------ | --------------------------------------------------------------------------- | ------- |
+| Dlcs__ApiRoot            | Base URI for DLCS API, used to validate incoming credentials                |         |
+| Dlcs__ApiDefaultTimeoutMs | Timeout for requests to DLCS API, in ms                                    | 30000   |
+| AuthCacheTtl             | How long to cache successful credential checks for, in secs                 | 60      |
+| RunMigrations            | If true, EF migrations will be run when app runs                            | `false` |
+| AWS__SQS__CustomerCreatedQueueName | Name of SQS queue receiving DLCS customer-created notifications. Listener not started if empty |  |
+| AWS__SQS__WaitTimeSecs   | Long-polling wait time for SQS receive, in secs                             | 20      |
+| AWS__SQS__MaxNumberOfMessages | Max messages to fetch from SQS per request (1-10)                      | 10      |
+| AWS__UseLocalStack       | If true, and environment is Development, use LocalStack for SQS             | `false` |
+| AWS__SQS__ServiceUrl     | SQS service URL, only used with LocalStack                                  | `http://localhost:4566/` |
+
+When a customer-created notification is received, a default `clickthrough` role-provider, access-service and role are created for that customer (see [bootstrap.sql](scripts/sql/bootstrap.sql) for equivalent SQL). The role id is `https://api.dlcs.io/customers/{id}/roles/clickthrough`. This is a no-op if the customer already has a `clickthrough` access-service.
+
+All management routes are in the format `/customers/{customerId}/...`. Requests are authenticated by forwarding the provided `Authorization` header to DLCS API `/customers/{customerId}` - a 200 response means the request is authenticated.
 
 ## Migrations
 
@@ -95,10 +124,10 @@ Migrations can be added by running the following:
 ```bash
 cd src/IIIFAuth2
 
-dotnet ef migrations add "{migration-name}" -p IIIFAuth2.API -o Data/Migrations
+dotnet ef migrations add "{migration-name}" -p IIIFAuth2.Core -s IIIFAuth2.Management -o Data/Migrations
 ```
 
-Migrations are applied on startup, regardless of environment, if `"RunMigrations" = "true"`.
+Migrations are applied on `IIIFAuth2.Management` startup, regardless of environment, if `"RunMigrations" = "true"`. `IIIFAuth2.API` does not run migrations.
 
 ## Local Development
 

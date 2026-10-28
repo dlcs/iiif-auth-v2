@@ -1,10 +1,10 @@
-﻿using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Data.Entities;
-using IIIFAuth2.API.Infrastructure.Web;
+﻿using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Converters;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Models.Result;
 using IIIFAuth2.API.Utils;
+using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Data.Entities;
 using MediatR;
 
 namespace IIIFAuth2.API.Features.Presentation.Requests;

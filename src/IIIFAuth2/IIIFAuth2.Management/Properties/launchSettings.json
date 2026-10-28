@@ -1,0 +1,13 @@
+{
+  "profiles": {
+    "IIIFAuth2.Management": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "https://localhost:7050;http://localhost:7150",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      }
+    }
+  }
+}

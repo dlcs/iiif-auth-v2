@@ -1,10 +1,10 @@
 ﻿using System.Linq.Expressions;
-using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Auth.Models;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Models.Result;
 using IIIFAuth2.API.Settings;
+using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Data.Entities;
 using LazyCache;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;

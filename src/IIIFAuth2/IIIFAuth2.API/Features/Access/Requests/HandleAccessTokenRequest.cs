@@ -1,8 +1,8 @@
 ﻿using IIIF;
 using IIIF.Auth.V2;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.Models;
+using IIIFAuth2.Core.Data.Entities;
 using MediatR;
 
 namespace IIIFAuth2.API.Features.Access.Requests;

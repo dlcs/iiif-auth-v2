@@ -1,7 +1,7 @@
-﻿using IIIFAuth2.API.Data.Entities;
+﻿using FakeItEasy;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Settings;
-using FakeItEasy;
+using IIIFAuth2.Core.Data.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 

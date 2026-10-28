@@ -1,8 +1,8 @@
 ﻿using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
-using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Auth.Models;
+using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
 namespace IIIFAuth2.API.Infrastructure.Auth;

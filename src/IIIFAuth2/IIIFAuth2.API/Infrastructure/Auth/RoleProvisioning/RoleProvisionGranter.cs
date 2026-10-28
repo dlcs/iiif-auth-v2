@@ -1,7 +1,7 @@
 ﻿using IIIFAuth2.API.Infrastructure.Auth.Models;
 using IIIFAuth2.API.Infrastructure.Web;
-using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Settings;
+using IIIFAuth2.Core.Models.Domain;
 using Microsoft.Extensions.Options;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;

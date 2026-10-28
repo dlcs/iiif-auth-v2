@@ -1,10 +1,10 @@
 ﻿using IIIF;
 using IIIF.Auth.V2;
 using IIIF.Presentation.V3.Strings;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Converters;
 using IIIFAuth2.API.Models.Domain;
+using IIIFAuth2.Core.Data.Entities;
 
 namespace IIIFAuth2.API.Tests.Models.Converters;
 

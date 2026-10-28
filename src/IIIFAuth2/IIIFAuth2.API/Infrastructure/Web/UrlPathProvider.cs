@@ -1,8 +1,8 @@
 ﻿using System.Text.RegularExpressions;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Settings;
 using IIIFAuth2.API.Utils;
+using IIIFAuth2.Core.Data.Entities;
 using Microsoft.Extensions.Options;
 
 namespace IIIFAuth2.API.Infrastructure.Web;
@@ -139,7 +139,7 @@ public class UrlPathProvider : IUrlPathProvider
     {
         const string defaultKey = "Default";
         var request = httpContextAccessor.SafeHttpContext().Request;
-        var host = request.Host.Value;
+        var host = request.Host.Value ?? string.Empty;
 
         if (pathTemplates.TryGetValue(host, out var hostTemplate)) return hostTemplate;
         if (pathTemplates.TryGetValue(defaultKey, out var pathTemplate)) return pathTemplate;

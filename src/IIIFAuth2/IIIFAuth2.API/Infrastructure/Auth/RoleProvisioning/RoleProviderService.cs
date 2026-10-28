@@ -1,8 +1,8 @@
-﻿using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Data.Entities;
-using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
-using IIIFAuth2.API.Models.Domain;
+﻿using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Utils;
+using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Core.Models.Domain;
 
 namespace IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
 
@@ -100,7 +100,7 @@ public class RoleProviderService
         }
         
         var currentRequest = httpContextAccessor.SafeHttpContext().Request;
-        var host = currentRequest.Host.Value;
+        var host = currentRequest.Host.Value ?? string.Empty;
         logger.LogTrace("Getting provider configuration for host {Host}", host);
         
         var providerConfiguration = roleProvider.Configuration.GetConfiguration(host);

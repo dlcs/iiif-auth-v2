@@ -1,9 +1,10 @@
 ﻿using System.Net;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
-using IIIFAuth2.API.Data;
-using IIIFAuth2.API.Data.Entities;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
+using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Tests.Common;
 
 namespace IIIFAuth2.API.Tests.Integration;
 
