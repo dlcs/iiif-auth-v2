@@ -16,10 +16,20 @@ public class RoleProviderConfiguration : Dictionary<string, IProviderConfigurati
     
     /// <summary>
     /// Get the most appropriate <see cref="IProviderConfiguration"/> object. This will be host-specific, if found,
-    /// or fallback to Default config. 
+    /// or fallback to Default config. Throws if neither found.
     /// </summary>
     public IProviderConfiguration GetConfiguration(string host)
-        => TryGetValue(host, out var hostConfiguration) ? hostConfiguration : this[DefaultKey];
+        => GetConfigurationOrDefault(host) ??
+           throw new KeyNotFoundException($"No configuration found for host '{host}' or '{DefaultKey}'");
+
+    /// <summary>
+    /// Get the most appropriate <see cref="IProviderConfiguration"/> object. This will be host-specific, if found,
+    /// or fallback to Default config. Null if neither found.
+    /// </summary>
+    public IProviderConfiguration? GetConfigurationOrDefault(string host)
+        => TryGetValue(host, out var configuration) || TryGetValue(DefaultKey, out configuration)
+            ? configuration
+            : null;
 }
 
 /// <summary>
@@ -37,6 +47,10 @@ public interface IProviderConfiguration
 /// Role-provider properties for types that grant roles via user interaction, which may require a significant gesture
 /// to be captured before a cookie can be issued
 /// </summary>
+/// <remarks>
+/// This would be 'active' access-services, 'kiosk' and 'external' services have no interaction. Avoided 'active' here
+/// as that belongs to access-services whereas this is for role-providers.
+/// </remarks>
 public interface IInteractiveProviderConfiguration : IProviderConfiguration
 {
     /// <summary>

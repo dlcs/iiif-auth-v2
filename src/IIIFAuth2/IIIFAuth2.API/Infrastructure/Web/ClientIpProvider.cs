@@ -1,4 +1,5 @@
 using System.Net;
+using IIIFAuth2.API.Utils;
 
 namespace IIIFAuth2.API.Infrastructure.Web;
 
@@ -22,7 +23,7 @@ public class ClientIpProvider(IHttpContextAccessor httpContextAccessor) : IClien
 {
     public IPAddress? GetClientIp()
     {
-        var remoteIpAddress = httpContextAccessor.HttpContext?.Connection.RemoteIpAddress;
+        var remoteIpAddress = httpContextAccessor.SafeHttpContext().Connection.RemoteIpAddress;
         if (remoteIpAddress == null) return null;
 
         return remoteIpAddress.IsIPv4MappedToIPv6 ? remoteIpAddress.MapToIPv4() : remoteIpAddress;

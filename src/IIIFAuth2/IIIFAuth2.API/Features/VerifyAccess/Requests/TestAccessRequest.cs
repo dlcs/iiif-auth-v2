@@ -40,6 +40,7 @@ public class GetAccessTestResultHandler : IRequestHandler<TestAccessRequest, Htt
         var ipStatusCode = AccessStatusCodeHelpers.GetIpStatusCode(ipRoleEvaluation, request.Roles);
         if (ipStatusCode.HasValue) return ipStatusCode.Value;
 
+        // Next try cookie based
         var tryGetSessionResponse =
             await sessionManagementService.TryGetSessionUserForCookie(request.DeliverableId.Customer, null,
                 cancellationToken);

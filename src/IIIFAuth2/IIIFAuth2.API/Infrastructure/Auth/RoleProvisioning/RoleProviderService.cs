@@ -62,7 +62,7 @@ public class RoleProviderService
             case RoleProviderType.IpRestriction:
             {
                 // IpRestriction roles are evaluated per-request from client IP, there is nothing to provision
-                logger.LogDebug("AccessService '{AccessServiceId}' uses IpRestriction and is not interactive",
+                logger.LogWarning("AccessService '{AccessServiceId}' uses IpRestriction and is not interactive",
                     accessService.Id);
                 return HandleRoleProvisionResponse.Error(
                     $"Access service '{accessService.Name}' is not interactive", 400);

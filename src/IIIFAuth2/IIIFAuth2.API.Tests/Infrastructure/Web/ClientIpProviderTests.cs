@@ -8,13 +8,15 @@ namespace IIIFAuth2.API.Tests.Infrastructure.Web;
 public class ClientIpProviderTests
 {
     [Fact]
-    public void GetClientIp_ReturnsNull_IfNoHttpContext()
+    public void GetClientIp_Throws_IfNoHttpContext()
     {
         var httpContextAccessor = A.Fake<IHttpContextAccessor>();
         A.CallTo(() => httpContextAccessor.HttpContext).Returns(null);
         var sut = new ClientIpProvider(httpContextAccessor);
 
-        sut.GetClientIp().Should().BeNull();
+        Action action = () => sut.GetClientIp();
+
+        action.Should().Throw<ArgumentNullException>();
     }
 
     [Fact]

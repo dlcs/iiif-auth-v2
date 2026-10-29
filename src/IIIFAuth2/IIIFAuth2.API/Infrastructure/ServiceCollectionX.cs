@@ -147,7 +147,7 @@ public static class ServiceCollectionX
             if (knownNetworks.Equals(allNetworks))
             {
                 logger.LogWarning(
-                    "Forwarded header values accepted from all networks and proxies. Client IP from x-forwarded-for can be spoofed");
+                    "Forwarded header values accepted from all networks and proxies. XFF Client IP can be spoofed");
                 opts.KnownIPNetworks.Clear();
                 opts.KnownProxies.Clear();
             }

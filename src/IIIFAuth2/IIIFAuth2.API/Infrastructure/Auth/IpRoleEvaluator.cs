@@ -1,5 +1,6 @@
 using IIIFAuth2.API.Infrastructure.Auth.Models;
 using IIIFAuth2.API.Infrastructure.Web;
+using IIIFAuth2.API.Utils;
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
 using IIIFAuth2.Core.Models.Domain;
@@ -9,25 +10,12 @@ namespace IIIFAuth2.API.Infrastructure.Auth;
 /// <summary>
 /// Evaluates requested roles that are granted by IpRestriction role-providers against the current client IP address
 /// </summary>
-public class IpRoleEvaluator
+public class IpRoleEvaluator(
+    AuthServicesContext dbContext,
+    IClientIpProvider clientIpProvider,
+    IHttpContextAccessor httpContextAccessor,
+    ILogger<IpRoleEvaluator> logger)
 {
-    private readonly AuthServicesContext dbContext;
-    private readonly IClientIpProvider clientIpProvider;
-    private readonly IHttpContextAccessor httpContextAccessor;
-    private readonly ILogger<IpRoleEvaluator> logger;
-
-    public IpRoleEvaluator(
-        AuthServicesContext dbContext,
-        IClientIpProvider clientIpProvider,
-        IHttpContextAccessor httpContextAccessor,
-        ILogger<IpRoleEvaluator> logger)
-    {
-        this.dbContext = dbContext;
-        this.clientIpProvider = clientIpProvider;
-        this.httpContextAccessor = httpContextAccessor;
-        this.logger = logger;
-    }
-
     /// <summary>
     /// Determine which of the specified roles are IP roles, and which of those are granted to the client IP address
     /// </summary>
@@ -43,16 +31,29 @@ public class IpRoleEvaluator
         var requestedRoles = customerRoles.Where(r => roles.Contains(r.Id)).ToList();
         if (requestedRoles.Count == 0) return IpRoleEvaluation.Empty;
 
+        var ipRoleConfigurations = await GetIpRestrictionLookup(customerId, requestedRoles);
+
+        if (ipRoleConfigurations.Count == 0) return IpRoleEvaluation.Empty;
+
+        return GetIpRoleEvaluation(customerId, ipRoleConfigurations);
+    }
+
+    /// <summary>
+    /// Get a lookup of role-id:role-provider configuration
+    /// </summary>
+    private async Task<Dictionary<string, IpRestrictionConfiguration>> GetIpRestrictionLookup(int customerId,
+        List<Role> requestedRoles)
+    {
         var accessServices =
             (await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService))
             .ToDictionary(a => a.Id);
-        var host = httpContextAccessor.HttpContext?.Request.Host.Value ?? string.Empty;
+        var host = httpContextAccessor.SafeHttpContext().Request.Host.Value ?? string.Empty;
 
         var ipRoleConfigurations = new Dictionary<string, IpRestrictionConfiguration>();
         foreach (var role in requestedRoles)
         {
             var configuration = accessServices.TryGetValue(role.AccessServiceId, out var accessService)
-                ? GetProviderConfiguration(accessService, host)
+                ? accessService.RoleProvider?.Configuration.GetConfigurationOrDefault(host)
                 : null;
 
             var isIpProvider = configuration is IpRestrictionConfiguration;
@@ -71,8 +72,12 @@ public class IpRoleEvaluator
             }
         }
 
-        if (ipRoleConfigurations.Count == 0) return IpRoleEvaluation.Empty;
+        return ipRoleConfigurations;
+    }
 
+    private IpRoleEvaluation GetIpRoleEvaluation(int customerId,
+        Dictionary<string, IpRestrictionConfiguration> ipRoleConfigurations)
+    {
         var clientIp = clientIpProvider.GetClientIp();
         var grantedRoles = ipRoleConfigurations
             .Where(kvp => kvp.Value.Contains(clientIp))
@@ -88,16 +93,5 @@ public class IpRoleEvaluator
             "Client IP {ClientIp} granted {GrantedCount} of {IpRoleCount} IP roles for customer {CustomerId}",
             clientIp, grantedRoles.Count, ipRoleConfigurations.Count, customerId);
         return new IpRoleEvaluation(ipRoleConfigurations.Keys.ToHashSet(), grantedRoles, placeNames);
-    }
-
-    private static IProviderConfiguration? GetProviderConfiguration(AccessService accessService, string host)
-    {
-        var configuration = accessService.RoleProvider?.Configuration;
-        if (configuration == null) return null;
-
-        return configuration.TryGetValue(host, out var hostConfiguration) ||
-               configuration.TryGetValue(RoleProviderConfiguration.DefaultKey, out hostConfiguration)
-            ? hostConfiguration
-            : null;
     }
 }
