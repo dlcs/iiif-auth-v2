@@ -15,7 +15,7 @@ public static class RoleX
     {
         if (string.IsNullOrWhiteSpace(roleUri)) return false;
 
-        var trimmed = roleUri.TrimEnd('/');
+        var trimmed = roleUri.AsSpan().TrimEnd('/');
         var lastSegment = trimmed[(trimmed.LastIndexOf('/') + 1)..];
         return lastSegment.StartsWith(IpRolePrefix, StringComparison.Ordinal);
     }

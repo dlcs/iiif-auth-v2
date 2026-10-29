@@ -25,7 +25,7 @@ public record Deliverable(string Id, IReadOnlyList<string> Roles, DateTime Regis
 
     private static bool IsIpRole(string role)
     {
-        var trimmed = role.TrimEnd('/');
+        var trimmed = role.AsSpan().TrimEnd('/');
         return trimmed[(trimmed.LastIndexOf('/') + 1)..].StartsWith("ip:", StringComparison.Ordinal);
     }
 }
