@@ -21,10 +21,12 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
+    private readonly string connectionString;
 
     public ServicesTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
         dbContext = dbFixture.DbContext;
+        connectionString = dbFixture.ConnectionString;
         httpClient = factory
             .WithConnectionString(dbFixture.ConnectionString)
             .CreateClient();
@@ -315,18 +317,36 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
     }
 
     [Fact]
-    public async Task GetServicesDescription_ExternalService_UsesGenericLabel_IfNoLabelOrPlaceName()
+    public async Task GetServicesDescription_ExternalService_UsesGenericLabel_IfNoLabelOrLocationPhrase()
     {
         // Arrange
         // Customer specific to this test as customer records are cached
         const int customer = 98;
         const string role = "http://dlcs.test/98/ip:no-place-name";
-        await AddIpRestriction(customer, role, placeName: null, label: null);
+        await AddIpRestriction(customer, role, locationPhrase: null, label: null);
 
         var path = $"services/{customer}/2/asset?roles={Uri.EscapeDataString(role)}";
 
         // Act
         var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        var accessService = probeService.Service.Should().ContainSingle().Which.As<AuthAccessService2>();
+        accessService.Label["en"].Should().ContainSingle(s => s == "Available at permitted locations");
+    }
+
+    [Fact]
+    public async Task GetServicesDescription_ExternalService_UsesGenericLabel_IfUseGenericLocationWording()
+    {
+        // Arrange
+        var client = CreateGenericLocationWordingClient(connectionString);
+        var path = $"services/99/2/asset?roles={Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri)}";
+
+        // Act
+        var response = await client.GetAsync(path);
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -343,7 +363,7 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
         // Customer specific to this test as customer records are cached
         const int customer = 97;
         const string role = "http://dlcs.test/97/ip:with-label";
-        await AddIpRestriction(customer, role, placeName: "the Library",
+        await AddIpRestriction(customer, role, locationPhrase: "in the Library",
             label: new LanguageMap("en", "On site access"));
 
         var path = $"services/{customer}/2/asset?roles={Uri.EscapeDataString(role)}";
@@ -359,7 +379,13 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
         accessService.Label["en"].Should().ContainSingle(s => s == "On site access");
     }
 
-    private async Task AddIpRestriction(int customer, string role, string? placeName, LanguageMap? label)
+    private static HttpClient CreateGenericLocationWordingClient(string connectionString)
+        => new AuthWebApplicationFactory()
+            .WithConnectionString(connectionString)
+            .WithConfigValue("UseGenericLocationWording", "true")
+            .CreateClient();
+
+    private async Task AddIpRestriction(int customer, string role, string? locationPhrase, LanguageMap? label)
     {
         var roleProvider = new RoleProvider
         {
@@ -368,7 +394,7 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
             {
                 [RoleProviderConfiguration.DefaultKey] = new IpRestrictionConfiguration
                 {
-                    Config = RoleProviderType.IpRestriction, Ranges = ["10.0.0.0/24"], PlaceName = placeName
+                    Config = RoleProviderType.IpRestriction, Ranges = ["10.0.0.0/24"], LocationPhrase = locationPhrase
                 }
             }
         };

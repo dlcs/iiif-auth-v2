@@ -2,11 +2,13 @@
 using IIIFAuth2.API.Models.Converters;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Models.Result;
+using IIIFAuth2.API.Settings;
 using IIIFAuth2.API.Utils;
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
 using IIIFAuth2.Core.Models.Domain;
 using MediatR;
+using Microsoft.Extensions.Options;
 
 namespace IIIFAuth2.API.Features.Presentation.Requests;
 
@@ -31,14 +33,17 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
     private readonly AuthServicesContext dbContext;
     private readonly ILogger<GetServicesDescriptionHandler> logger;
     private readonly IUrlPathProvider urlPathProvider;
+    private readonly ApiSettings apiSettings;
 
     public GetServicesDescriptionHandler(
         AuthServicesContext dbContext,
         IUrlPathProvider urlPathProvider,
+        IOptions<ApiSettings> apiOptions,
         ILogger<GetServicesDescriptionHandler> logger)
     {
         this.dbContext = dbContext;
         this.urlPathProvider = urlPathProvider;
+        apiSettings = apiOptions.Value;
         this.logger = logger;
     }
     
@@ -66,7 +71,8 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
 
         try
         {
-            var probeService = accessServices.ToProbeService(urlPathProvider, request.DeliverableId);
+            var probeService = accessServices.ToProbeService(urlPathProvider, request.DeliverableId,
+                apiSettings.UseGenericLocationWording);
             return IIIFResourceResponse.Success(probeService);
         }
         catch (Exception ex)

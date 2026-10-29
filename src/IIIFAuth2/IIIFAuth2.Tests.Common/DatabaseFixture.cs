@@ -32,7 +32,7 @@ public class DatabaseFixture : IAsyncLifetime
     public Guid IpRestrictionAccessId;
     public Guid IpRestrictionRoleProviderId;
     public const string IpRestrictionRoleUri = "http://dlcs.test/99/ip:reading-room";
-    public const string IpRestrictionPlaceName = "the Research Centre";
+    public const string IpRestrictionLocationPhrase = "in the Research Centre";
     public static readonly string[] IpRestrictionRanges = ["10.0.0.0/24", "2001:db8:1007::/48"];
 
     public DatabaseFixture()
@@ -112,7 +112,7 @@ public class DatabaseFixture : IAsyncLifetime
                 [RoleProviderConfiguration.DefaultKey] = new IpRestrictionConfiguration
                 {
                     Config = RoleProviderType.IpRestriction, Ranges = IpRestrictionRanges,
-                    PlaceName = IpRestrictionPlaceName
+                    LocationPhrase = IpRestrictionLocationPhrase
                 }
             }
         };

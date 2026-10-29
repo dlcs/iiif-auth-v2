@@ -4,7 +4,9 @@ using IIIF.Presentation.V3.Strings;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.Models;
 using IIIFAuth2.API.Models.Domain;
+using IIIFAuth2.API.Settings;
 using MediatR;
+using Microsoft.Extensions.Options;
 
 namespace IIIFAuth2.API.Features.Probe.Requests;
 
@@ -28,12 +30,14 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetProbeServiceDesc
 {
     private readonly SessionManagementService sessionManagementService;
     private readonly IpRoleEvaluator ipRoleEvaluator;
+    private readonly ApiSettings apiSettings;
 
     public GetServicesDescriptionHandler(SessionManagementService sessionManagementService,
-        IpRoleEvaluator ipRoleEvaluator)
+        IpRoleEvaluator ipRoleEvaluator, IOptions<ApiSettings> apiOptions)
     {
         this.sessionManagementService = sessionManagementService;
         this.ipRoleEvaluator = ipRoleEvaluator;
+        apiSettings = apiOptions.Value;
     }
 
     public async Task<AuthProbeResult2> Handle(GetProbeServiceDescription request, CancellationToken cancellationToken)
@@ -67,15 +71,15 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetProbeServiceDesc
         return probeService;
     }
 
-    private static AuthProbeResult2 BuildIpProbeResultResponse(HttpStatusCode statusCode,
+    private AuthProbeResult2 BuildIpProbeResultResponse(HttpStatusCode statusCode,
         IpRoleEvaluation ipRoleEvaluation)
     {
         var probeService = new AuthProbeResult2 { Status = (int)statusCode };
         if (statusCode == HttpStatusCode.OK) return probeService;
 
-        var note = ipRoleEvaluation.PlaceNames.Count == 0
+        var note = apiSettings.UseGenericLocationWording || ipRoleEvaluation.LocationPhrases.Count == 0
             ? "Only available from permitted locations"
-            : $"Only available in {string.Join(" or ", ipRoleEvaluation.PlaceNames)}";
+            : $"Only available {string.Join(" or ", ipRoleEvaluation.LocationPhrases)}";
         probeService.Heading = new LanguageMap("en", "Not available at your location");
         probeService.Note = new LanguageMap("en", note);
         return probeService;

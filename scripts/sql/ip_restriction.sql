@@ -9,7 +9,7 @@ WITH
     -- create a role provider
     insert_role_provider AS (
         INSERT INTO role_providers (id, customer, configuration)
-            SELECT id, 7, '{"default": {"config": "IpRestriction", "ranges": ["127.0.0.1/32", "::1/128", "10.0.0.0/24"], "placeName": "the Research Centre"}}'
+            SELECT id, 7, '{"default": {"config": "IpRestriction", "ranges": ["127.0.0.1/32", "::1/128", "10.0.0.0/24"], "locationPhrase": "in the Research Centre"}}'
             FROM role_provider_id
             RETURNING *
     ),

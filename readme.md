@@ -15,12 +15,12 @@ The following role provider types are supported, this will be extended over time
   "default": {
     "config": "IpRestriction",
     "ranges": [ "10.0.0.0/24", "2001:db8:1007::/48" ],
-    "placeName": "the Research Centre"
+    "locationPhrase": "in the Research Centre"
   }
 }
 ```
 
-`placeName` is optional and is public-facing: it is output in probe responses (e.g. "Only available in the Research Centre") and as the default label of the `external` access service. Omit it if the location shouldn't be advertised and generic wording will be used. IP ranges are never output.
+`locationPhrase` is optional and is public-facing: it is output in probe responses as "Only available {locationPhrase}" (e.g. "Only available in the Research Centre") and as the default label of the `external` access service ("Available {locationPhrase}"). It includes the preposition as this varies by location, e.g. "in the Reading Room", "on Main Campus", "via the company VPN". Omit it if the location shouldn't be advertised and generic wording ("Only available from permitted locations") will be used. Setting `UseGenericLocationWording` uses generic wording for all providers. IP ranges are never output.
 
 Roles granted by an IpRestriction provider should belong to an access service with `external` profile. These are output first in services descriptions, without a logout service. They have an `id`, which the spec says "should not" be present and clients must ignore, so the service can be referenced, e.g. declared once in a Manifest and referenced by id. Opening it returns a "not interactive" error.
 
@@ -111,6 +111,7 @@ The following appSetting configuration values are supported:
 | OAuthCallbackPathTemplateForDomain | Dictionary that allows control of domain-specific oauth2 callback paths. `{customerId}` + `{accessService}` replaced. |                                                 |
 | KnownNetworks                      | Comma separated CIDR ranges of proxies that `x-forwarded-*` headers are accepted from. See note below.                | `"AllNetworks"`                                 |
 | ForwardLimit                       | Maximum number of entries in `x-forwarded-*` headers that are processed (rightmost first)                             | 1                                               |
+| UseGenericLocationWording          | If `true`, IpRestriction wording always uses generic "permitted locations" text, ignoring `locationPhrase`            | `false`                                         |
 
 > A note on Dictionarys for domain-specific paths. A key of `"Default"` serves as fallback but isn't necessary if the default value matches the canonical DLCS path.
 

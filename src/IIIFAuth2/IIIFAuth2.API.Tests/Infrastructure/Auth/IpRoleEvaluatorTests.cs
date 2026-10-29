@@ -58,8 +58,8 @@ public class IpRoleEvaluatorTests
         const string library = "http://dlcs.test/9003/ip:library";
         const string archive = "http://dlcs.test/9003/ip:archive";
         const string clickthrough = "http://dlcs.test/9003/clickthrough";
-        await AddRole(customer, library, IpConfig("10.0.0.0/24", "the Library"));
-        await AddRole(customer, archive, IpConfig("192.168.0.0/16", "the Archive"));
+        await AddRole(customer, library, IpConfig("10.0.0.0/24", "in the Library"));
+        await AddRole(customer, archive, IpConfig("192.168.0.0/16", "via the Archive VPN"));
         await AddRole(customer, clickthrough, ClickthroughConfig());
         var sut = GetSut("10.0.0.5");
 
@@ -69,7 +69,7 @@ public class IpRoleEvaluatorTests
         // Assert
         result.IpRoles.Should().BeEquivalentTo(library, archive);
         result.GrantedRoles.Should().BeEquivalentTo(library);
-        result.PlaceNames.Should().BeEquivalentTo("the Library", "the Archive");
+        result.LocationPhrases.Should().BeEquivalentTo("in the Library", "via the Archive VPN");
         AssertWarningLogged(0);
     }
 
@@ -80,8 +80,8 @@ public class IpRoleEvaluatorTests
         const int customer = 9004;
         const string requested = "http://dlcs.test/9004/ip:requested";
         const string notRequested = "http://dlcs.test/9004/ip:not-requested";
-        await AddRole(customer, requested, IpConfig("192.168.0.0/16", "Requested"));
-        await AddRole(customer, notRequested, IpConfig("10.0.0.0/24", "Not requested"));
+        await AddRole(customer, requested, IpConfig("192.168.0.0/16", "in Requested"));
+        await AddRole(customer, notRequested, IpConfig("10.0.0.0/24", "in Not requested"));
         var sut = GetSut("10.0.0.5");
 
         // Act
@@ -90,19 +90,19 @@ public class IpRoleEvaluatorTests
         // Assert
         result.IpRoles.Should().BeEquivalentTo(requested);
         result.GrantedRoles.Should().BeEmpty();
-        result.PlaceNames.Should().BeEquivalentTo("Requested");
+        result.LocationPhrases.Should().BeEquivalentTo("in Requested");
     }
 
     [Fact]
-    public async Task Evaluate_PlaceNames_DistinctAndExcludeNull()
+    public async Task Evaluate_LocationPhrases_DistinctAndExcludeNull()
     {
         // Arrange
         const int customer = 9005;
         const string first = "http://dlcs.test/9005/ip:first";
         const string second = "http://dlcs.test/9005/ip:second";
         const string noPlace = "http://dlcs.test/9005/ip:no-place";
-        await AddRole(customer, first, IpConfig("10.0.0.0/24", "the Library"));
-        await AddRole(customer, second, IpConfig("10.0.1.0/24", "the Library"));
+        await AddRole(customer, first, IpConfig("10.0.0.0/24", "in the Library"));
+        await AddRole(customer, second, IpConfig("10.0.1.0/24", "in the Library"));
         await AddRole(customer, noPlace, IpConfig("10.0.2.0/24"));
         var sut = GetSut("192.168.0.1");
 
@@ -111,7 +111,7 @@ public class IpRoleEvaluatorTests
 
         // Assert
         result.IpRoles.Should().HaveCount(3);
-        result.PlaceNames.Should().BeEquivalentTo("the Library");
+        result.LocationPhrases.Should().BeEquivalentTo("in the Library");
     }
 
     [Fact]
@@ -253,12 +253,12 @@ public class IpRoleEvaluatorTests
                            call.GetArgument<LogLevel>(0) == LogLevel.Warning)
             .MustHaveHappened(times, Times.Exactly);
 
-    private static RoleProviderConfiguration IpConfig(string range, string? placeName = null)
+    private static RoleProviderConfiguration IpConfig(string range, string? locationPhrase = null)
         => new()
         {
             [RoleProviderConfiguration.DefaultKey] = new IpRestrictionConfiguration
             {
-                Config = RoleProviderType.IpRestriction, Ranges = [range], PlaceName = placeName
+                Config = RoleProviderType.IpRestriction, Ranges = [range], LocationPhrase = locationPhrase
             }
         };
 

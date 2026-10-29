@@ -83,8 +83,8 @@ public class IpRoleEvaluator(
             .Where(kvp => kvp.Value.Contains(clientIp))
             .Select(kvp => kvp.Key)
             .ToHashSet();
-        var placeNames = ipRoleConfigurations.Values
-            .Select(c => c.PlaceName)
+        var locationPhrases = ipRoleConfigurations.Values
+            .Select(c => c.LocationPhrase)
             .OfType<string>()
             .Distinct()
             .ToList();
@@ -92,6 +92,6 @@ public class IpRoleEvaluator(
         logger.LogDebug(
             "Client IP {ClientIp} granted {GrantedCount} of {IpRoleCount} IP roles for customer {CustomerId}",
             clientIp, grantedRoles.Count, ipRoleConfigurations.Count, customerId);
-        return new IpRoleEvaluation(ipRoleConfigurations.Keys.ToHashSet(), grantedRoles, placeNames);
+        return new IpRoleEvaluation(ipRoleConfigurations.Keys.ToHashSet(), grantedRoles, locationPhrases);
     }
 }

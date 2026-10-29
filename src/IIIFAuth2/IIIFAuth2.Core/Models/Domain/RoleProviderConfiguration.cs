@@ -157,9 +157,10 @@ public class IpRestrictionConfiguration : IProviderConfiguration
     }
 
     /// <summary>
-    /// Optional name of the place that ranges represent, used in user-facing wording (e.g. "the Research Centre")
+    /// Optional phrase describing where ranges represent, including preposition, used in user-facing wording, e.g.
+    /// "in the Reading Room", "on Main Campus" or "via the company VPN". Output as "Only available {locationPhrase}"
     /// </summary>
-    public string? PlaceName { get; set; }
+    public string? LocationPhrase { get; set; }
 
     /// <summary>
     /// <inheritdoc />

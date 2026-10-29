@@ -10,7 +10,8 @@ namespace IIIFAuth2.API.Models.Converters;
 
 public static class AccessServiceConverter
 {
-    public static AuthProbeService2 ToProbeService(this ICollection<AccessService> accessServices, IUrlPathProvider pathProvider, DeliverableId deliverableId)
+    public static AuthProbeService2 ToProbeService(this ICollection<AccessService> accessServices,
+        IUrlPathProvider pathProvider, DeliverableId deliverableId, bool useGenericLocationWording)
     {
         var probeService = new AuthProbeService2
         {
@@ -20,7 +21,7 @@ public static class AccessServiceConverter
 
         foreach (var accessService in accessServices)
         {
-            var svc = accessService.ToIIIFModel(pathProvider);
+            var svc = accessService.ToIIIFModel(pathProvider, useGenericLocationWording);
             probeService.Service.Add(svc);
         }
 
@@ -30,9 +31,11 @@ public static class AccessServiceConverter
     /// <summary>
     /// Converts database entity <see cref="AccessService"/> to <see cref="AuthAccessService2"/>
     /// </summary>
-    public static AuthAccessService2 ToIIIFModel(this AccessService accessService, IUrlPathProvider pathProvider)
+    public static AuthAccessService2 ToIIIFModel(this AccessService accessService, IUrlPathProvider pathProvider,
+        bool useGenericLocationWording)
     {
-        if (accessService.Profile == AccessServiceProfiles.External) return accessService.ToExternalIIIFModel(pathProvider);
+        if (accessService.Profile == AccessServiceProfiles.External)
+            return accessService.ToExternalIIIFModel(pathProvider, useGenericLocationWording);
 
         var authAccessService = new AuthAccessService2
         {
@@ -60,13 +63,14 @@ public static class AccessServiceConverter
     /// output so the service can be referenced, e.g. declared once in a Manifest's services and referenced by id. If
     /// a client does open it, the access service returns a "not interactive" error and the window closes.
     /// </remarks>
-    private static AuthAccessService2 ToExternalIIIFModel(this AccessService accessService, IUrlPathProvider pathProvider)
+    private static AuthAccessService2 ToExternalIIIFModel(this AccessService accessService,
+        IUrlPathProvider pathProvider, bool useGenericLocationWording)
     {
         var authAccessService = new AuthAccessService2
         {
             Id = pathProvider.GetAccessServicePath(accessService).ToString(),
             Profile = AccessServiceProfiles.External,
-            Label = accessService.Label ?? GetDefaultExternalLabel(accessService),
+            Label = accessService.Label ?? GetDefaultExternalLabel(accessService, useGenericLocationWording),
             Heading = accessService.Heading,
             Note = accessService.Note,
             Service =
@@ -77,16 +81,20 @@ public static class AccessServiceConverter
         return authAccessService;
     }
 
-    private static LanguageMap GetDefaultExternalLabel(AccessService accessService)
+    private static LanguageMap GetDefaultExternalLabel(AccessService accessService, bool useGenericLocationWording)
     {
-        // Wording only, so uses default configuration rather than host-specific. placeName is optional and is only
-        // output if configured
+        // Wording only, so uses default configuration rather than host-specific. locationPhrase is optional and is
+        // only output if configured, and not turned off globally
         IProviderConfiguration? configuration = null;
         accessService.RoleProvider?.Configuration.TryGetValue(RoleProviderConfiguration.DefaultKey, out configuration);
-        var placeName = (configuration as IpRestrictionConfiguration)?.PlaceName;
+        var locationPhrase = useGenericLocationWording
+            ? null
+            : (configuration as IpRestrictionConfiguration)?.LocationPhrase;
 
         return new LanguageMap("en",
-            string.IsNullOrWhiteSpace(placeName) ? "Available at permitted locations" : $"Available in {placeName}");
+            string.IsNullOrWhiteSpace(locationPhrase)
+                ? "Available at permitted locations"
+                : $"Available {locationPhrase}");
     }
 
     private static AuthAccessTokenService2 GenerateTokenService(AccessService accessService,

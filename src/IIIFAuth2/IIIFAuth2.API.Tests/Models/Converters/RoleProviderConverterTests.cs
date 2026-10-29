@@ -172,13 +172,13 @@ public class RoleProviderConverterTests
         {
             Config = RoleProviderType.IpRestriction,
             Ranges = ["10.0.0.0/24", "2001:db8:1007::/48"],
-            PlaceName = "the Research Centre",
+            LocationPhrase = "in the Research Centre",
         };
 
         var json = @"{
     ""config"": ""IpRestriction"",
     ""ranges"": [""10.0.0.0/24"", ""2001:db8:1007::/48""],
-    ""placeName"": ""the Research Centre""
+    ""locationPhrase"": ""in the Research Centre""
 }";
 
         // Act
@@ -210,13 +210,13 @@ public class RoleProviderConverterTests
         {
             Config = RoleProviderType.IpRestriction,
             Ranges = ["10.0.0.0/24", "2001:db8:1007::/48"],
-            PlaceName = "the Research Centre",
+            LocationPhrase = "in the Research Centre",
         };
 
         var json = @"{
     ""config"": ""IpRestriction"",
     ""ranges"": [""10.0.0.0/24"", ""2001:db8:1007::/48""],
-    ""placeName"": ""the Research Centre""
+    ""locationPhrase"": ""in the Research Centre""
 }";
         var expected = JObject.Parse(json);
         jsonSerialiser.NullValueHandling = NullValueHandling.Ignore;

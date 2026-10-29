@@ -5,11 +5,11 @@ namespace IIIFAuth2.API.Infrastructure.Auth.Models;
 /// </summary>
 /// <param name="IpRoles">Requested roles that are granted by an IpRestriction role-provider</param>
 /// <param name="GrantedRoles">Requested roles that are granted to the current client IP address</param>
-/// <param name="PlaceNames">Place names of the IpRestriction role-providers for <see cref="IpRoles"/></param>
+/// <param name="LocationPhrases">Location phrases of the IpRestriction role-providers for <see cref="IpRoles"/></param>
 public record IpRoleEvaluation(
     IReadOnlySet<string> IpRoles,
     IReadOnlySet<string> GrantedRoles,
-    IReadOnlyCollection<string> PlaceNames)
+    IReadOnlyCollection<string> LocationPhrases)
 {
     public static readonly IpRoleEvaluation Empty = new(new HashSet<string>(), new HashSet<string>(), []);
 

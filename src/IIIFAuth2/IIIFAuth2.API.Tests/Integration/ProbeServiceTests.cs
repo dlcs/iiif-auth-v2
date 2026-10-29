@@ -14,11 +14,13 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
+    private readonly string connectionString;
     private static readonly string IpRole = Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri);
 
     public ProbeServiceTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
         dbContext = dbFixture.DbContext;
+        connectionString = dbFixture.ConnectionString;
         httpClient = factory
             .WithConnectionString(dbFixture.ConnectionString)
             .CreateClient();
@@ -503,6 +505,25 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
     }
 
     [Fact]
+    public async Task GetProbeService_Returns403StatusProperty_WithGenericNote_IfUseGenericLocationWording()
+    {
+        // Arrange
+        var client = CreateGenericLocationWordingClient(connectionString);
+        var request = new HttpRequestMessage(HttpMethod.Get, $"probe_internal/99/2/foo?roles={IpRole}");
+        request.Headers.Add("X-Forwarded-For", "10.0.1.5");
+
+        // Act
+        var response = await client.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(403, "Forbidden (403) expected");
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Not available at your location");
+        authProbeResult.Note["en"].Should().ContainSingle(s => s == "Only available from permitted locations");
+    }
+
+    [Fact]
     public async Task GetProbeService_Returns401StatusProperty_IfIpAndOtherRoles_NoBearerToken_AndClientIpNotInRange()
     {
         // Arrange
@@ -540,6 +561,12 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
         authProbeResult.Status.Should().Be(200, "OK (200) expected");
     }
+
+    private static HttpClient CreateGenericLocationWordingClient(string connectionString)
+        => new AuthWebApplicationFactory()
+            .WithConnectionString(connectionString)
+            .WithConfigValue("UseGenericLocationWording", "true")
+            .CreateClient();
 
     private static SessionUser CreateSessionUser(string accessToken, int customer = 99, DateTime? expires = null,
         DateTime? lastChecked = null)
