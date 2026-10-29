@@ -105,8 +105,12 @@ The following appSetting configuration values are supported:
 | Auth__JwksTtl                      | How long to cache results of JWKS calls for, in secs                                                                  | 600                                             |
 | GesturePathTemplateForDomain       | Dictionary that allows control of domain-specific significant gesture paths. `{customerId}` replaced.                 |                                                 |
 | OAuthCallbackPathTemplateForDomain | Dictionary that allows control of domain-specific oauth2 callback paths. `{customerId}` + `{accessService}` replaced. |                                                 |
+| KnownNetworks                      | Comma separated CIDR ranges of proxies that `x-forwarded-*` headers are accepted from. See note below.                | `"AllNetworks"`                                 |
+| ForwardLimit                       | Maximum number of entries in `x-forwarded-*` headers that are processed (rightmost first)                             | 1                                               |
 
 > A note on Dictionarys for domain-specific paths. A key of `"Default"` serves as fallback but isn't necessary if the default value matches the canonical DLCS path.
+
+> A note on `KnownNetworks`. `x-forwarded-for` is used to determine the client IP, which grants `IpRestriction` roles. The default `"AllNetworks"` accepts forwarded headers from any caller, so any client that can reach the API directly could spoof their IP. In deployed environments this should be set to the network(s) of the load balancer and Orchestrator.
 
 ### Management
 
