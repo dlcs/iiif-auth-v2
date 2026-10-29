@@ -123,7 +123,7 @@ public class DatabaseFixture : IAsyncLifetime
             Customer = Customer,
             Id = ClickthroughAccessId,
             Name = ClickthroughService,
-            Profile = "active",
+            Profile = AccessServiceProfiles.Active,
             RoleProvider = clickthroughRoleProvider
         };
         var oidcAccessService = new AccessService
@@ -131,7 +131,7 @@ public class DatabaseFixture : IAsyncLifetime
             Customer = Customer,
             Id = OidcAccessId,
             Name = OidcService,
-            Profile = "active",
+            Profile = AccessServiceProfiles.Active,
             RoleProvider = oidcRoleProvider
         };
         var ipRestrictionAccessService = new AccessService
@@ -139,7 +139,7 @@ public class DatabaseFixture : IAsyncLifetime
             Customer = Customer,
             Id = IpRestrictionAccessId,
             Name = IpRestrictionService,
-            Profile = "external",
+            Profile = AccessServiceProfiles.External,
             RoleProvider = ipRestrictionRoleProvider
         };
         DbContext.AccessServices.AddRange(clickthroughAccessService, oidcAccessService, ipRestrictionAccessService);

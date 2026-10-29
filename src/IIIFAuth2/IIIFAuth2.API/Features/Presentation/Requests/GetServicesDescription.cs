@@ -5,6 +5,7 @@ using IIIFAuth2.API.Models.Result;
 using IIIFAuth2.API.Utils;
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Core.Models.Domain;
 using MediatR;
 
 namespace IIIFAuth2.API.Features.Presentation.Requests;
@@ -89,8 +90,10 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
     {
         var customerServices = await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService);
         
+        // external services are output first as some clients only use the first service
         var accessServices = customerServices
             .Where(s => accessServiceIds.Contains(s.Id))
+            .OrderByDescending(s => s.Profile == AccessServiceProfiles.External)
             .ToList();
         return accessServices;
     }

@@ -4,6 +4,7 @@ using IIIF.Presentation.V3.Strings;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Core.Models.Domain;
 
 namespace IIIFAuth2.API.Models.Converters;
 
@@ -31,6 +32,8 @@ public static class AccessServiceConverter
     /// </summary>
     public static AuthAccessService2 ToIIIFModel(this AccessService accessService, IUrlPathProvider pathProvider)
     {
+        if (accessService.Profile == AccessServiceProfiles.External) return accessService.ToExternalIIIFModel(pathProvider);
+
         var authAccessService = new AuthAccessService2
         {
             Id = pathProvider.GetAccessServicePath(accessService).ToString(),
@@ -46,6 +49,39 @@ public static class AccessServiceConverter
             },
         };
         return authAccessService;
+    }
+
+    /// <summary>
+    /// Converts database entity <see cref="AccessService"/> with "external" profile to <see cref="AuthAccessService2"/>.
+    /// The client never opens an external access service so it has no id, and as there is no session to end it has no
+    /// logout service
+    /// </summary>
+    private static AuthAccessService2 ToExternalIIIFModel(this AccessService accessService, IUrlPathProvider pathProvider)
+    {
+        var authAccessService = new AuthAccessService2
+        {
+            Profile = AccessServiceProfiles.External,
+            Label = accessService.Label ?? GetDefaultExternalLabel(accessService),
+            Heading = accessService.Heading,
+            Note = accessService.Note,
+            Service = new List<IService>
+            {
+                GenerateTokenService(accessService, pathProvider),
+            },
+        };
+        return authAccessService;
+    }
+
+    private static LanguageMap GetDefaultExternalLabel(AccessService accessService)
+    {
+        // Wording only, so uses default configuration rather than host-specific. placeName is optional and is only
+        // output if configured
+        IProviderConfiguration? configuration = null;
+        accessService.RoleProvider?.Configuration.TryGetValue(RoleProviderConfiguration.DefaultKey, out configuration);
+        var placeName = (configuration as IpRestrictionConfiguration)?.PlaceName;
+
+        return new LanguageMap("en",
+            string.IsNullOrWhiteSpace(placeName) ? "Available at permitted locations" : $"Available in {placeName}");
     }
 
     private static IService GenerateTokenService(AccessService accessService, IUrlPathProvider pathProvider)

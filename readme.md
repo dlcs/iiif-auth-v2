@@ -20,6 +20,10 @@ The following role provider types are supported, this will be extended over time
 }
 ```
 
+`placeName` is optional and is public-facing: it is output in probe responses (e.g. "Only available in the Research Centre") and as the default label of the `external` access service. Omit it if the location shouldn't be advertised and generic wording will be used. IP ranges are never output.
+
+Roles granted by an IpRestriction provider should belong to an access service with `external` profile. These are output first in services descriptions, without an `id` or logout service.
+
 ## Projects
 
 The solution contains the following projects:
