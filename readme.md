@@ -8,6 +8,17 @@ The following role provider types are supported, this will be extended over time
 
 * `clickthrough` - auth service will render agreement, on accepting the user is granted specified roles. Not external dependencies.
 * `oidc` - external authorization server is used for login, claims are mapped to DLCS roles, see [DLCS RFC 008](https://github.com/dlcs/protagonist/blob/main/docs/rfcs/008-more-access-control-oidc-oauth.md)
+* `ipRestriction` - roles are granted when the client IP address is within configured CIDR ranges (e.g. a reading room). No sign-in is required and roles are never stored in a session, they are evaluated on each request. By convention, roles granted by an IP restriction have a final path segment prefixed `ip:` (e.g. `https://api.dlcs.io/customers/2/roles/ip:reading-room`). Configuration:
+
+```json
+{
+  "default": {
+    "config": "IpRestriction",
+    "ranges": [ "10.0.0.0/24", "2001:db8:1007::/48" ],
+    "placeName": "the Research Centre"
+  }
+}
+```
 
 ## Projects
 

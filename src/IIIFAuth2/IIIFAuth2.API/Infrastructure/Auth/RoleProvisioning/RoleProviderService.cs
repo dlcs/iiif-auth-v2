@@ -59,6 +59,14 @@ public class RoleProviderService
                     accessService, providerConfiguration, cancellationToken);
                 return oidcResult;
             }
+            case RoleProviderType.IpRestriction:
+            {
+                // IpRestriction roles are evaluated per-request from client IP, there is nothing to provision
+                logger.LogDebug("AccessService '{AccessServiceId}' uses IpRestriction and is not interactive",
+                    accessService.Id);
+                return HandleRoleProvisionResponse.Error(
+                    $"Access service '{accessService.Name}' is not interactive", 400);
+            }
             default:
                 throw new ArgumentOutOfRangeException(nameof(providerConfiguration.Config),
                     $"Role provider configuration type {providerConfiguration.Config} unknown");

@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using System.Net;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
 namespace IIIFAuth2.Core.Models.Domain;
@@ -111,6 +112,71 @@ public class OidcConfiguration : IProviderConfiguration
 }
 
 /// <summary>
+/// Configuration for granting roles based on client IP address. Roles granted are those whose access-service uses
+/// this role-provider. Roles are never stored in a session, they are evaluated per request.
+/// </summary>
+public class IpRestrictionConfiguration : IProviderConfiguration
+{
+    private string[] ranges = [];
+    private IPNetwork[]? parsedRanges;
+
+    /// <summary>
+    /// CIDR ranges (IPv4 or IPv6) that requests must originate from to be granted roles, e.g. "10.0.0.0/24"
+    /// </summary>
+    public string[] Ranges
+    {
+        get => ranges;
+        set
+        {
+            ranges = value ?? [];
+            parsedRanges = null;
+        }
+    }
+
+    /// <summary>
+    /// Optional name of the place that ranges represent, used in user-facing wording (e.g. "the Research Centre")
+    /// </summary>
+    public string? PlaceName { get; set; }
+
+    /// <summary>
+    /// <inheritdoc />
+    /// </summary>
+    /// <remarks>Not used for IpRestriction as there is no significant gesture</remarks>
+    public string? GestureTitle { get; set; }
+
+    /// <summary>
+    /// <inheritdoc />
+    /// </summary>
+    /// <remarks>Not used for IpRestriction as there is no significant gesture</remarks>
+    public string? GestureMessage { get; set; }
+
+    /// <summary>
+    /// <inheritdoc />
+    /// </summary>
+    [JsonConverter(typeof(StringEnumConverter))]
+    public RoleProviderType Config { get; set; }
+
+    /// <summary>
+    /// Check if provided <see cref="IPAddress"/> is within any of the configured <see cref="Ranges"/>. Invalid ranges
+    /// are ignored. IPv4-mapped IPv6 addresses are treated as IPv4.
+    /// </summary>
+    public bool Contains(IPAddress? ipAddress)
+    {
+        if (ipAddress == null) return false;
+        if (ipAddress.IsIPv4MappedToIPv6) ipAddress = ipAddress.MapToIPv4();
+
+        parsedRanges ??= ParseRanges(ranges);
+        return parsedRanges.Any(r => r.Contains(ipAddress));
+    }
+
+    private static IPNetwork[] ParseRanges(string[] toParse)
+        => toParse
+            .Select(r => IPNetwork.TryParse(r.Trim(), out var network) ? network : (IPNetwork?)null)
+            .OfType<IPNetwork>()
+            .ToArray();
+}
+
+/// <summary>
 /// How to handle an unknown claim value for oidc role-provider
 /// </summary>
 public enum UnknownMappingValueBehaviour
@@ -143,5 +209,6 @@ public enum RoleProviderType
 {
     Unknown,
     Clickthrough,
-    Oidc
+    Oidc,
+    IpRestriction
 }

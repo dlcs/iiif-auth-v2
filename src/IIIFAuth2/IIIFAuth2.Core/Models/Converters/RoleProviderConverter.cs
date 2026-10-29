@@ -39,6 +39,8 @@ public class RoleProviderConverter : JsonConverter<IProviderConfiguration>
                 return new ClickthroughConfiguration();
             case RoleProviderType.Oidc:
                 return new OidcConfiguration();
+            case RoleProviderType.IpRestriction:
+                return new IpRestrictionConfiguration();
             case RoleProviderType.Unknown:
             default:
                 throw new ArgumentOutOfRangeException(
