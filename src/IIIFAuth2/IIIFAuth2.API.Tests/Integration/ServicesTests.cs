@@ -244,6 +244,7 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
             {
                 new AuthAccessService2
                 {
+                    Id = $"http://localhost/auth/v2/access/99/{DatabaseFixture.IpRestrictionService}",
                     Profile = "external",
                     Label = new LanguageMap("en", "Available in the Research Centre"),
                     Service = new List<IService>
@@ -278,6 +279,7 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
             {
                 new AuthAccessService2
                 {
+                    Id = $"http://localhost/auth/v2/access/99/{DatabaseFixture.IpRestrictionService}",
                     Profile = "external",
                     Label = new LanguageMap("en", "Available in the Research Centre"),
                     Service = new List<IService>

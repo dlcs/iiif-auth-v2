@@ -42,32 +42,37 @@ public static class AccessServiceConverter
             Heading = accessService.Heading,
             Note = accessService.Note,
             ConfirmLabel = accessService.ConfirmLabel,
-            Service = new List<IService>
-            {
+            Service =
+            [
                 GenerateTokenService(accessService, pathProvider),
-                GenerateLogoutService(accessService, pathProvider),
-            },
+                GenerateLogoutService(accessService, pathProvider)
+            ],
         };
         return authAccessService;
     }
 
     /// <summary>
     /// Converts database entity <see cref="AccessService"/> with "external" profile to <see cref="AuthAccessService2"/>.
-    /// The client never opens an external access service so it has no id, and as there is no session to end it has no
-    /// logout service
+    /// As there is no session to end it has no logout service.
     /// </summary>
+    /// <remarks>
+    /// The spec says the id SHOULD NOT be present for external services and that clients MUST ignore it. It is
+    /// output so the service can be referenced, e.g. declared once in a Manifest's services and referenced by id. If
+    /// a client does open it, the access service returns a "not interactive" error and the window closes.
+    /// </remarks>
     private static AuthAccessService2 ToExternalIIIFModel(this AccessService accessService, IUrlPathProvider pathProvider)
     {
         var authAccessService = new AuthAccessService2
         {
+            Id = pathProvider.GetAccessServicePath(accessService).ToString(),
             Profile = AccessServiceProfiles.External,
             Label = accessService.Label ?? GetDefaultExternalLabel(accessService),
             Heading = accessService.Heading,
             Note = accessService.Note,
-            Service = new List<IService>
-            {
-                GenerateTokenService(accessService, pathProvider),
-            },
+            Service =
+            [
+                GenerateTokenService(accessService, pathProvider)
+            ],
         };
         return authAccessService;
     }
@@ -84,7 +89,8 @@ public static class AccessServiceConverter
             string.IsNullOrWhiteSpace(placeName) ? "Available at permitted locations" : $"Available in {placeName}");
     }
 
-    private static IService GenerateTokenService(AccessService accessService, IUrlPathProvider pathProvider)
+    private static AuthAccessTokenService2 GenerateTokenService(AccessService accessService,
+        IUrlPathProvider pathProvider)
     {
         var authTokenService = new AuthAccessTokenService2
         {
@@ -94,8 +100,8 @@ public static class AccessServiceConverter
         };
         return authTokenService;
     }
-    
-    private static IService GenerateLogoutService(AccessService accessService, IUrlPathProvider pathProvider)
+
+    private static AuthLogoutService2 GenerateLogoutService(AccessService accessService, IUrlPathProvider pathProvider)
     {
         var logoutService = new AuthLogoutService2
         {
