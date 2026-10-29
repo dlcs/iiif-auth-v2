@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 
 namespace IIIFAuth2.TestUI.Infrastructure;
 
@@ -11,25 +11,40 @@ public class AuthServiceClient(HttpClient httpClient)
     public Task<HttpResponseMessage> GetServices(Deliverable deliverable, CancellationToken cancellationToken)
         => httpClient.GetAsync($"services/{deliverable.Id}?roles={GetRolesString(deliverable)}", cancellationToken);
 
-    public Task<HttpResponseMessage> ProbeInternal(Deliverable deliverable, string accessToken,
+    /// <summary>
+    /// Call probe_internal, passing access token as Bearer token (if present) and client IP as x-forwarded-for (if
+    /// present)
+    /// </summary>
+    public Task<HttpResponseMessage> ProbeInternal(Deliverable deliverable, string? accessToken, string? forwardedFor,
         CancellationToken cancellationToken)
     {
         var request = new HttpRequestMessage(HttpMethod.Get,
             $"probe_internal/{deliverable.Id}?roles={GetRolesString(deliverable)}");
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        if (!string.IsNullOrEmpty(accessToken))
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        }
+        AddForwardedFor(request, forwardedFor);
         return httpClient.SendAsync(request, cancellationToken);
     }
 
     /// <summary>
     /// Call verifyaccess, passing the Cookie header from the incoming request (Orchestrator uses header propagation)
+    /// and client IP as x-forwarded-for (if present)
     /// </summary>
-    public Task<HttpResponseMessage> VerifyAccess(Deliverable deliverable, string? cookieHeader,
+    public Task<HttpResponseMessage> VerifyAccess(Deliverable deliverable, string? cookieHeader, string? forwardedFor,
         CancellationToken cancellationToken)
     {
         var request = new HttpRequestMessage(HttpMethod.Get,
             $"verifyaccess/{deliverable.Id}?roles={GetRolesString(deliverable)}");
         if (!string.IsNullOrEmpty(cookieHeader)) request.Headers.Add("Cookie", cookieHeader);
+        AddForwardedFor(request, forwardedFor);
         return httpClient.SendAsync(request, cancellationToken);
+    }
+
+    private static void AddForwardedFor(HttpRequestMessage request, string? forwardedFor)
+    {
+        if (!string.IsNullOrEmpty(forwardedFor)) request.Headers.TryAddWithoutValidation("X-Forwarded-For", forwardedFor);
     }
 
     private static string GetRolesString(Deliverable deliverable)

@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 
 namespace IIIFAuth2.TestUI.Infrastructure;
 
@@ -8,6 +8,26 @@ namespace IIIFAuth2.TestUI.Infrastructure;
 public record Deliverable(string Id, IReadOnlyList<string> Roles, DateTime Registered)
 {
     public string RolesString => string.Join(",", Roles);
+
+    /// <summary>
+    /// Whether any role is an IP role, i.e. the final path segment starts with "ip:"
+    /// </summary>
+    /// <remarks>
+    /// Mirrors RoleX.IsIpRole in IIIFAuth2.Core. Duplicated rather than referenced as Orchestrator, which this app
+    /// stands in for, won't reference IIIFAuth2.Core
+    /// </remarks>
+    public bool HasIpRole => Roles.Any(IsIpRole);
+
+    /// <summary>
+    /// Customer id, from first segment of deliverable id. Null if not an int, as ids aren't validated
+    /// </summary>
+    public int? Customer => int.TryParse(Id.Split('/')[0], out var customer) ? customer : null;
+
+    private static bool IsIpRole(string role)
+    {
+        var trimmed = role.TrimEnd('/');
+        return trimmed[(trimmed.LastIndexOf('/') + 1)..].StartsWith("ip:", StringComparison.Ordinal);
+    }
 }
 
 /// <summary>

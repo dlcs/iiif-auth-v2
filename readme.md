@@ -173,8 +173,14 @@ You'll need to setup an access service and role provider locally, see [bootstrap
 
 Fake Orchestrator endpoints:
 * `/manifest/{deliverableId}` - single-canvas manifest, auth services from `/services/` endpoint.
-* `/auth/v2/probe/{deliverableId}` - calls `/probe_internal/`, passing bearer token. Set iiif-auth-v2 `"OrchestratorRoot": "https://localhost:7050"` to have probe service ids point here, or leave the "send probe requests to this Test UI" option ticked.
-* `/fake-image/{deliverableId}` - calls `/verifyaccess/`, forwarding the request `Cookie` header, returns an SVG showing result.
+* `/auth/v2/probe/{deliverableId}` - calls `/probe_internal/`, passing bearer token. Set iiif-auth-v2 `"OrchestratorRoot": "https://localhost:7050"` to have probe service ids point here, or leave the "send probe requests to this Test UI" option ticked. Returns 401 without calling iiif-auth-v2 if there's no bearer token, unless the deliverable has an `ip:` role.
+* `/fake-image/{deliverableId}` - calls `/verifyaccess/`, forwarding the request `Cookie` header, returns an SVG showing result. Returns 401 without calling iiif-auth-v2 if there's no auth2 cookie for the customer, unless the deliverable has an `ip:` role.
+
+If a deliverable has an `ip:` role, `X-Forwarded-For` is sent to `/probe_internal/` and `/verifyaccess/`, simulating the proposed Orchestrator changes for [IpRestriction roles](#role-provider-types). The value is the request IP, or a simulated client IP set on the Auth flow page (applies to all deliverables, held in memory). To test:
+
+1. Run `scripts/sql/ip_restriction.sql` (edit the customer as required and remove the `rollback`), then restart IIIFAuth2.API as role and access-service records are cached.
+2. Register a deliverable, e.g. `7/1/foo`, with the `ip:reading-room` role (optionally with a clickthrough role too).
+3. On the Auth flow page, leave the client IP blank (localhost is in range) or set an IP in/out of the configured ranges, then run the flow. The probe returns 200 without a token if in range, else 403 "Not available at your location" (or 401 if there are other roles). Downstream calls show the `X-Forwarded-For` header sent.
 
 Configured via `AuthServiceRoot` (default `https://localhost:7049/auth/v2/`) and `ConnectionStrings:Postgres` appSettings. The test UI needs to run on https on the same host as iiif-auth-v2 so the browser sends the auth cookie to the fake image endpoint (cookies ignore ports).
 
