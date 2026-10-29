@@ -28,25 +28,32 @@ public class RoleProviderConfiguration : Dictionary<string, IProviderConfigurati
 public interface IProviderConfiguration
 {
     /// <summary>
-    /// Optional title to be displayed on popup to capture significant gesture
-    /// </summary>
-    public string? GestureTitle { get; set; }
-    
-    /// <summary>
-    /// Optional title to be displayed on popup to capture significant gesture
-    /// </summary>
-    public string? GestureMessage { get; set; }
-
-    /// <summary>
     /// The type of configuration, this determines how it is handled
     /// </summary>
     public RoleProviderType Config { get; set; }
 }
 
 /// <summary>
-/// Configuration for clickthrough authentication, which the DLCS handles itself without any external system 
+/// Role-provider properties for types that grant roles via user interaction, which may require a significant gesture
+/// to be captured before a cookie can be issued
 /// </summary>
-public class ClickthroughConfiguration : IProviderConfiguration
+public interface IInteractiveProviderConfiguration : IProviderConfiguration
+{
+    /// <summary>
+    /// Optional title to be displayed on popup to capture significant gesture
+    /// </summary>
+    public string? GestureTitle { get; set; }
+
+    /// <summary>
+    /// Optional message to be displayed on popup to capture significant gesture
+    /// </summary>
+    public string? GestureMessage { get; set; }
+}
+
+/// <summary>
+/// Configuration for clickthrough authentication, which the DLCS handles itself without any external system
+/// </summary>
+public class ClickthroughConfiguration : IInteractiveProviderConfiguration
 {
     /// <summary>
     /// <inheritdoc />
@@ -71,7 +78,7 @@ public class ClickthroughConfiguration : IProviderConfiguration
 /// <remarks>
 /// See https://github.com/dlcs/protagonist/blob/main/docs/rfcs/008-more-access-control-oidc-oauth.md#role-provider---oidc
 /// </remarks>
-public class OidcConfiguration : IProviderConfiguration
+public class OidcConfiguration : IInteractiveProviderConfiguration
 {
     public string Provider { get; set; } = null!;
     public string Domain { get; set; } = null!;
@@ -139,18 +146,6 @@ public class IpRestrictionConfiguration : IProviderConfiguration
     /// Optional name of the place that ranges represent, used in user-facing wording (e.g. "the Research Centre")
     /// </summary>
     public string? PlaceName { get; set; }
-
-    /// <summary>
-    /// <inheritdoc />
-    /// </summary>
-    /// <remarks>Not used for IpRestriction as there is no significant gesture</remarks>
-    public string? GestureTitle { get; set; }
-
-    /// <summary>
-    /// <inheritdoc />
-    /// </summary>
-    /// <remarks>Not used for IpRestriction as there is no significant gesture</remarks>
-    public string? GestureMessage { get; set; }
 
     /// <summary>
     /// <inheritdoc />

@@ -37,7 +37,7 @@ public class RoleProvisionGranter
     public async Task<HandleRoleProvisionResponse> CompleteRequest(
         int customerId,
         Uri requestOrigin,
-        IProviderConfiguration providerConfiguration,
+        IInteractiveProviderConfiguration providerConfiguration,
         Func<Task<IReadOnlyCollection<string>>> getRolesToBeGranted,
         CancellationToken cancellationToken = default)
     {
@@ -58,7 +58,7 @@ public class RoleProvisionGranter
     }
 
     private async Task<SignificantGestureModel> GetSignificantGestureModel(int customerId, IReadOnlyCollection<string> roles,
-        string origin, IProviderConfiguration configuration, CancellationToken cancellationToken)
+        string origin, IInteractiveProviderConfiguration configuration, CancellationToken cancellationToken)
     {
         var expiringToken =
             await sessionManagementService.CreateRoleProvisionToken(customerId, roles, origin, cancellationToken);
