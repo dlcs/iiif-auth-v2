@@ -14,6 +14,7 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
+    private static readonly string IpRole = Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri);
 
     public ProbeServiceTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
@@ -438,6 +439,106 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         authProbeResult.Status.Should().Be(200, "OK (200) expected");
         authProbeResult.Heading.Should().BeNull();
         authProbeResult.Note.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("10.0.0.5")]
+    [InlineData("2001:db8:1007::1")]
+    [InlineData("::ffff:10.0.0.5")]
+    public async Task GetProbeService_Returns200StatusProperty_IfNoBearerToken_AndClientIpInRange(string clientIp)
+    {
+        // Arrange
+        var path = $"probe_internal/99/2/foo?roles={IpRole}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("X-Forwarded-For", clientIp);
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(200, "OK (200) expected");
+        authProbeResult.Heading.Should().BeNull();
+        authProbeResult.Note.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetProbeService_Returns200StatusProperty_IfBearerTokenInvalid_AndClientIpInRange()
+    {
+        // Arrange
+        var path = $"probe_internal/99/2/foo?roles=foo,{IpRole}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Authorization", "Bearer not-a-known-token");
+        request.Headers.Add("X-Forwarded-For", "10.0.0.5");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(200, "OK (200) expected");
+    }
+
+    [Theory]
+    [InlineData("10.0.1.5")]
+    [InlineData("2001:db8:1008::1")]
+    [InlineData(null)]
+    public async Task GetProbeService_Returns403StatusProperty_IfOnlyIpRoles_AndClientIpNotInRange(string? clientIp)
+    {
+        // Arrange
+        var path = $"probe_internal/99/2/foo?roles={IpRole}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (clientIp != null) request.Headers.Add("X-Forwarded-For", clientIp);
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(403, "Forbidden (403) expected");
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Not available at your location");
+        authProbeResult.Note["en"].Should().ContainSingle(s => s == "Only available in the Research Centre");
+    }
+
+    [Fact]
+    public async Task GetProbeService_Returns401StatusProperty_IfIpAndOtherRoles_NoBearerToken_AndClientIpNotInRange()
+    {
+        // Arrange
+        var path = $"probe_internal/99/2/foo?roles=foo,{IpRole}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("X-Forwarded-For", "10.0.1.5");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(401, "Unauthorized (401) expected");
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Missing credentials");
+    }
+
+    [Fact]
+    public async Task GetProbeService_Returns200StatusProperty_IfIpAndOtherRoles_BearerTokenValid_AndClientIpNotInRange()
+    {
+        // Arrange
+        const string accessToken =
+            nameof(GetProbeService_Returns200StatusProperty_IfIpAndOtherRoles_BearerTokenValid_AndClientIpNotInRange);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(accessToken));
+        await dbContext.SaveChangesAsync();
+
+        var path = $"probe_internal/99/2/foo?roles=foo,{IpRole}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Authorization", $"Bearer {accessToken}");
+        request.Headers.Add("X-Forwarded-For", "10.0.1.5");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        var authProbeResult = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+        authProbeResult.Status.Should().Be(200, "OK (200) expected");
     }
 
     private static SessionUser CreateSessionUser(string accessToken, int customer = 99, DateTime? expires = null,

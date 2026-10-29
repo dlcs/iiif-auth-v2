@@ -86,6 +86,7 @@ public static class ServiceCollectionX
             .AddScoped<OidcRoleProviderHandler>()
             .AddScoped<ClickThroughProviderHandler>()
             .AddScoped<SessionManagementService>()
+            .AddScoped<IpRoleEvaluator>()
             .AddSingleton<ClaimsConverter>()
             .AddScoped<SessionCleaner>();
 

@@ -27,14 +27,22 @@ public class GetProbeServiceDescription : IRequest<AuthProbeResult2>
 public class GetServicesDescriptionHandler : IRequestHandler<GetProbeServiceDescription, AuthProbeResult2>
 {
     private readonly SessionManagementService sessionManagementService;
+    private readonly IpRoleEvaluator ipRoleEvaluator;
 
-    public GetServicesDescriptionHandler(SessionManagementService sessionManagementService)
+    public GetServicesDescriptionHandler(SessionManagementService sessionManagementService,
+        IpRoleEvaluator ipRoleEvaluator)
     {
         this.sessionManagementService = sessionManagementService;
+        this.ipRoleEvaluator = ipRoleEvaluator;
     }
 
     public async Task<AuthProbeResult2> Handle(GetProbeServiceDescription request, CancellationToken cancellationToken)
     {
+        // IP roles are evaluated first as they don't require a session
+        var ipRoleEvaluation = await ipRoleEvaluator.Evaluate(request.DeliverableId.Customer, request.Roles);
+        var ipStatusCode = AccessStatusCodeHelpers.GetIpStatusCode(ipRoleEvaluation, request.Roles);
+        if (ipStatusCode.HasValue) return BuildIpProbeResultResponse(ipStatusCode.Value, ipRoleEvaluation);
+
         var findSessionResponse =
             await sessionManagementService.TryGetSessionUserForAccessToken(request.DeliverableId.Customer, cancellationToken);
 
@@ -56,6 +64,20 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetProbeServiceDesc
         if (heading != null) probeService.Heading = new LanguageMap("en", heading);
         if (note != null) probeService.Note = new LanguageMap("en", note);
 
+        return probeService;
+    }
+
+    private static AuthProbeResult2 BuildIpProbeResultResponse(HttpStatusCode statusCode,
+        IpRoleEvaluation ipRoleEvaluation)
+    {
+        var probeService = new AuthProbeResult2 { Status = (int)statusCode };
+        if (statusCode == HttpStatusCode.OK) return probeService;
+
+        var note = ipRoleEvaluation.PlaceNames.Count == 0
+            ? "Only available from permitted locations"
+            : $"Only available in {string.Join(" or ", ipRoleEvaluation.PlaceNames)}";
+        probeService.Heading = new LanguageMap("en", "Not available at your location");
+        probeService.Note = new LanguageMap("en", note);
         return probeService;
     }
 

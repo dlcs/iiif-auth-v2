@@ -12,6 +12,7 @@ public class VerifyAccessTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
+    private static readonly string IpRole = Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri);
 
     public VerifyAccessTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
@@ -371,6 +372,75 @@ public class VerifyAccessTests : IClassFixture<AuthWebApplicationFactory>
         const string path = "verifyaccess/99/2/foo/adjunct-1?roles=clickthrough";
         var request = new HttpRequestMessage(HttpMethod.Get, path);
         request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData("10.0.0.5")]
+    [InlineData("2001:db8:1007::1")]
+    public async Task VerifyAccess_Returns200_IfNoCookie_AndClientIpInRange(string clientIp)
+    {
+        // Arrange
+        var path = $"verifyaccess/99/2/foo?roles={IpRole}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("X-Forwarded-For", clientIp);
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData("10.0.1.5")]
+    [InlineData(null)]
+    public async Task VerifyAccess_Returns403_IfOnlyIpRoles_AndClientIpNotInRange(string? clientIp)
+    {
+        // Arrange
+        var path = $"verifyaccess/99/2/foo?roles={IpRole}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (clientIp != null) request.Headers.Add("X-Forwarded-For", clientIp);
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task VerifyAccess_Returns401_IfIpAndOtherRoles_NoCookie_AndClientIpNotInRange()
+    {
+        // Arrange
+        var path = $"verifyaccess/99/2/foo?roles=clickthrough,{IpRole}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("X-Forwarded-For", "10.0.1.5");
+
+        // Act
+        var response = await httpClient.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task VerifyAccess_Returns200_IfIpAndOtherRoles_CookieValid_AndClientIpNotInRange()
+    {
+        // Arrange
+        const string cookieId = nameof(VerifyAccess_Returns200_IfIpAndOtherRoles_CookieValid_AndClientIpNotInRange);
+        await dbContext.SessionUsers.AddAsync(CreateSessionUser(cookieId));
+        await dbContext.SaveChangesAsync();
+
+        var path = $"verifyaccess/99/2/foo?roles=clickthrough,{IpRole}";
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+        request.Headers.Add("X-Forwarded-For", "10.0.1.5");
 
         // Act
         var response = await httpClient.SendAsync(request);

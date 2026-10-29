@@ -24,14 +24,22 @@ public class TestAccessRequest : IRequest<HttpStatusCode>
 public class GetAccessTestResultHandler : IRequestHandler<TestAccessRequest, HttpStatusCode>
 {
     private readonly SessionManagementService sessionManagementService;
+    private readonly IpRoleEvaluator ipRoleEvaluator;
 
-    public GetAccessTestResultHandler(SessionManagementService sessionManagementService)
+    public GetAccessTestResultHandler(SessionManagementService sessionManagementService,
+        IpRoleEvaluator ipRoleEvaluator)
     {
         this.sessionManagementService = sessionManagementService;
+        this.ipRoleEvaluator = ipRoleEvaluator;
     }
 
     public async Task<HttpStatusCode> Handle(TestAccessRequest request, CancellationToken cancellationToken)
     {
+        // IP roles are evaluated first as they don't require a session
+        var ipRoleEvaluation = await ipRoleEvaluator.Evaluate(request.DeliverableId.Customer, request.Roles);
+        var ipStatusCode = AccessStatusCodeHelpers.GetIpStatusCode(ipRoleEvaluation, request.Roles);
+        if (ipStatusCode.HasValue) return ipStatusCode.Value;
+
         var tryGetSessionResponse =
             await sessionManagementService.TryGetSessionUserForCookie(request.DeliverableId.Customer, null,
                 cancellationToken);
