@@ -1,4 +1,5 @@
-﻿using IIIFAuth2.Core.Models.Converters;
+﻿using System.Net;
+using IIIFAuth2.Core.Models.Converters;
 using IIIFAuth2.Core.Models.Domain;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -185,6 +186,20 @@ public class RoleProviderConverterTests
 
         // Assert
         actual.Should().BeOfType<IpRestrictionConfiguration>().And.BeEquivalentTo(expected);
+    }
+
+    [Theory]
+    [InlineData("{\"config\":\"IpRestriction\", \"ranges\":null}")]
+    [InlineData("{\"config\":\"IpRestriction\"}")]
+    public void CanDeserialise_IpRestriction_NullOrMissingRanges_AsEmpty(string json)
+    {
+        // Act
+        var actual = JsonConvert.DeserializeObject<IProviderConfiguration>(json, jsonSerialiser);
+
+        // Assert
+        var config = actual.Should().BeOfType<IpRestrictionConfiguration>().Subject;
+        config.Ranges.Should().BeEmpty();
+        config.Contains(IPAddress.Parse("10.0.0.5")).Should().BeFalse();
     }
 
     [Fact]

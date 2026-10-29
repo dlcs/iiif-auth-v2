@@ -1,4 +1,5 @@
-﻿using System.Net;
+﻿using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 
@@ -123,6 +124,7 @@ public class IpRestrictionConfiguration : IProviderConfiguration
     /// <summary>
     /// CIDR ranges (IPv4 or IPv6) that requests must originate from to be granted roles, e.g. "10.0.0.0/24"
     /// </summary>
+    [AllowNull]
     public string[] Ranges
     {
         get => ranges;
