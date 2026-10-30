@@ -55,7 +55,7 @@ docker compose up
 For local debugging there are 3 docker compose files available:
 * `docker-compose.db.yml` - runs an empty postgres instance. Running `IIIFAuth2.Management` with `RunMigrations=true` will scaffold DB.
 * `docker-compose.local.yml` - runs the above and also an nginx container, which is:
-  * Running on `https://localhost:5040`.
+  * Running on `https://localhost:5041`.
   * Proxying `/auth/v2/probe/*` and `/*` to localhost:5013. This is the http port for Orchestrator as defined in `launchSettings.json`
   * Proxying `/auth/v2/*` to localhost:7149. This is the http port for iiif-auth-v2, as defined in `launchSettings.json`
 * `docker-compose.local.certs.yml` - same as `docker-compose.local.yml` but nginx uses your local .NET dev certificate rather than a self-signed one, avoiding browser errors. See [Using .NET dev certificates](#using-net-dev-certificates).
@@ -156,9 +156,9 @@ This service is an extension of [DLCS Protagonist](https://github.com/dlcs/prota
 Below are steps for running iiif-auth-v2 and Orchestrator locally:
 
 1. Run `docker compose -f docker-compose.local.yml up`
-2. In iiif-auth-v2 set `"OrchestratorRoot": "https://localhost:5040"` appSetting (nginx port)
+2. In iiif-auth-v2 set `"OrchestratorRoot": "https://localhost:5041"` appSetting (nginx port)
 3. In orchestrator set `"Auth__Auth2ServiceRoot": "https://localhost:7049/auth/v2/"` appSetting (default from auth-services launchSettings)
-4. When making Orchestrator requests use the nginx port `:5040`, rather than the standard dotnet launchSettings port. This ensures that auth + orchestrator are on same port and avoids any cookie issues.
+4. When making Orchestrator requests use the nginx port `:5041`, rather than the standard dotnet launchSettings port. This ensures that auth + orchestrator are on same port and avoids any cookie issues.
 
 ### One Off
 
@@ -189,5 +189,5 @@ Configured via `AuthServiceRoot` (default `https://localhost:7049/auth/v2/`) and
 
 There's a sample auth client available at https://tomcrane.github.io/iiif-auth-client/ that is useful for testing. This shows verbose logging to help diagnose and track any issues.
 
-* https://tomcrane.github.io/iiif-auth-client/?image=https://localhost:5040/iiif-img/{asset-id}/info.json
-* https://tomcrane.github.io/iiif-auth-client/?manifest=https://localhost:5040/iiif-manifest/{asset-id}
+* https://tomcrane.github.io/iiif-auth-client/?image=https://localhost:5041/iiif-img/{asset-id}/info.json
+* https://tomcrane.github.io/iiif-auth-client/?manifest=https://localhost:5041/iiif-manifest/{asset-id}

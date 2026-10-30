@@ -24,7 +24,7 @@ dotnet ef migrations add "{migration-name}" -p IIIFAuth2.Core -s IIIFAuth2.Manag
 
 Integration tests use Testcontainers (`postgres:18-alpine`), so **Docker must be running** to run tests.
 
-Local infra (repo root): `docker compose -f docker-compose.db.yml up` (Postgres only), `docker-compose.local.yml` (Postgres + nginx on `https://localhost:5040` proxying `/auth/v2/*` to this API and everything else to a local Orchestrator), `docker-compose.local.certs.yml` (same, using exported .NET dev certs in `nginx/certs/`). `docker compose up` runs both built apps.
+Local infra (repo root): `docker compose -f docker-compose.db.yml up` (Postgres only), `docker-compose.local.yml` (Postgres + nginx on `https://localhost:5041` proxying `/auth/v2/*` to this API and everything else to a local Orchestrator), `docker-compose.local.certs.yml` (same, using exported .NET dev certs in `nginx/certs/`). `docker compose up` runs both built apps.
 
 ## Projects
 
