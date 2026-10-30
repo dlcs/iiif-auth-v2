@@ -27,6 +27,7 @@ try
         .ConfigureOptions(builder.Configuration)
         .AddHttpContextAccessor()
         .AddScoped<IUrlPathProvider, UrlPathProvider>()
+        .AddSingleton<IClientIpProvider, ClientIpProvider>()
         .AddAuthServices()
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()

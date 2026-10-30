@@ -21,6 +21,16 @@ public class ApiSettings
     /// Fallback message for Significant Gesture view, if none specified by RoleProvider
     /// </summary>
     public string DefaultSignificantGestureMessage = "Confirm authentication with DLCS";
+
+    /// <summary>
+    /// If true, IpRestriction wording always uses generic "permitted locations" text, ignoring any configured
+    /// locationPhrase.
+    /// </summary>
+    /// <remarks>
+    /// This allows location wording to be turned off without config changes for each role-provider while still
+    /// maintaining the location phrase data.
+    /// </remarks>
+    public bool UseGenericLocationWording { get; set; }
 }
 
 public class AuthSettings

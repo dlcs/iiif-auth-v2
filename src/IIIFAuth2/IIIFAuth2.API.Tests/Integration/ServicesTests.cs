@@ -7,6 +7,7 @@ using IIIFAuth2.API.Tests.Infrastructure;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Core.Models.Domain;
 using IIIFAuth2.Tests.Common;
 
 namespace IIIFAuth2.API.Tests.Integration;
@@ -20,10 +21,12 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
+    private readonly string connectionString;
 
     public ServicesTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
         dbContext = dbFixture.DbContext;
+        connectionString = dbFixture.ConnectionString;
         httpClient = factory
             .WithConnectionString(dbFixture.ConnectionString)
             .CreateClient();
@@ -228,5 +231,183 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
 
         var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
         probeService.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task GetServicesDescription_ReturnsExternalService_IfIpRole()
+    {
+        // Arrange
+        var path = $"services/99/2/asset?roles={Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri)}";
+
+        var expected = new AuthProbeService2
+        {
+            Id = "https://orchestrator.testing/auth/v2/probe/99/2/asset",
+            Service = new List<IService>
+            {
+                new AuthAccessService2
+                {
+                    Id = $"http://localhost/auth/v2/access/99/{DatabaseFixture.IpRestrictionService}",
+                    Profile = "external",
+                    Label = new LanguageMap("en", "Available in the Research Centre"),
+                    Service = new List<IService>
+                    {
+                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/access/99/token", },
+                    }
+                }
+            }
+        };
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        probeService.Should().BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public async Task GetServicesDescription_ReturnsExternalServiceFirst_IfIpAndClickthroughRoles()
+    {
+        // Arrange
+        var path =
+            $"services/99/2/asset?roles={DatabaseFixture.ClickthroughRoleUri},{Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri)}";
+
+        var expected = new AuthProbeService2
+        {
+            Id = "https://orchestrator.testing/auth/v2/probe/99/2/asset",
+            Service = new List<IService>
+            {
+                new AuthAccessService2
+                {
+                    Id = $"http://localhost/auth/v2/access/99/{DatabaseFixture.IpRestrictionService}",
+                    Profile = "external",
+                    Label = new LanguageMap("en", "Available in the Research Centre"),
+                    Service = new List<IService>
+                    {
+                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/access/99/token", },
+                    }
+                },
+                new AuthAccessService2
+                {
+                    Id = "http://localhost/auth/v2/access/99/clickthrough",
+                    Profile = "active",
+                    Service = new List<IService>
+                    {
+                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/access/99/token", },
+                        new AuthLogoutService2
+                        {
+                            Id = "http://localhost/auth/v2/99/clickthrough/logout",
+                            Label = new LanguageMap("en", $"Logout of {DatabaseFixture.ClickthroughService}")
+                        }
+                    }
+                }
+            }
+        };
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        probeService.Should().BeEquivalentTo(expected, opts => opts.WithStrictOrdering());
+    }
+
+    [Fact]
+    public async Task GetServicesDescription_ExternalService_UsesGenericLabel_IfNoLabelOrLocationPhrase()
+    {
+        // Arrange
+        // Customer specific to this test as customer records are cached
+        const int customer = 98;
+        const string role = "http://dlcs.test/98/ip:no-place-name";
+        await AddIpRestriction(customer, role, locationPhrase: null, label: null);
+
+        var path = $"services/{customer}/2/asset?roles={Uri.EscapeDataString(role)}";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        var accessService = probeService.Service.Should().ContainSingle().Which.As<AuthAccessService2>();
+        accessService.Label["en"].Should().ContainSingle(s => s == "Available at permitted locations");
+    }
+
+    [Fact]
+    public async Task GetServicesDescription_ExternalService_UsesGenericLabel_IfUseGenericLocationWording()
+    {
+        // Arrange
+        var client = CreateGenericLocationWordingClient(connectionString);
+        var path = $"services/99/2/asset?roles={Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri)}";
+
+        // Act
+        var response = await client.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        var accessService = probeService.Service.Should().ContainSingle().Which.As<AuthAccessService2>();
+        accessService.Label["en"].Should().ContainSingle(s => s == "Available at permitted locations");
+    }
+
+    [Fact]
+    public async Task GetServicesDescription_ExternalService_UsesAccessServiceLabel_IfSet()
+    {
+        // Arrange
+        // Customer specific to this test as customer records are cached
+        const int customer = 97;
+        const string role = "http://dlcs.test/97/ip:with-label";
+        await AddIpRestriction(customer, role, locationPhrase: "in the Library",
+            label: new LanguageMap("en", "On site access"));
+
+        var path = $"services/{customer}/2/asset?roles={Uri.EscapeDataString(role)}";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        var accessService = probeService.Service.Should().ContainSingle().Which.As<AuthAccessService2>();
+        accessService.Label["en"].Should().ContainSingle(s => s == "On site access");
+    }
+
+    private static HttpClient CreateGenericLocationWordingClient(string connectionString)
+        => new AuthWebApplicationFactory()
+            .WithConnectionString(connectionString)
+            .WithConfigValue("UseGenericLocationWording", "true")
+            .CreateClient();
+
+    private async Task AddIpRestriction(int customer, string role, string? locationPhrase, LanguageMap? label)
+    {
+        var roleProvider = new RoleProvider
+        {
+            Customer = customer,
+            Configuration = new RoleProviderConfiguration
+            {
+                [RoleProviderConfiguration.DefaultKey] = new IpRestrictionConfiguration
+                {
+                    Config = RoleProviderType.IpRestriction, Ranges = ["10.0.0.0/24"], LocationPhrase = locationPhrase
+                }
+            }
+        };
+        var accessService = new AccessService
+        {
+            Id = Guid.NewGuid(), Customer = customer, Name = "on-site", Profile = AccessServiceProfiles.External,
+            Label = label, RoleProvider = roleProvider
+        };
+        await dbContext.AccessServices.AddAsync(accessService);
+        await dbContext.Roles.AddAsync(new Role
+        {
+            Id = role, Customer = customer, Name = "ip-role", AccessServiceId = accessService.Id
+        });
+        await dbContext.SaveChangesAsync();
     }
 }

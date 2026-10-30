@@ -20,7 +20,7 @@ public static class HttpRequestX
     public static string GetDisplayUrl(this HttpRequest request, string? path = null, bool includeQueryParams = true,
         bool includeHost = true)
     {
-        var host = includeHost ? request.Host.Value : string.Empty;
+        var host = (includeHost ? request.Host.Value : string.Empty) ?? string.Empty;
         var scheme = includeHost ? request.Scheme : string.Empty;
         var schemeDelimiterToUse = includeHost ? SchemeDelimiter : string.Empty;
         var pathBase = request.PathBase.Value ?? string.Empty;

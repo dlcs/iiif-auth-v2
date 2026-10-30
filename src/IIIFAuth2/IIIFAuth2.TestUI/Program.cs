@@ -1,4 +1,4 @@
-using IIIFAuth2.TestUI.FakeOrchestrator;
+﻿using IIIFAuth2.TestUI.FakeOrchestrator;
 using IIIFAuth2.TestUI.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,7 +8,9 @@ var authServiceRoot = settings.AuthServiceRoot.ToString().TrimEnd('/') + "/";
 
 builder.Services.AddRazorPages();
 builder.Services
+    .Configure<TestUISettings>(builder.Configuration)
     .AddSingleton<DeliverableStore>()
+    .AddSingleton<SimulatedClientIp>()
     .AddSingleton<CallLog>()
     .AddSingleton<RoleLookup>()
     .AddTransient<CallLoggingHandler>()

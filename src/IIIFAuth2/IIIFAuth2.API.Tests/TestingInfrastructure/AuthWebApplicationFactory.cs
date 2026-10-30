@@ -7,7 +7,7 @@ namespace IIIFAuth2.API.Tests.TestingInfrastructure;
 
 public class AuthWebApplicationFactory : WebApplicationFactory<Program>
 {
-    private readonly Dictionary<string, string> configuration = new();
+    private readonly Dictionary<string, string?> configuration = new();
     private Action<IServiceCollection>? configureTestServices = null;
 
     /// <summary>

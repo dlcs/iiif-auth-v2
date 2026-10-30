@@ -6,6 +6,8 @@
         <Nullable>enable</Nullable>
 
         <IsPackable>false</IsPackable>
+        <!-- Tests dereference nullable model properties expected to be set; a null fails the test anyway -->
+        <NoWarn>$(NoWarn);CS8602</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

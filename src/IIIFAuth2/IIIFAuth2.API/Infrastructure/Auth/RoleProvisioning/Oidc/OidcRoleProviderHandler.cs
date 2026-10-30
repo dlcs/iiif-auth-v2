@@ -78,7 +78,7 @@ public class OidcRoleProviderHandler
 
         if (roles.IsNullOrEmpty()) return HandleRoleProvisionResponse.Error("Unable to get DLCS roles for user");
 
-        return await roleProvisionGranter.CompleteRequest(customerId, requestUri, providerConfiguration,
+        return await roleProvisionGranter.CompleteRequest(customerId, requestUri, configuration,
             () => Task.FromResult(roles), cancellationToken);
     }
 

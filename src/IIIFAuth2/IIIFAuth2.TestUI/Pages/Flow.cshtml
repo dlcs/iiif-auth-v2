@@ -1,4 +1,4 @@
-@page
+﻿@page
 @model FlowModel
 @{
     ViewData["Title"] = "Auth flow";
@@ -34,6 +34,16 @@
         </div>
         <label for="token">Access token (sent as Bearer token to probe service; editable)</label>
         <input type="text" id="token" placeholder="none"/>
+
+        <form method="post" asp-page-handler="ClientIp" asp-route-id="@Model.Deliverable.Id">
+            <label for="clientIp">
+                Simulated client IP, sent to iiif-auth-v2 as <code>X-Forwarded-For</code> when deliverable has
+                <code>ip:</code> roles (@(Model.Deliverable.HasIpRole ? "it does" : "it doesn't")).
+                Blank uses request IP (<code>@(Model.RequestClientIp ?? "unknown")</code>). Applies to all deliverables.
+            </label>
+            <input type="text" id="clientIp" name="clientIp" value="@Model.SimulatedClientIp" placeholder="@(Model.RequestClientIp ?? "request IP")"/>
+            <button type="submit">Set client IP</button>
+        </form>
 
         <h2>Access services</h2>
         <div id="accessServices" class="hint">Start the flow to discover access services.</div>
