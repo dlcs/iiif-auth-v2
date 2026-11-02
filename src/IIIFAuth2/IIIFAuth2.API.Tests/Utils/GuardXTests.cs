@@ -8,7 +8,7 @@ public class GuardXTests
     public void ThrowIfNull_Throws_IfArgumentNull()
     {
         // Act
-        Action action = () => GuardX.ThrowIfNull<object>(null, "foo");
+        Action action = () => GuardX.ThrowIfNull<object>(null!, "foo");
         
         // Assert
         action.Should()

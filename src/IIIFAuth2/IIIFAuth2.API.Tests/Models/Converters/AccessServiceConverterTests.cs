@@ -41,7 +41,7 @@ public class AccessServiceConverterTests
         };
 
         // Act
-        var actual = accessService.ToIIIFModel(new FakePathProvider());
+        var actual = accessService.ToIIIFModel(new FakePathProvider(), useGenericLocationWording: false);
         
         // Assert
         actual.Should().BeEquivalentTo(expected);
@@ -91,7 +91,7 @@ public class AccessServiceConverterTests
         };
 
         // Act
-        var actual = accessService.ToIIIFModel(new FakePathProvider());
+        var actual = accessService.ToIIIFModel(new FakePathProvider(), useGenericLocationWording: false);
         
         // Assert
         actual.Should().BeEquivalentTo(expected);
@@ -138,7 +138,8 @@ public class AccessServiceConverterTests
         };
         
         // Act
-        var actual = accessServices.ToProbeService(new FakePathProvider(), new DeliverableId(99, 10, "foo"));
+        var actual = accessServices.ToProbeService(new FakePathProvider(), new DeliverableId(99, 10, "foo"),
+            useGenericLocationWording: false);
 
         // Assert
         actual.Should().BeEquivalentTo(expected);
@@ -161,7 +162,7 @@ public class AccessServiceConverterTests
 
         // Act
         var actual = accessServices.ToProbeService(new FakePathProvider(),
-            new DeliverableId(99, 10, "foo", "adjunct-1"));
+            new DeliverableId(99, 10, "foo", "adjunct-1"), useGenericLocationWording: false);
 
         // Assert
         actual.Id.Should().Be("http://orchestrator.example/probe/99/10/foo/adjunct-1");
@@ -232,7 +233,8 @@ public class AccessServiceConverterTests
         };
         
         // Act
-        var actual = accessServices.ToProbeService(new FakePathProvider(), new DeliverableId(99, 10, "foo"));
+        var actual = accessServices.ToProbeService(new FakePathProvider(), new DeliverableId(99, 10, "foo"),
+            useGenericLocationWording: false);
         
         // Assert
         actual.Should().BeEquivalentTo(expected);

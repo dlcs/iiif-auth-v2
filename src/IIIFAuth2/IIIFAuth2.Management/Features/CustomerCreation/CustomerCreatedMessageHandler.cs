@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using IIIF.Presentation.V3.Strings;
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
@@ -64,7 +64,7 @@ public class CustomerCreatedMessageHandler(
             Customer = customerId,
             RoleProviderId = roleProvider.Id,
             Name = ClickthroughName,
-            Profile = "active",
+            Profile = AccessServiceProfiles.Active,
             Label = new LanguageMap("en", "Confirm access"),
             Heading = new LanguageMap("en", "Confirm access"),
             Note = new LanguageMap("en", "<span>Placeholder content - update before use</span>"),

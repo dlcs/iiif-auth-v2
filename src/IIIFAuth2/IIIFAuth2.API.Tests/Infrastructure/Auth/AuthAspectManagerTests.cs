@@ -96,7 +96,7 @@ public class AuthAspectManagerTests
         await sut.IssueCookie(authToken);
         var cookies = contextAccessor.HttpContext.Response.Headers["Set-Cookie"];
 
-        void ValidateCookie(string host, string cookie)
+        void ValidateCookie(string host, string? cookie)
         {
             // Assert
             cookie.Should()
