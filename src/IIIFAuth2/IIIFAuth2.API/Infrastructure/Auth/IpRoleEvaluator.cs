@@ -47,6 +47,8 @@ public class IpRoleEvaluator(
         var accessServices =
             (await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService))
             .ToDictionary(a => a.Id);
+        // Called internally by Orchestrator, so this is the host Orchestrator calls (unless it forwards
+        // x-forwarded-host) rather than the public host. In practice IpRestriction providers use "default" config
         var host = httpContextAccessor.SafeHttpContext().Request.Host.Value ?? string.Empty;
 
         var ipRoleConfigurations = new Dictionary<string, IpRestrictionConfiguration>();
@@ -60,8 +62,8 @@ public class IpRoleEvaluator(
             var hasIpPrefix = role.Id.IsIpRole();
             if (isIpProvider != hasIpPrefix)
             {
-                // Validation of this will be enforced on write in future
-                logger.LogWarning(
+                // Validation of this will be enforced on write in future. Debug as this is called per request
+                logger.LogDebug(
                     "Role {Role} for customer {CustomerId} mismatch - has ip prefix: {HasIpPrefix}, has IpRestriction provider: {IsIpProvider}",
                     role.Id, customerId, hasIpPrefix, isIpProvider);
             }
@@ -83,11 +85,12 @@ public class IpRoleEvaluator(
             .Where(kvp => kvp.Value.Contains(clientIp))
             .Select(kvp => kvp.Key)
             .ToHashSet();
-        var locationPhrases = ipRoleConfigurations.Values
-            .Select(c => c.LocationPhrase)
-            .OfType<string>()
-            .Distinct()
-            .ToList();
+        // If any provider has no location phrase then none are returned, listing only some locations would be
+        // incomplete/misleading so generic wording is used instead
+        var phrases = ipRoleConfigurations.Values.Select(c => c.LocationPhrase).ToList();
+        var locationPhrases = phrases.Any(string.IsNullOrWhiteSpace)
+            ? []
+            : phrases.OfType<string>().Distinct().ToList();
 
         logger.LogDebug(
             "Client IP {ClientIp} granted {GrantedCount} of {IpRoleCount} IP roles for customer {CustomerId}",

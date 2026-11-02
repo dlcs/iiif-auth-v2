@@ -12,11 +12,20 @@ public class VerifyAccessTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
+    private readonly string connectionString;
     private static readonly string IpRole = Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri);
+
+    /// <summary>
+    /// KnownNetworks for proxy (e.g. Orchestrator) tests. Deliberately within the IpRestriction range (10.0.0.0/24) to
+    /// verify that a proxy IP is never treated as the client IP, even if it's in a permitted range
+    /// </summary>
+    private const string ProxyNetwork = "10.0.0.0/28";
+    private const string ProxyIp = "10.0.0.9";
 
     public VerifyAccessTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
         dbContext = dbFixture.DbContext;
+        connectionString = dbFixture.ConnectionString;
         httpClient = factory
             .WithConnectionString(dbFixture.ConnectionString)
             .CreateClient();
@@ -448,6 +457,60 @@ public class VerifyAccessTests : IClassFixture<AuthWebApplicationFactory>
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Theory]
+    [InlineData("10.0.0.200, " + ProxyIp)]
+    [InlineData("10.0.0.200")]
+    public async Task VerifyAccess_Returns200_IfKnownNetworksConfigured_AndClientIpInRange(string forwardedFor)
+    {
+        // Arrange - client, proxy (e.g. Orchestrator via load balancer) or client only (direct)
+        var client = CreateKnownNetworksClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"verifyaccess/99/2/foo?roles={IpRole}");
+        request.Headers.Add("X-Forwarded-For", forwardedFor);
+
+        // Act
+        var response = await client.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task VerifyAccess_Returns403_IfKnownNetworksConfigured_AndResolvedIpIsKnownProxy()
+    {
+        // Arrange - e.g. Orchestrator via load balancer without x-forwarded-for, load balancer adds Orchestrator IP.
+        // Proxy IP is within IpRestriction range but must not be treated as client
+        var client = CreateKnownNetworksClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"verifyaccess/99/2/foo?roles={IpRole}");
+        request.Headers.Add("X-Forwarded-For", ProxyIp);
+
+        // Act
+        var response = await client.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task VerifyAccess_Returns403_IfKnownNetworksConfigured_AndUnknownEntryBeforeClientIp()
+    {
+        // Arrange - rightmost entry isn't a known proxy so walk stops there, the in-range entry to its left is ignored
+        var client = CreateKnownNetworksClient();
+        var request = new HttpRequestMessage(HttpMethod.Get, $"verifyaccess/99/2/foo?roles={IpRole}");
+        request.Headers.Add("X-Forwarded-For", "10.0.0.200, 192.168.1.1");
+
+        // Act
+        var response = await client.SendAsync(request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    private HttpClient CreateKnownNetworksClient()
+        => new AuthWebApplicationFactory()
+            .WithConnectionString(connectionString)
+            .WithConfigValue("KnownNetworks", ProxyNetwork)
+            .CreateClient();
 
     private static SessionUser CreateSessionUser(string cookieId, int customer = 99, string origin = "http://localhost/",
         DateTime? expires = null, DateTime? lastChecked = null)

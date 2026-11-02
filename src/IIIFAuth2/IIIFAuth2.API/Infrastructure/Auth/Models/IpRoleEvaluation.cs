@@ -5,7 +5,10 @@ namespace IIIFAuth2.API.Infrastructure.Auth.Models;
 /// </summary>
 /// <param name="IpRoles">Requested roles that are granted by an IpRestriction role-provider</param>
 /// <param name="GrantedRoles">Requested roles that are granted to the current client IP address</param>
-/// <param name="LocationPhrases">Location phrases of the IpRestriction role-providers for <see cref="IpRoles"/></param>
+/// <param name="LocationPhrases">
+/// Distinct location phrases of the IpRestriction role-providers for <see cref="IpRoles"/>. Empty if any of those
+/// role-providers has no location phrase, as listing only some locations would be incomplete
+/// </param>
 public record IpRoleEvaluation(
     IReadOnlySet<string> IpRoles,
     IReadOnlySet<string> GrantedRoles,

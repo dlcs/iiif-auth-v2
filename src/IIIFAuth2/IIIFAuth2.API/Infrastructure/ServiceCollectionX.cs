@@ -125,21 +125,22 @@ public static class ServiceCollectionX
     /// If "KnownNetworks" key is found then the default is maintained and any CIDR addresses are added.
     /// As the client IP is used to grant IpRestriction roles, "KnownNetworks" should be set in deployed environments
     /// to prevent x-forwarded-for being spoofed by callers that can reach the service directly.
+    /// Configuration is read when options are first resolved, rather than at registration, so all configuration
+    /// sources are honoured.
     /// </remarks>
-    public static IServiceCollection ConfigureForwardedHeaders(this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection ConfigureForwardedHeaders(this IServiceCollection services)
     {
         const string configurationKey = "KnownNetworks";
         const string allNetworks = "AllNetworks";
-        var knownNetworks = configuration.GetValue(configurationKey, allNetworks)!;
-        var forwardLimit = configuration.GetValue<int?>("ForwardLimit", 1);
-
-        var logger = new SerilogLoggerFactory(Log.Logger).CreateLogger("ServiceCollection");
 
         // Use x-forwarded-host, x-forwarded-proto and x-forwarded-for to set httpContext.Request.Host, .Scheme and
         // .Connection.RemoteIpAddress respectively
-        return services.Configure<ForwardedHeadersOptions>(opts =>
+        services.AddOptions<ForwardedHeadersOptions>().Configure<IConfiguration>((opts, configuration) =>
         {
+            var knownNetworks = configuration.GetValue(configurationKey, allNetworks)!;
+            var forwardLimit = configuration.GetValue<int?>("ForwardLimit", 2);
+            var logger = new SerilogLoggerFactory(Log.Logger).CreateLogger("ServiceCollection");
+
             opts.ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto |
                                     ForwardedHeaders.XForwardedFor;
             opts.ForwardLimit = forwardLimit;
@@ -160,6 +161,7 @@ public static class ServiceCollectionX
                 }
             }
         });
+        return services;
     }
 
 }

@@ -251,7 +251,12 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
                     Label = new LanguageMap("en", "Available in the Research Centre"),
                     Service = new List<IService>
                     {
-                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/access/99/token", },
+                        new AuthAccessTokenService2
+                        {
+                            Id = "http://localhost/auth/v2/access/99/token",
+                            ErrorHeading = new LanguageMap("en", "Not available at your location"),
+                            ErrorNote = new LanguageMap("en", "Only available in the Research Centre"),
+                        },
                     }
                 }
             }
@@ -286,7 +291,12 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
                     Label = new LanguageMap("en", "Available in the Research Centre"),
                     Service = new List<IService>
                     {
-                        new AuthAccessTokenService2 { Id = "http://localhost/auth/v2/access/99/token", },
+                        new AuthAccessTokenService2
+                        {
+                            Id = "http://localhost/auth/v2/access/99/token",
+                            ErrorHeading = new LanguageMap("en", "Not available at your location"),
+                            ErrorNote = new LanguageMap("en", "Only available in the Research Centre"),
+                        },
                     }
                 },
                 new AuthAccessService2
@@ -336,6 +346,9 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
         var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
         var accessService = probeService.Service.Should().ContainSingle().Which.As<AuthAccessService2>();
         accessService.Label["en"].Should().ContainSingle(s => s == "Available at permitted locations");
+        var tokenService = accessService.Service.Should().ContainSingle().Which.As<AuthAccessTokenService2>();
+        tokenService.ErrorHeading["en"].Should().ContainSingle(s => s == "Not available at your location");
+        tokenService.ErrorNote["en"].Should().ContainSingle(s => s == "Only available from permitted locations");
     }
 
     [Fact]
@@ -354,6 +367,9 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
         var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
         var accessService = probeService.Service.Should().ContainSingle().Which.As<AuthAccessService2>();
         accessService.Label["en"].Should().ContainSingle(s => s == "Available at permitted locations");
+        var tokenService = accessService.Service.Should().ContainSingle().Which.As<AuthAccessTokenService2>();
+        tokenService.ErrorNote["en"].Should().ContainSingle(s => s == "Only available from permitted locations",
+            "generic wording applies to token service errors too");
     }
 
     [Fact]
@@ -379,13 +395,66 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
         accessService.Label["en"].Should().ContainSingle(s => s == "On site access");
     }
 
+    [Fact]
+    public async Task GetServicesDescription_ExternalService_UsesConfiguredTokenErrors_IfSet()
+    {
+        // Arrange
+        // Customer specific to this test as customer records are cached
+        const int customer = 96;
+        const string role = "http://dlcs.test/96/ip:with-errors";
+        await AddIpRestriction(customer, role, locationPhrase: "in the Library", label: null,
+            errorHeading: new LanguageMap("en", "Configured heading"),
+            errorNote: new LanguageMap("en", "Configured note"));
+
+        var path = $"services/{customer}/2/asset?roles={Uri.EscapeDataString(role)}";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        var accessService = probeService.Service.Should().ContainSingle().Which.As<AuthAccessService2>();
+        var tokenService = accessService.Service.Should().ContainSingle().Which.As<AuthAccessTokenService2>();
+        tokenService.ErrorHeading["en"].Should().ContainSingle(s => s == "Configured heading");
+        tokenService.ErrorNote["en"].Should().ContainSingle(s => s == "Configured note");
+    }
+
+    [Fact]
+    public async Task GetServicesDescription_ExternalService_DefaultsTokenErrorHeading_IfOnlyNoteSet()
+    {
+        // Arrange
+        // Customer specific to this test as customer records are cached
+        const int customer = 95;
+        const string role = "http://dlcs.test/95/ip:note-only";
+        await AddIpRestriction(customer, role, locationPhrase: "in the Library", label: null,
+            errorNote: new LanguageMap("en", "Configured note"));
+
+        var path = $"services/{customer}/2/asset?roles={Uri.EscapeDataString(role)}";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        var accessService = probeService.Service.Should().ContainSingle().Which.As<AuthAccessService2>();
+        var tokenService = accessService.Service.Should().ContainSingle().Which.As<AuthAccessTokenService2>();
+        tokenService.ErrorHeading["en"].Should().ContainSingle(s => s == "Not available at your location",
+            "errorHeading must be present if errorNote is");
+        tokenService.ErrorNote["en"].Should().ContainSingle(s => s == "Configured note");
+    }
+
     private static HttpClient CreateGenericLocationWordingClient(string connectionString)
         => new AuthWebApplicationFactory()
             .WithConnectionString(connectionString)
             .WithConfigValue("UseGenericLocationWording", "true")
             .CreateClient();
 
-    private async Task AddIpRestriction(int customer, string role, string? locationPhrase, LanguageMap? label)
+    private async Task AddIpRestriction(int customer, string role, string? locationPhrase, LanguageMap? label,
+        LanguageMap? errorHeading = null, LanguageMap? errorNote = null)
     {
         var roleProvider = new RoleProvider
         {
@@ -401,7 +470,8 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
         var accessService = new AccessService
         {
             Id = Guid.NewGuid(), Customer = customer, Name = "on-site", Profile = AccessServiceProfiles.External,
-            Label = label, RoleProvider = roleProvider
+            Label = label, RoleProvider = roleProvider, AccessTokenErrorHeading = errorHeading,
+            AccessTokenErrorNote = errorNote
         };
         await dbContext.AccessServices.AddAsync(accessService);
         await dbContext.Roles.AddAsync(new Role

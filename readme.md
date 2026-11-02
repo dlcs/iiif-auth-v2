@@ -20,7 +20,15 @@ The following role provider types are supported, this will be extended over time
 }
 ```
 
-`locationPhrase` is optional and is public-facing: it is output in probe responses as "Only available {locationPhrase}" (e.g. "Only available in the Research Centre") and as the default label of the `external` access service ("Available {locationPhrase}"). It includes the preposition as this varies by location, e.g. "in the Reading Room", "on Main Campus", "via the company VPN". Omit it if the location shouldn't be advertised and generic wording ("Only available from permitted locations") will be used. Setting `UseGenericLocationWording` uses generic wording for all providers. IP ranges are never output.
+`locationPhrase` is optional and is public-facing. It includes the preposition, as this varies by location, e.g. "in the Reading Room", "on Main Campus", "via the company VPN". It is output:
+
+* in probe responses, as "Only available {locationPhrase}" (e.g. "Only available in the Research Centre"). If an asset has several IP roles, all their phrases are listed (joined with "or").
+* as the default label of the `external` access service: "Available {locationPhrase}".
+* as the default `errorNote` of the `external` access service's token service, with `errorHeading` "Not available at your location". Clients use the token service immediately for `external` services, and it fails if the client isn't at a permitted location. These defaults only apply if `access_token_error_heading` isn't set on the access service.
+
+Omit it if the location shouldn't be advertised, and generic wording ("Only available from permitted locations") will be used. Generic wording is also used in probe responses if *any* of the asset's IP role providers has no `locationPhrase`, as listing only some locations would be incomplete. Setting `UseGenericLocationWording` uses generic wording everywhere, for all providers. IP ranges are never output.
+
+IpRestriction providers should only have a `default` configuration. Host-specific keys are looked up using the request host, but IP roles are evaluated on `probe_internal` and `verifyaccess`, which Orchestrator calls internally. So the host is the one Orchestrator uses to call this service, not the public host, unless Orchestrator forwards `x-forwarded-host`. The `external` access service's default label and token service errors always use `default`.
 
 Roles granted by an IpRestriction provider should belong to an access service with `external` profile. These are output first in services descriptions, without a logout service. They have an `id`, which the spec says "should not" be present and clients must ignore, so the service can be referenced, e.g. declared once in a Manifest and referenced by id. Opening it returns a "not interactive" error.
 
@@ -110,12 +118,22 @@ The following appSetting configuration values are supported:
 | GesturePathTemplateForDomain       | Dictionary that allows control of domain-specific significant gesture paths. `{customerId}` replaced.                 |                                                 |
 | OAuthCallbackPathTemplateForDomain | Dictionary that allows control of domain-specific oauth2 callback paths. `{customerId}` + `{accessService}` replaced. |                                                 |
 | KnownNetworks                      | Comma separated CIDR ranges of proxies that `x-forwarded-*` headers are accepted from. See note below.                | `"AllNetworks"`                                 |
-| ForwardLimit                       | Maximum number of entries in `x-forwarded-*` headers that are processed (rightmost first)                             | 1                                               |
+| ForwardLimit                       | Maximum number of entries in `x-forwarded-*` headers that are processed (rightmost first). See note below.            | 2                                               |
 | UseGenericLocationWording          | If `true`, IpRestriction wording always uses generic "permitted locations" text, ignoring `locationPhrase`            | `false`                                         |
 
 > A note on Dictionarys for domain-specific paths. A key of `"Default"` serves as fallback but isn't necessary if the default value matches the canonical DLCS path.
 
-> A note on `KnownNetworks`. `x-forwarded-for` is used to determine the client IP, which grants `IpRestriction` roles. The default `"AllNetworks"` accepts forwarded headers from any caller, so any client that can reach the API directly could spoof their IP. In deployed environments this should be set to the network(s) of the load balancer and Orchestrator.
+> A note on `KnownNetworks` and `ForwardLimit`. The client IP grants `IpRestriction` roles, and is read from `x-forwarded-for`. This service is called by Orchestrator rather than by clients, so Orchestrator is expected to work out the client IP and send it as the only `x-forwarded-for` value.
+>
+> * `KnownNetworks` lists the proxies that `x-forwarded-*` headers are accepted *from*. It is checked for every hop, not just the direct caller. Starting from the direct caller, the next `x-forwarded-for` entry (from the right) is applied only if the current address is known, up to `ForwardLimit` entries. The last address applied is the client IP.
+> * In deployed environments, set it to the network(s) of the load balancer and Orchestrator. If Orchestrator calls via a load balancer that sees it by a public IP (e.g. through a NAT gateway), include that IP too.
+> * Never add client location ranges (e.g. a reading room). An address in `KnownNetworks` is trusted to say who is behind it, so a client in that range could claim any IP.
+> * The default `ForwardLimit` of `2` handles Orchestrator calling via a load balancer (`x-forwarded-for: client, orchestrator`) and calling directly (`x-forwarded-for: client`).
+> * The client IP is unknown, and no `IpRestriction` roles are granted, if:
+>   * `x-forwarded-for` is missing or wasn't accepted. The direct caller's IP is never used as the client IP.
+>   * the resolved IP is itself within `KnownNetworks`, i.e. it's a proxy. E.g. Orchestrator called via a load balancer without sending `x-forwarded-for`, so the load balancer's entry (Orchestrator's IP) was the only one.
+> * When `KnownNetworks` is set, the .NET defaults (loopback) are kept, so local testing with a `localhost` client IP won't be granted roles.
+> * The default `"AllNetworks"` accepts forwarded headers from any caller, so any client that can reach the API directly could spoof their IP.
 
 ### Management
 

@@ -70,7 +70,7 @@ public class IpRoleEvaluatorTests
         result.IpRoles.Should().BeEquivalentTo(library, archive);
         result.GrantedRoles.Should().BeEquivalentTo(library);
         result.LocationPhrases.Should().BeEquivalentTo("in the Library", "via the Archive VPN");
-        AssertWarningLogged(0);
+        AssertMismatchLogged(0);
     }
 
     [Fact]
@@ -94,24 +94,45 @@ public class IpRoleEvaluatorTests
     }
 
     [Fact]
-    public async Task Evaluate_LocationPhrases_DistinctAndExcludeNull()
+    public async Task Evaluate_LocationPhrases_Distinct()
     {
         // Arrange
         const int customer = 9005;
         const string first = "http://dlcs.test/9005/ip:first";
         const string second = "http://dlcs.test/9005/ip:second";
-        const string noPlace = "http://dlcs.test/9005/ip:no-place";
         await AddRole(customer, first, IpConfig("10.0.0.0/24", "in the Library"));
         await AddRole(customer, second, IpConfig("10.0.1.0/24", "in the Library"));
-        await AddRole(customer, noPlace, IpConfig("10.0.2.0/24"));
         var sut = GetSut("192.168.0.1");
 
         // Act
-        var result = await sut.Evaluate(customer, [first, second, noPlace]);
+        var result = await sut.Evaluate(customer, [first, second]);
 
         // Assert
-        result.IpRoles.Should().HaveCount(3);
+        result.IpRoles.Should().HaveCount(2);
         result.LocationPhrases.Should().BeEquivalentTo("in the Library");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task Evaluate_LocationPhrases_Empty_IfAnyProviderHasNoLocationPhrase(string? missingPhrase)
+    {
+        // Arrange
+        // Distinct customer per case: 9020 (""), 9021 (" "), 9022 (null)
+        var customer = 9020 + (missingPhrase?.Length ?? 2);
+        var first = $"http://dlcs.test/{customer}/ip:first";
+        var noPlace = $"http://dlcs.test/{customer}/ip:no-place";
+        await AddRole(customer, first, IpConfig("10.0.0.0/24", "in the Library"));
+        await AddRole(customer, noPlace, IpConfig("10.0.2.0/24", missingPhrase));
+        var sut = GetSut("192.168.0.1");
+
+        // Act
+        var result = await sut.Evaluate(customer, [first, noPlace]);
+
+        // Assert
+        result.IpRoles.Should().HaveCount(2);
+        result.LocationPhrases.Should().BeEmpty("listing only some locations would be incomplete");
     }
 
     [Fact]
@@ -145,7 +166,7 @@ public class IpRoleEvaluatorTests
 
         // Assert
         result.Should().BeSameAs(IpRoleEvaluation.Empty);
-        AssertWarningLogged(1);
+        AssertMismatchLogged(1);
     }
 
     [Fact]
@@ -163,7 +184,7 @@ public class IpRoleEvaluatorTests
         // Assert
         result.IpRoles.Should().BeEquivalentTo(role);
         result.GrantedRoles.Should().BeEquivalentTo(role);
-        AssertWarningLogged(1);
+        AssertMismatchLogged(1);
     }
 
     [Theory]
@@ -230,7 +251,7 @@ public class IpRoleEvaluatorTests
 
         // Assert
         result.Should().BeSameAs(IpRoleEvaluation.Empty);
-        AssertWarningLogged(0);
+        AssertMismatchLogged(0);
     }
 
     private IpRoleEvaluator GetSut(string? clientIp, string host = DefaultHost)
@@ -247,10 +268,11 @@ public class IpRoleEvaluatorTests
         return new IpRoleEvaluator(dbContext, clientIpProvider, contextAccessor, logger);
     }
 
-    private void AssertWarningLogged(int times)
+    private void AssertMismatchLogged(int times)
         => A.CallTo(logger)
             .Where(call => call.Method.Name == nameof(ILogger.Log) &&
-                           call.GetArgument<LogLevel>(0) == LogLevel.Warning)
+                           call.GetArgument<LogLevel>(0) == LogLevel.Debug &&
+                           (call.GetArgument<object>(2) ?? string.Empty).ToString()!.Contains("mismatch"))
             .MustHaveHappened(times, Times.Exactly);
 
     private static RoleProviderConfiguration IpConfig(string range, string? locationPhrase = null)
