@@ -21,4 +21,22 @@ public class RoleXTests
     [InlineData("https://api.dlcs.io/customers/2/roles/staff-ip:reading-room")]
     public void IsIpRole_False_IfLastSegmentDoesNotHaveIpPrefix(string? role)
         => role.IsIpRole().Should().BeFalse();
+
+    [Theory]
+    [InlineData("https://api.dlcs.io/customers/2/roles/appointment:token-based")]
+    [InlineData("https://api.dlcs.io/customers/2/roles/appointment:token-based/")]
+    [InlineData("appointment:token-based")]
+    public void IsAppointmentRole_True_IfLastSegmentHasAppointmentPrefix(string role)
+        => role.IsAppointmentRole().Should().BeTrue();
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("https://api.dlcs.io/customers/2/roles/clickthrough")]
+    [InlineData("https://api.dlcs.io/customers/2/roles/ip:reading-room")]
+    [InlineData("https://api.dlcs.io/customers/2/appointment:roles/token-based")]
+    [InlineData("https://api.dlcs.io/customers/2/roles/Appointment:token-based")]
+    [InlineData("https://api.dlcs.io/customers/2/roles/my-appointment:token-based")]
+    public void IsAppointmentRole_False_IfLastSegmentDoesNotHaveAppointmentPrefix(string? role)
+        => role.IsAppointmentRole().Should().BeFalse();
 }

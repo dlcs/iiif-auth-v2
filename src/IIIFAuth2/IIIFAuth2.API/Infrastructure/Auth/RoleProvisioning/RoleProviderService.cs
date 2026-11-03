@@ -67,6 +67,9 @@ public class RoleProviderService
                 return HandleRoleProvisionResponse.Error(
                     $"Access service '{accessService.Name}' is not interactive", 400);
             }
+            case RoleProviderType.Appointment:
+                // shortcut: placeholder until the appointment key form is implemented
+                return HandleRoleProvisionResponse.Error("Appointment role provider not yet supported", 501);
             default:
                 throw new ArgumentOutOfRangeException(nameof(providerConfiguration.Config),
                     $"Role provider configuration type {providerConfiguration.Config} unknown");

@@ -189,6 +189,30 @@ public class IpRestrictionConfiguration : IProviderConfiguration
 }
 
 /// <summary>
+/// Configuration for appointments. The user enters an appointment key, which grants the appointment's roles for
+/// matching assets within the appointment's time window. Appointment roles are never stored in a session, they are
+/// evaluated per request.
+/// </summary>
+public class AppointmentConfiguration : IInteractiveProviderConfiguration
+{
+    /// <summary>
+    /// Optional title to be displayed on the appointment key form
+    /// </summary>
+    public string? GestureTitle { get; set; }
+
+    /// <summary>
+    /// Optional message to be displayed on the appointment key form
+    /// </summary>
+    public string? GestureMessage { get; set; }
+
+    /// <summary>
+    /// <inheritdoc />
+    /// </summary>
+    [JsonConverter(typeof(StringEnumConverter))]
+    public RoleProviderType Config { get; set; }
+}
+
+/// <summary>
 /// How to handle an unknown claim value for oidc role-provider
 /// </summary>
 public enum UnknownMappingValueBehaviour
@@ -222,5 +246,6 @@ public enum RoleProviderType
     Unknown,
     Clickthrough,
     Oidc,
-    IpRestriction
+    IpRestriction,
+    Appointment
 }
