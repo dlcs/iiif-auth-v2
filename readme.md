@@ -238,6 +238,13 @@ If a deliverable has an `ip:` role, `X-Forwarded-For` is sent to `/probe_interna
 2. Register a deliverable, e.g. `7/1/foo`, with the `ip:reading-room` role (optionally with a clickthrough role too).
 3. On the Auth flow page, leave the client IP blank (localhost is in range) or set an IP in/out of the configured ranges, then run the flow. The probe returns 200 without a token if in range, else 403 "Not available at your location" (or 401 if there are other roles). Downstream calls show the `X-Forwarded-For` header sent.
 
+`/probe_internal/` and `/verifyaccess/` are POSTed with a JSON body of `roles`, plus `asset` metadata if any role is an `appointment:` role, simulating the proposed Orchestrator changes for [appointments](#probe-and-verifyaccess-requests). Asset metadata is set when registering the deliverable; scopes are sent as `manifests`, as current Protagonist names them. To test:
+
+1. Run `scripts/sql/appointment.sql` (edit the customer as required and remove the `rollback`), then restart IIIFAuth2.API. This creates an `appointment` access service and an appointment with key `a5rf65ne99pa` for assets with `string1` starting `LIDDLE/WW2/HFIU/`.
+2. Register a deliverable, e.g. `7/1/foo`, with the `appointment:token-based` role and `string1` = `LIDDLE/WW2/HFIU/003`.
+3. Run the flow. The probe returns 401 (no token), the appointment key form opens, enter `a5rf65ne99pa`, the window closes, a token is obtained and the probe returns 200. Downstream calls show the POST body sent.
+4. Register `7/1/bar` with `string1` = `LIDDLE/WW2/EVAC/014` and run the flow again: the probe returns 403 "Not part of your appointment". A wrong key re-renders the form with an error. Edit the appointment row (`active = false`, a future `start` or a past `end`) and probe again to see the other 403 reasons; appointments are read on each request.
+
 Configured via `AuthServiceRoot` (default `https://localhost:7049/auth/v2/`) and `ConnectionStrings:Postgres` appSettings. The test UI needs to run on https on the same host as iiif-auth-v2 so the browser sends the auth cookie to the fake image endpoint (cookies ignore ports).
 
 ### Testing
