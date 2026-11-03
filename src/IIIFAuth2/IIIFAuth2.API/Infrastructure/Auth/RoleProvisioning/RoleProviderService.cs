@@ -95,6 +95,28 @@ public class RoleProviderService
         return result;
     }
 
+    /// <summary>
+    /// Handle appointment key posted from appointment key form. Returns null if access service not found or is not an
+    /// Appointment access service
+    /// </summary>
+    public async Task<HandleRoleProvisionResponse?> HandleAppointmentKey(int customerId, string accessServiceName,
+        string? appointmentKey, Uri requestOrigin, CancellationToken cancellationToken = default)
+    {
+        var accessService = await GetAccessServices(customerId, accessServiceName);
+        if (accessService == null) return null;
+
+        var providerConfiguration = GetProviderConfigurationForHost(accessService);
+        if (providerConfiguration is not AppointmentConfiguration)
+        {
+            logger.LogDebug("Appointment key posted to non-appointment AccessService '{AccessServiceId}'",
+                accessService.Id);
+            return null;
+        }
+
+        return await appointmentProviderHandler.CompleteRequest(customerId, appointmentKey, requestOrigin,
+            accessService, providerConfiguration, cancellationToken);
+    }
+
     private async Task<AccessService?> GetAccessServices(int customerId, string accessServiceName)
     {
         var customerServices = await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService);
