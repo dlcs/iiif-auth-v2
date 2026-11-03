@@ -1,8 +1,6 @@
 using IIIFAuth2.API.Infrastructure.Auth.Models;
 using IIIFAuth2.API.Infrastructure.Web;
-using IIIFAuth2.API.Utils;
 using IIIFAuth2.Core.Data;
-using IIIFAuth2.Core.Data.Entities;
 using IIIFAuth2.Core.Models.Domain;
 
 namespace IIIFAuth2.API.Infrastructure.Auth;
@@ -25,56 +23,12 @@ public class IpRoleEvaluator(
     /// </remarks>
     public async Task<IpRoleEvaluation> Evaluate(int customerId, IReadOnlyCollection<string> roles)
     {
-        if (roles.Count == 0) return IpRoleEvaluation.Empty;
-
-        var customerRoles = await dbContext.Roles.GetCachedCustomerRecords(customerId, CacheKeys.Roles);
-        var requestedRoles = customerRoles.Where(r => roles.Contains(r.Id)).ToList();
-        if (requestedRoles.Count == 0) return IpRoleEvaluation.Empty;
-
-        var ipRoleConfigurations = await GetIpRestrictionLookup(customerId, requestedRoles);
+        var ipRoleConfigurations = await RoleProviderLookup.GetRoleConfigurations<IpRestrictionConfiguration>(
+            dbContext, httpContextAccessor, logger, customerId, roles, RoleX.IsIpRole);
 
         if (ipRoleConfigurations.Count == 0) return IpRoleEvaluation.Empty;
 
         return GetIpRoleEvaluation(customerId, ipRoleConfigurations);
-    }
-
-    /// <summary>
-    /// Get a lookup of role-id:role-provider configuration
-    /// </summary>
-    private async Task<Dictionary<string, IpRestrictionConfiguration>> GetIpRestrictionLookup(int customerId,
-        List<Role> requestedRoles)
-    {
-        var accessServices =
-            (await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService))
-            .ToDictionary(a => a.Id);
-        // Called internally by Orchestrator, so this is the host Orchestrator calls (unless it forwards
-        // x-forwarded-host) rather than the public host. In practice IpRestriction providers use "default" config
-        var host = httpContextAccessor.SafeHttpContext().Request.Host.Value ?? string.Empty;
-
-        var ipRoleConfigurations = new Dictionary<string, IpRestrictionConfiguration>();
-        foreach (var role in requestedRoles)
-        {
-            var configuration = accessServices.TryGetValue(role.AccessServiceId, out var accessService)
-                ? accessService.RoleProvider?.Configuration.GetConfigurationOrDefault(host)
-                : null;
-
-            var isIpProvider = configuration is IpRestrictionConfiguration;
-            var hasIpPrefix = role.Id.IsIpRole();
-            if (isIpProvider != hasIpPrefix)
-            {
-                // Validation of this will be enforced on write in future. Debug as this is called per request
-                logger.LogDebug(
-                    "Role {Role} for customer {CustomerId} mismatch - has ip prefix: {HasIpPrefix}, has IpRestriction provider: {IsIpProvider}",
-                    role.Id, customerId, hasIpPrefix, isIpProvider);
-            }
-
-            if (configuration is IpRestrictionConfiguration ipRestrictionConfiguration)
-            {
-                ipRoleConfigurations[role.Id] = ipRestrictionConfiguration;
-            }
-        }
-
-        return ipRoleConfigurations;
     }
 
     private IpRoleEvaluation GetIpRoleEvaluation(int customerId,

@@ -89,6 +89,8 @@ public static class ServiceCollectionX
             .AddScoped<AppointmentProviderHandler>()
             .AddScoped<SessionManagementService>()
             .AddScoped<IpRoleEvaluator>()
+            .AddScoped<AppointmentRoleEvaluator>()
+            .AddScoped<AccessEvaluator>()
             .AddSingleton<ClaimsConverter>()
             .AddScoped<SessionCleaner>();
 
