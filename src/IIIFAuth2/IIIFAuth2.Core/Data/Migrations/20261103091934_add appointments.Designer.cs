@@ -13,7 +13,7 @@ namespace IIIFAuth2.Core.Data.Migrations
 {
     [DbContext(typeof(AuthServicesContext))]
     [Migration("20261103091934_add appointments")]
-    partial class addappointments
+    partial class AddAppointments
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

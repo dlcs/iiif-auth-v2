@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace IIIFAuth2.Core.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class addappointments : Migration
+    public partial class AddAppointments : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
