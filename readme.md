@@ -28,6 +28,20 @@ The following role provider types are supported, this will be extended over time
 
 Omit it if the location shouldn't be advertised, and generic wording ("Only available from permitted locations") will be used. Generic wording is also used in probe responses if *any* of the asset's IP role providers has no `locationPhrase`, as listing only some locations would be incomplete. Setting `UseGenericLocationWording` uses generic wording everywhere, for all providers. IP ranges are never output.
 
+* `appointment` - the user enters an appointment key in the access service window. Each appointment grants its roles, between its `start` and `end`, for assets matching its asset patterns (space, scopes, tags, string1-3, number1-3). The key form submission is the significant gesture; if the user already has a session for the customer the appointment is added to it, otherwise a new session is created. Appointment roles are never stored in the session, they are evaluated on each request. By convention, roles granted by an appointment have a final path segment prefixed `appointment:` (e.g. `https://api.dlcs.io/customers/2/roles/appointment:token-based`). Appointments are currently created via SQL (see `scripts/sql/appointment.sql`). Configuration:
+
+```json
+{
+  "default": {
+    "config": "Appointment",
+    "gestureTitle": "Use your appointment key",
+    "gestureMessage": "Enter the key from your appointment confirmation"
+  }
+}
+```
+
+`gestureTitle` and `gestureMessage` are optional and are used as the title and message of the key form, falling back to the default significant gesture wording.
+
 IpRestriction providers should only have a `default` configuration. Host-specific keys are looked up using the request host, but IP roles are evaluated on `probe_internal` and `verifyaccess`, which Orchestrator calls internally. So the host is the one Orchestrator uses to call this service, not the public host, unless Orchestrator forwards `x-forwarded-host`. The `external` access service's default label and token service errors always use `default`.
 
 Roles granted by an IpRestriction provider should belong to an access service with `external` profile. These are output first in services descriptions, without a logout service. They have an `id`, which the spec says "should not" be present and clients must ignore, so the service can be referenced, e.g. declared once in a Manifest and referenced by id. Opening it returns a "not interactive" error.
