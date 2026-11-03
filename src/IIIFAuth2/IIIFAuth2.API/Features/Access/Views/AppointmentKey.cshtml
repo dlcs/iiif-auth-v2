@@ -1,0 +1,22 @@
+@model IIIFAuth2.API.Infrastructure.Auth.Models.AppointmentKeyModel
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>@Model.Title</title>
+</head>
+<body>
+<p>@Model.Message</p>
+@if (!string.IsNullOrEmpty(Model.Error))
+{
+    <p class="error">@Model.Error</p>
+}
+<form action="@Model.PostbackUri.ToString()" method="post">
+    <label for="appointmentKey">Appointment key</label>
+    <input type="text" id="appointmentKey" name="appointmentKey" autocomplete="off" required>
+    <input type="hidden" name="origin" value="@Model.Origin">
+    <input type="submit">
+</form>
+</body>
+</html>

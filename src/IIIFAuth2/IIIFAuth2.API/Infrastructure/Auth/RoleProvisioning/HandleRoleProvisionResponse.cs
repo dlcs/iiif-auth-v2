@@ -31,10 +31,18 @@ public class HandleRoleProvisionResponse
 
     public SignificantGestureModel? SignificantGestureModel { get; private init; }
 
+    /// <summary>
+    /// If set the user needs to enter an appointment key
+    /// </summary>
+    public AppointmentKeyModel? AppointmentKeyModel { get; private init; }
+
     public static HandleRoleProvisionResponse Handled() => new() { RoleProvisionHandled = true };
 
     public static HandleRoleProvisionResponse SignificantGesture(SignificantGestureModel model) => new()
         { SignificantGestureRequired = true, SignificantGestureModel = model };
+
+    public static HandleRoleProvisionResponse AppointmentKey(AppointmentKeyModel model) => new()
+        { AppointmentKeyModel = model };
 
     public static HandleRoleProvisionResponse Redirect(Uri redirectUri) =>
         new() { RedirectUri = redirectUri, RequiresRedirect = true };

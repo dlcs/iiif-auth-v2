@@ -268,6 +268,34 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     }
 
     [Fact]
+    public async Task AccessService_Appointment_RendersAppointmentKeyForm()
+    {
+        // Arrange
+        var origin = httpClient.BaseAddress!.ToString();
+        var path = $"/access/99/{DatabaseFixture.AppointmentService}?origin={origin}";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var htmlParser = new HtmlParser();
+        var document = htmlParser.ParseDocument(await response.Content.ReadAsStreamAsync());
+        document.Title.Should().Be(DatabaseFixture.AppointmentGestureTitle);
+        document.QuerySelector("p")!.TextContent.Should().Be(DatabaseFixture.AppointmentGestureMessage);
+        document.QuerySelector(".error").Should().BeNull();
+
+        var form = document.QuerySelector("form") as IHtmlFormElement;
+        form!.Method.Should().BeEquivalentTo("post");
+        form.Action.Should().EndWith($"/auth/v2/access/99/{DatabaseFixture.AppointmentService}");
+        (form.QuerySelector("input[name=appointmentKey]") as IHtmlInputElement)!.Type.Should().Be("text");
+        (form.QuerySelector("input[name=origin]") as IHtmlInputElement)!.Value.Should().Be(origin);
+
+        (await dbContext.SessionUsers.AnyAsync()).Should().BeFalse("session is only created when key is posted");
+    }
+
+    [Fact]
     public async Task AccessService_Oidc_ReturnsRedirectToLoginUrl()
     {
         // Arrange

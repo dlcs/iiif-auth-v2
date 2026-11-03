@@ -110,6 +110,11 @@ public class AccessController : AuthBaseController
                 return View("SignificantGesture", provisionRoleResponse.SignificantGestureModel);
             }
 
+            if (provisionRoleResponse.AppointmentKeyModel != null)
+            {
+                return View("AppointmentKey", provisionRoleResponse.AppointmentKeyModel);
+            }
+
             if (provisionRoleResponse.RoleProvisionHandled)
             {
                 return View("CloseWindow");
