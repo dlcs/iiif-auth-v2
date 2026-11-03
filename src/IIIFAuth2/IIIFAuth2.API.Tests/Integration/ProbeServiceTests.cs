@@ -4,6 +4,7 @@ using IIIF.Serialisation;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Core.Models.Domain;
 using IIIFAuth2.Tests.Common;
 
 namespace IIIFAuth2.API.Tests.Integration;
@@ -16,10 +17,13 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
     private readonly AuthServicesContext dbContext;
     private readonly string connectionString;
     private static readonly string IpRole = Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri);
+    private static readonly string AppointmentRole = Uri.EscapeDataString(DatabaseFixture.AppointmentRoleUri);
+    private readonly DatabaseFixture dbFixture;
 
     public ProbeServiceTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
         dbContext = dbFixture.DbContext;
+        this.dbFixture = dbFixture;
         connectionString = dbFixture.ConnectionString;
         httpClient = factory
             .WithConnectionString(dbFixture.ConnectionString)
@@ -582,4 +586,153 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
             Origin = "http://irrelevant-for-this/",
             LastChecked = lastChecked
         };
+    [Fact]
+    public async Task GetProbeService_Returns401_WithAppointmentNote_IfAppointmentRole_NoBearerToken()
+    {
+        // Arrange
+        var path = $"probe_internal/99/2/foo?roles={AppointmentRole}";
+
+        // Act
+        var authProbeResult = await GetProbe(path);
+
+        // Assert
+        authProbeResult.Status.Should().Be(401);
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Missing credentials");
+        authProbeResult.Note["en"].Should()
+            .ContainSingle(s => s == "Authorising credentials not found, or enter your appointment key");
+    }
+
+    [Fact]
+    public async Task GetProbeService_Returns401_AppointmentRequired_IfSessionHasNoAppointment()
+    {
+        // Arrange
+        const string accessToken = nameof(GetProbeService_Returns401_AppointmentRequired_IfSessionHasNoAppointment);
+        await AddSessionWithAppointment(accessToken, null);
+        var path = $"probe_internal/99/2/foo?roles={AppointmentRole}";
+
+        // Act
+        var authProbeResult = await GetProbe(path, accessToken);
+
+        // Assert
+        authProbeResult.Status.Should().Be(401);
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Appointment required");
+        authProbeResult.Note["en"].Should().ContainSingle(s => s == "Enter your appointment key");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetProbeService_Returns200_IfSessionHasAppointment_PatternsEmptyOrCustomerAndSpaceOnly(
+        bool customerAndSpace)
+    {
+        // Arrange
+        var accessToken = $"{nameof(GetProbeService_Returns200_IfSessionHasAppointment_PatternsEmptyOrCustomerAndSpaceOnly)}{customerAndSpace}";
+        await AddSessionWithAppointment(accessToken, a =>
+        {
+            if (customerAndSpace) a.AssetPatterns = new AssetPatterns { Customer = [99], Space = [2] };
+        });
+        var path = $"probe_internal/99/2/foo?roles={AppointmentRole}";
+
+        // Act
+        var authProbeResult = await GetProbe(path, accessToken);
+
+        // Assert
+        authProbeResult.Status.Should().Be(200);
+    }
+
+    [Fact]
+    public async Task GetProbeService_Returns200_IfSessionHasRole_EvenWithoutAppointment()
+    {
+        // Arrange
+        const string accessToken = nameof(GetProbeService_Returns200_IfSessionHasRole_EvenWithoutAppointment);
+        await AddSessionWithAppointment(accessToken, null);
+        var path = $"probe_internal/99/2/foo?roles=foo,{AppointmentRole}";
+
+        // Act
+        var authProbeResult = await GetProbe(path, accessToken);
+
+        // Assert
+        authProbeResult.Status.Should().Be(200);
+    }
+
+    public static TheoryData<string, Action<Appointment>, string, string> AppointmentDenials => new()
+    {
+        {
+            "not-started", a => a.Start = new DateTime(2099, 1, 2, 9, 30, 0, DateTimeKind.Utc),
+            "Your appointment has not started", "Your appointment starts at 2099-01-02 09:30:00Z"
+        },
+        {
+            "not-active", a => a.Active = false,
+            "Appointment not yet approved", "Your appointment is awaiting approval"
+        },
+        {
+            "ended", a => a.End = new DateTime(2020, 5, 6, 17, 0, 0, DateTimeKind.Utc),
+            "Your appointment has ended", "Your appointment ended at 2020-05-06 17:00:00Z"
+        },
+        {
+            "string1", a => a.AssetPatterns = new AssetPatterns { String1 = ["LIDDLE/*"] },
+            "Not part of your appointment", "This item is not included in your appointment"
+        },
+        {
+            "space", a => a.AssetPatterns = new AssetPatterns { Space = [3] },
+            "Not part of your appointment", "This item is not included in your appointment"
+        },
+    };
+
+    [Theory]
+    [MemberData(nameof(AppointmentDenials))]
+    public async Task GetProbeService_Returns403_WithReason_IfAppointmentDoesNotGrantAccess(string name,
+        Action<Appointment> configure, string heading, string note)
+    {
+        // Arrange
+        var accessToken = $"{nameof(GetProbeService_Returns403_WithReason_IfAppointmentDoesNotGrantAccess)}{name}";
+        await AddSessionWithAppointment(accessToken, configure);
+        var path = $"probe_internal/99/2/foo?roles={AppointmentRole}";
+
+        // Act
+        var authProbeResult = await GetProbe(path, accessToken);
+
+        // Assert
+        authProbeResult.Status.Should().Be(403);
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == heading);
+        authProbeResult.Note["en"].Should().ContainSingle(s => s == note);
+    }
+
+    private async Task<AuthProbeResult2> GetProbe(string path, string? accessToken = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        if (accessToken != null) request.Headers.Add("Authorization", $"Bearer {accessToken}");
+        var response = await httpClient.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+    }
+
+    /// <summary>
+    /// Add a session with "foo" role, holding an appointment for the appointment role (unless configure is null)
+    /// </summary>
+    private async Task AddSessionWithAppointment(string accessToken, Action<Appointment>? configure)
+    {
+        var session = CreateSessionUser(accessToken);
+        session.CookieId = accessToken;
+        if (configure != null)
+        {
+            var appointment = new Appointment
+            {
+                Id = Guid.NewGuid(),
+                Customer = 99,
+                RoleProviderId = dbFixture.AppointmentRoleProviderId,
+                Token = accessToken,
+                Roles = [DatabaseFixture.AppointmentRoleUri],
+                Start = DateTime.UtcNow.AddHours(-1),
+                End = DateTime.UtcNow.AddHours(1),
+                Active = true,
+            };
+            configure(appointment);
+            session.SessionAppointments.Add(new SessionAppointment { Appointment = appointment });
+        }
+
+        await using var context = dbFixture.CreateNewAuthServiceContext();
+        await context.SessionUsers.AddAsync(session);
+        await context.SaveChangesAsync();
+    }
 }
