@@ -735,4 +735,132 @@ public class ProbeServiceTests : IClassFixture<AuthWebApplicationFactory>
         await context.SessionUsers.AddAsync(session);
         await context.SaveChangesAsync();
     }
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"roles\":[]}")]
+    [InlineData("{\"roles\":[\" \"]}")]
+    [InlineData("{\"roles\":\"not-an-array\"}")]
+    [InlineData("not-json")]
+    [InlineData("")]
+    public async Task PostProbeService_Returns400StatusProperty_IfRolesMissingOrBodyInvalid(string body)
+    {
+        // Act
+        var authProbeResult = await PostProbe("probe_internal/99/2/foo", body);
+
+        // Assert
+        authProbeResult.Status.Should().Be(400, "BadRequest (400) expected");
+        authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Bad Request");
+    }
+
+    [Fact]
+    public async Task PostProbeService_Returns400StatusProperty_IfAssetIdInvalid()
+    {
+        var authProbeResult = await PostProbe("probe_internal/12345", "{\"roles\":[\"foo\"]}");
+
+        authProbeResult.Status.Should().Be(400, "BadRequest (400) expected");
+    }
+
+    [Fact]
+    public async Task PostProbeService_Returns401StatusProperty_IfNoBearerToken()
+    {
+        var authProbeResult = await PostProbe("probe_internal/99/2/foo",
+            $"{{\"roles\":[\"{DatabaseFixture.AppointmentRoleUri}\"]}}");
+
+        authProbeResult.Status.Should().Be(401);
+        authProbeResult.Note["en"].Should()
+            .ContainSingle(s => s == "Authorising credentials not found, or enter your appointment key");
+    }
+
+    [Fact]
+    public async Task PostProbeService_Returns200StatusProperty_IfBearerTokenValid_AndHasRequiredRoles()
+    {
+        // Arrange
+        const string accessToken = nameof(PostProbeService_Returns200StatusProperty_IfBearerTokenValid_AndHasRequiredRoles);
+        await AddSessionWithAppointment(accessToken, null);
+
+        // Act
+        var authProbeResult = await PostProbe("probe_internal/99/2/foo/adjunct", "{\"roles\":[\"bar\",\"foo\"]}",
+            accessToken);
+
+        // Assert
+        authProbeResult.Status.Should().Be(200);
+    }
+
+    [Theory]
+    [InlineData("LIDDLE/WW2/HFIU/003", 200)]
+    [InlineData("LIDDLE/WW2/HFIU", 403)]
+    [InlineData("LIDDLE/WW2/EVAC/014", 403)]
+    public async Task PostProbeService_EvaluatesAppointmentPatterns_AgainstBodyAsset(string string1, int expected)
+    {
+        // Arrange
+        var accessToken = $"{nameof(PostProbeService_EvaluatesAppointmentPatterns_AgainstBodyAsset)}{string1}";
+        await AddSessionWithAppointment(accessToken,
+            a => a.AssetPatterns = new AssetPatterns { Space = [2], String1 = ["LIDDLE/WW2/HFIU/*"] });
+        var body = $"{{\"roles\":[\"{DatabaseFixture.AppointmentRoleUri}\"],\"asset\":{{\"string1\":\"{string1}\"}}}}";
+
+        // Act
+        var authProbeResult = await PostProbe("probe_internal/99/2/foo", body, accessToken);
+
+        // Assert
+        authProbeResult.Status.Should().Be(expected);
+        if (expected == 403)
+        {
+            authProbeResult.Heading["en"].Should().ContainSingle(s => s == "Not part of your appointment");
+        }
+    }
+
+    [Fact]
+    public async Task PostProbeService_MatchesAllAssetFields()
+    {
+        // Arrange
+        const string accessToken = nameof(PostProbeService_MatchesAllAssetFields);
+        await AddSessionWithAppointment(accessToken, a => a.AssetPatterns = new AssetPatterns
+        {
+            Scopes = ["b76hr45e"], Tags = ["ww2"], String1 = ["a"], String2 = ["b*"], String3 = ["c"],
+            Number1 = [1], Number2 = [2], Number3 = [3]
+        });
+        var body = $$"""
+                     {"roles":["{{DatabaseFixture.AppointmentRoleUri}}"],
+                      "asset":{"space":2,"scopes":["other","b76hr45e"],"tags":["ww2"],"string1":"a","string2":"bee",
+                               "string3":"c","number1":1,"number2":2,"number3":3} }
+                     """;
+
+        // Act
+        var authProbeResult = await PostProbe("probe_internal/99/2/foo", body, accessToken);
+
+        // Assert
+        authProbeResult.Status.Should().Be(200);
+    }
+
+    [Theory]
+    [InlineData("scopes", "{\"scopes\":[\"b76hr45e\"]}", 200)]
+    [InlineData("manifests", "{\"manifests\":[\"b76hr45e\"]}", 200)]
+    [InlineData("scopes-preferred", "{\"scopes\":[\"other\"],\"manifests\":[\"b76hr45e\"]}", 403)]
+    [InlineData("manifests-ignored", "{\"scopes\":[\"b76hr45e\"],\"manifests\":[\"other\"]}", 200)]
+    public async Task PostProbeService_ReadsScopes_OrManifestsIfNoScopes(string name, string asset, int expected)
+    {
+        // Arrange
+        var accessToken = $"{nameof(PostProbeService_ReadsScopes_OrManifestsIfNoScopes)}{name}";
+        await AddSessionWithAppointment(accessToken,
+            a => a.AssetPatterns = new AssetPatterns { Scopes = ["b76hr45e"] });
+        var body = $"{{\"roles\":[\"{DatabaseFixture.AppointmentRoleUri}\"],\"asset\":{asset}}}";
+
+        // Act
+        var authProbeResult = await PostProbe("probe_internal/99/2/foo", body, accessToken);
+
+        // Assert
+        authProbeResult.Status.Should().Be(expected);
+    }
+
+    private async Task<AuthProbeResult2> PostProbe(string path, string body, string? accessToken = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+        };
+        if (accessToken != null) request.Headers.Add("Authorization", $"Bearer {accessToken}");
+        var response = await httpClient.SendAsync(request);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+    }
 }
