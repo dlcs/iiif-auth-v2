@@ -3,6 +3,7 @@ using Amazon.SecretsManager;
 using AngleSharp.Html.Dom;
 using AngleSharp.Html.Parser;
 using FakeItEasy;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Appointments;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Models.Domain;
 using IIIFAuth2.API.Tests.TestingInfrastructure;
@@ -22,11 +23,13 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly AuthServicesContext dbContext;
+    private readonly DatabaseFixture dbFixture;
     private static readonly IOAuthClient AuthClient = A.Fake<IOAuthClient>();
 
     public AccessServiceTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
         dbContext = dbFixture.DbContext;
+        this.dbFixture = dbFixture;
         httpClient = factory
             .WithConnectionString(dbFixture.ConnectionString)
             .WithTestServices(services => 
@@ -745,4 +748,250 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
             Origin = "http://localhost/",
             LastChecked = null
         };
+    [Fact]
+    public async Task AppointmentKey_Returns404_IfAccessServiceNotFound()
+    {
+        var response = await PostAppointmentKey("foo", "a5rf65ne99pa");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task AppointmentKey_Returns404_IfAccessServiceNotAppointment()
+    {
+        var response = await PostAppointmentKey(DatabaseFixture.ClickthroughService, "a5rf65ne99pa");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await dbContext.SessionUsers.AnyAsync()).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AppointmentKey_ValidKey_NoCookie_CreatesSessionWithAppointment()
+    {
+        // Arrange
+        var appointment = await CreateAppointment(nameof(AppointmentKey_ValidKey_NoCookie_CreatesSessionWithAppointment));
+
+        // Act
+        var response = await PostAppointmentKey(DatabaseFixture.AppointmentService, $"  {appointment.Token} ");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await AssertCloseWindow(response);
+
+        var cookieId = GetCookieId(response);
+        var session = await dbContext.SessionUsers.AsNoTracking().SingleAsync(su => su.CookieId == cookieId);
+        session.Roles.Should().BeEmpty("appointment roles are never stored on session");
+        session.Origin.Should().Be(httpClient.BaseAddress!.ToString());
+        var sessionAppointment = await dbContext.SessionAppointments.AsNoTracking().SingleAsync();
+        sessionAppointment.SessionUserId.Should().Be(session.Id);
+        sessionAppointment.AppointmentId.Should().Be(appointment.Id);
+    }
+
+    [Fact]
+    public async Task AppointmentKey_ValidKey_ExistingSession_AddsAppointmentToSession()
+    {
+        // Arrange
+        var appointment = await CreateAppointment(nameof(AppointmentKey_ValidKey_ExistingSession_AddsAppointmentToSession));
+        var existing = await CreateSession([DatabaseFixture.ClickthroughRoleUri]);
+
+        // Act
+        var response = await PostAppointmentKey(DatabaseFixture.AppointmentService, appointment.Token,
+            existing.CookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await AssertCloseWindow(response);
+        GetCookieId(response).Should().Be(existing.CookieId, "cookie re-issued for existing session");
+
+        var sessions = await dbContext.SessionUsers.AsNoTracking().ToListAsync();
+        sessions.Should().ContainSingle().Which.Roles.Should().BeEquivalentTo(DatabaseFixture.ClickthroughRoleUri);
+        var sessionAppointment = await dbContext.SessionAppointments.AsNoTracking().SingleAsync();
+        sessionAppointment.SessionUserId.Should().Be(existing.Id);
+        sessionAppointment.AppointmentId.Should().Be(appointment.Id);
+    }
+
+    [Fact]
+    public async Task AppointmentKey_ValidKey_ExistingSessionAlreadyHasAppointment_NoDuplicate()
+    {
+        // Arrange
+        var appointment = await CreateAppointment(nameof(AppointmentKey_ValidKey_ExistingSessionAlreadyHasAppointment_NoDuplicate));
+        var existing = await CreateSession([], appointment.Id);
+
+        // Act
+        var response = await PostAppointmentKey(DatabaseFixture.AppointmentService, appointment.Token,
+            existing.CookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await AssertCloseWindow(response);
+        (await dbContext.SessionUsers.CountAsync()).Should().Be(1);
+        (await dbContext.SessionAppointments.CountAsync()).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task AppointmentKey_ValidKey_ExpiredSession_CreatesNewSession()
+    {
+        // Arrange
+        var appointment = await CreateAppointment(nameof(AppointmentKey_ValidKey_ExpiredSession_CreatesNewSession));
+        var existing = await CreateSession([DatabaseFixture.ClickthroughRoleUri],
+            expires: DateTime.UtcNow.AddMinutes(-1));
+
+        // Act
+        var response = await PostAppointmentKey(DatabaseFixture.AppointmentService, appointment.Token,
+            existing.CookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var cookieId = GetCookieId(response);
+        cookieId.Should().NotBe(existing.CookieId);
+        var newSession = await dbContext.SessionUsers.AsNoTracking().SingleAsync(su => su.CookieId == cookieId);
+        (await dbContext.SessionAppointments.AsNoTracking().SingleAsync()).SessionUserId.Should().Be(newSession.Id);
+    }
+
+    [Theory]
+    [InlineData("unknown-key")]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task AppointmentKey_UnknownKey_RendersFormWithError(string key)
+    {
+        // Arrange
+        await CreateAppointment(nameof(AppointmentKey_UnknownKey_RendersFormWithError));
+
+        // Act
+        var response = await PostAppointmentKey(DatabaseFixture.AppointmentService, key);
+
+        // Assert
+        await AssertFormWithError(response, AppointmentProviderHandler.UnknownKeyError);
+    }
+
+    [Fact]
+    public async Task AppointmentKey_KeyForDifferentCustomer_RendersFormWithError()
+    {
+        // Arrange
+        var appointment = await CreateAppointment(nameof(AppointmentKey_KeyForDifferentCustomer_RendersFormWithError),
+            a => a.Customer = 100);
+
+        // Act
+        var response = await PostAppointmentKey(DatabaseFixture.AppointmentService, appointment.Token);
+
+        // Assert
+        await AssertFormWithError(response, AppointmentProviderHandler.UnknownKeyError);
+    }
+
+    [Fact]
+    public async Task AppointmentKey_EndedAppointment_RendersFormWithError()
+    {
+        // Arrange
+        var appointment = await CreateAppointment(nameof(AppointmentKey_EndedAppointment_RendersFormWithError),
+            a => a.End = DateTime.UtcNow.AddMinutes(-1));
+
+        // Act
+        var response = await PostAppointmentKey(DatabaseFixture.AppointmentService, appointment.Token);
+
+        // Assert
+        await AssertFormWithError(response, AppointmentProviderHandler.EndedError);
+    }
+
+    [Theory]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    public async Task AppointmentKey_NotStartedOrInactive_Accepted(bool notStarted, bool inactive)
+    {
+        // Arrange
+        var appointment = await CreateAppointment($"{nameof(AppointmentKey_NotStartedOrInactive_Accepted)}{notStarted}",
+            a =>
+            {
+                if (notStarted) a.Start = DateTime.UtcNow.AddDays(1);
+                if (inactive) a.Active = false;
+            });
+
+        // Act
+        var response = await PostAppointmentKey(DatabaseFixture.AppointmentService, appointment.Token);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        await AssertCloseWindow(response);
+        (await dbContext.SessionAppointments.AsNoTracking().SingleAsync()).AppointmentId.Should().Be(appointment.Id);
+    }
+
+    private Task<HttpResponseMessage> PostAppointmentKey(string accessService, string key, string? cookieId = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, $"/access/99/{accessService}")
+        {
+            Content = new FormUrlEncodedContent(new Dictionary<string, string>
+            {
+                ["appointmentKey"] = key,
+                ["origin"] = httpClient.BaseAddress!.ToString(),
+            })
+        };
+        if (cookieId != null) request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+        return httpClient.SendAsync(request);
+    }
+
+    private async Task<Appointment> CreateAppointment(string token, Action<Appointment>? configure = null)
+    {
+        var appointment = new Appointment
+        {
+            Id = Guid.NewGuid(),
+            Customer = DatabaseFixture.Customer,
+            RoleProviderId = dbFixture.AppointmentRoleProviderId,
+            Token = token,
+            Roles = [DatabaseFixture.AppointmentRoleUri],
+            Start = DateTime.UtcNow.AddHours(-1),
+            End = DateTime.UtcNow.AddHours(1),
+            Active = true,
+        };
+        configure?.Invoke(appointment);
+        await using var context = dbFixture.CreateNewAuthServiceContext();
+        context.Appointments.Add(appointment);
+        await context.SaveChangesAsync();
+        return appointment;
+    }
+
+    private async Task<SessionUser> CreateSession(List<string> roles, Guid? appointmentId = null,
+        DateTime? expires = null)
+    {
+        var session = new SessionUser
+        {
+            Id = Guid.NewGuid(),
+            Customer = DatabaseFixture.Customer,
+            CookieId = Guid.NewGuid().ToString(),
+            AccessToken = Guid.NewGuid().ToString("N"),
+            Origin = httpClient.BaseAddress!.ToString(),
+            Roles = roles,
+            Expires = expires ?? DateTime.UtcNow.AddHours(1),
+            LastChecked = DateTime.UtcNow,
+        };
+        if (appointmentId.HasValue)
+            session.SessionAppointments.Add(new SessionAppointment { AppointmentId = appointmentId.Value });
+        await using var context = dbFixture.CreateNewAuthServiceContext();
+        context.SessionUsers.Add(session);
+        await context.SaveChangesAsync();
+        return session;
+    }
+
+    private static string GetCookieId(HttpResponseMessage response)
+    {
+        var cookie = response.Headers.Single(header => header.Key == "Set-Cookie").Value.First();
+        var toRemoveLength = "dlcs-auth2-99id%3D".Length;
+        return cookie.Substring(toRemoveLength + 1, cookie.IndexOf(';') - toRemoveLength - 1);
+    }
+
+    private static async Task AssertCloseWindow(HttpResponseMessage response)
+    {
+        var document = new HtmlParser().ParseDocument(await response.Content.ReadAsStreamAsync());
+        document.QuerySelector("form").Should().BeNull();
+        (document.QuerySelector("p:nth-child(2)") as IHtmlParagraphElement)!.TextContent
+            .Should().Be("This window should close automatically...");
+    }
+
+    private async Task AssertFormWithError(HttpResponseMessage response, string error)
+    {
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Headers.Should().NotContainKey("Set-Cookie");
+        var document = new HtmlParser().ParseDocument(await response.Content.ReadAsStreamAsync());
+        document.QuerySelector(".error")!.TextContent.Should().Be(error);
+        document.QuerySelector("form").Should().NotBeNull();
+        (await dbContext.SessionUsers.AnyAsync()).Should().BeFalse();
+    }
 }

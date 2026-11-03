@@ -34,6 +34,22 @@ public class AccessController : AuthBaseController
     }
 
     /// <summary>
+    /// Handle appointment key posted from appointment key form, rendered by Appointment access services
+    /// </summary>
+    [HttpPost]
+    [Route("{customerId}/{accessServiceName}")]
+    public Task<IActionResult> AppointmentKey(
+        [FromRoute] int customerId,
+        [FromRoute] string accessServiceName,
+        [FromForm] string? appointmentKey,
+        [FromForm] Uri origin,
+        CancellationToken cancellationToken)
+    {
+        var request = new HandleAppointmentKeyRequest(customerId, accessServiceName, appointmentKey, origin);
+        return RoleProvisionResponseConverter(request, accessServiceName, cancellationToken);
+    }
+
+    /// <summary>
     /// Handle post back for page that is required to users to perform a 'significant gesture' on DLCS domain.
     /// This is required for us to issue a cookie to user. 
     /// </summary>
