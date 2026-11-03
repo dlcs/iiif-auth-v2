@@ -50,6 +50,31 @@
         <div class="hint">No roles = an open asset (the fake Orchestrator doesn't call iiif-auth-v2).</div>
     </fieldset>
 
+    <fieldset>
+        <legend>Asset metadata</legend>
+        <p class="hint">
+            Sent to iiif-auth-v2 in <code>probe_internal</code>/<code>verifyaccess</code> POST bodies, only if a role is
+            an <code>appointment:</code> role, to evaluate appointment asset patterns. Scopes are sent as
+            <code>manifests</code>, as current Protagonist names them. Space comes from the deliverable id.
+        </p>
+        <label for="Scopes">Scopes (manifests), comma separated</label>
+        <input type="text" asp-for="Scopes" placeholder="b76hr45e"/>
+        <label for="Tags">Tags, comma separated</label>
+        <input type="text" asp-for="Tags" placeholder="ww2"/>
+        <label for="String1">String1</label>
+        <input type="text" asp-for="String1" placeholder="LIDDLE/WW2/HFIU/003"/>
+        <label for="String2">String2</label>
+        <input type="text" asp-for="String2"/>
+        <label for="String3">String3</label>
+        <input type="text" asp-for="String3"/>
+        <label for="Number1">Number1</label>
+        <input type="number" asp-for="Number1"/>
+        <label for="Number2">Number2</label>
+        <input type="number" asp-for="Number2"/>
+        <label for="Number3">Number3</label>
+        <input type="number" asp-for="Number3"/>
+    </fieldset>
+
     <button type="submit">Save and go to auth flow</button>
 </form>
 
@@ -62,7 +87,7 @@ else
 {
     <table>
         <thead>
-        <tr><th>Deliverable Id</th><th>Roles</th><th></th></tr>
+        <tr><th>Deliverable Id</th><th>Roles</th><th>Asset metadata</th><th></th></tr>
         </thead>
         <tbody>
         @foreach (var deliverable in Model.Deliverables)
@@ -70,6 +95,7 @@ else
             <tr>
                 <td><code>@deliverable.Id</code></td>
                 <td>@foreach (var role in deliverable.Roles) { <div><code>@role</code></div> }</td>
+                <td>@deliverable.Asset</td>
                 <td>
                     <a asp-page="/Flow" asp-route-id="@deliverable.Id">Auth flow</a> |
                     <a href="/manifest/@deliverable.Id" target="_blank">Manifest</a> |

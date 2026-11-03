@@ -30,6 +30,11 @@
                     <summary>headers + body</summary>
                     <strong>Request headers</strong>
                     <pre>@string.Join("\n", entry.RequestHeaders.Select(h => $"{h.Key}: {h.Value}"))</pre>
+                    @if (entry.RequestBody != null)
+                    {
+                        <strong>Request body</strong>
+                        <pre>@entry.RequestBody</pre>
+                    }
                     <strong>Response headers</strong>
                     <pre>@string.Join("\n", entry.ResponseHeaders.Select(h => $"{h.Key}: {h.Value}"))</pre>
                     <strong>Response body</strong>
