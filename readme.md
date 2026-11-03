@@ -46,6 +46,29 @@ IpRestriction providers should only have a `default` configuration. Host-specifi
 
 Roles granted by an IpRestriction provider should belong to an access service with `external` profile. These are output first in services descriptions, without a logout service. They have an `id`, which the spec says "should not" be present and clients must ignore, so the service can be referenced, e.g. declared once in a Manifest and referenced by id. Opening it returns a "not interactive" error.
 
+Appointment asset patterns are stored as jsonb (`appointments.asset_patterns`), e.g. `{"space": [1], "string1": ["LIDDLE/WW2/HFIU/*"]}`. All fields given must match, and a field matches if any of its values match. Fields are `customer`, `space`, `number1-3` (equality), `scopes`, `tags` (exact, any of the asset's values) and `string1-3`. `string1-3` match exactly, unless the value ends with `*`, which matches anything starting with the value before it (`LIDDLE/*` matches `LIDDLE/WW2` but not `LIDDLE`). `*` elsewhere, and `/`, are literal. `customer` and `space` come from the deliverable id; other fields need asset metadata, so they never match a GET request.
+
+## Probe and VerifyAccess requests
+
+Orchestrator calls `probe_internal/{deliverableId}` and `verifyaccess/{deliverableId}`. Both accept:
+
+* `GET ?roles={comma-separated-roles}` - retained for compatibility, no asset metadata.
+* `POST` with a JSON body, roles plus optional asset metadata. `asset` is only needed if any role is an `appointment:` role:
+
+```json
+{
+  "roles": [ "https://api.dlcs.io/customers/2/roles/appointment:token-based" ],
+  "asset": {
+    "scopes": [ "b76hr45e" ],
+    "tags": [ "ww2" ],
+    "string1": "LIDDLE/WW2/HFIU/003", "string2": null, "string3": null,
+    "number1": 10, "number2": null, "number3": null
+  }
+}
+```
+
+Protagonist currently calls scopes `manifests`, so `asset.manifests` is read if `asset.scopes` isn't provided. This allows Protagonist to rename it without a coordinated deployment. Adjuncts send their parent asset's metadata. Missing or empty `roles`, or an invalid body, is a 400: in the probe result `status` for `probe_internal` (HTTP 200, as for GET), as the HTTP status for `verifyaccess`.
+
 ## Projects
 
 The solution contains the following projects:

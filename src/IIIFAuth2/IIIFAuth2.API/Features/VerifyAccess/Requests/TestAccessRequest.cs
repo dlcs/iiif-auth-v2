@@ -20,10 +20,15 @@ public class TestAccessRequest : IRequest<HttpStatusCode>
     /// </summary>
     public AssetMetadata? Asset { get; }
 
-    public TestAccessRequest(string deliverableId, string roles, AssetMetadata? asset = null)
+    public TestAccessRequest(string deliverableId, string roles)
+        : this(deliverableId, roles.Split(",", StringSplitOptions.RemoveEmptyEntries), null)
+    {
+    }
+
+    public TestAccessRequest(string deliverableId, IReadOnlyCollection<string> roles, AssetMetadata? asset)
     {
         DeliverableId = DeliverableId.FromString(deliverableId);
-        Roles = roles.Split(",", StringSplitOptions.RemoveEmptyEntries);
+        Roles = roles;
         Asset = asset;
     }
 }
