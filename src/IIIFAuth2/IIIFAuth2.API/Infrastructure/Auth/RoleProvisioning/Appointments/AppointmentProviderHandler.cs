@@ -62,14 +62,8 @@ public class AppointmentProviderHandler
         CancellationToken cancellationToken = default)
     {
         var configuration = providerConfiguration.SafelyGetTypedConfig<AppointmentConfiguration>();
-        var token = appointmentKey?.Trim();
-
-        var appointment = string.IsNullOrEmpty(token)
-            ? null
-            : await dbContext.Appointments.AsNoTracking().SingleOrDefaultAsync(a =>
-                    a.Customer == customerId && a.Token == token && a.RoleProviderId == accessService.RoleProviderId,
-                cancellationToken);
-
+        
+        var appointment = await GetAppointment(customerId, accessService, appointmentKey, cancellationToken);
         if (appointment == null)
         {
             logger.LogInformation("Unknown appointment key entered for {CustomerId}:{AccessServiceName}", customerId,
@@ -88,6 +82,19 @@ public class AppointmentProviderHandler
         await sessionManagementService.AddAppointmentToSession(customerId, appointment.Id, requestOrigin.ToString(),
             cancellationToken);
         return HandleRoleProvisionResponse.Handled();
+    }
+
+    private async Task<Appointment?> GetAppointment(int customerId, AccessService accessService,
+        string? appointmentKey, CancellationToken cancellationToken)
+    {
+        // No appointment caching, just lookup by token. Expectation is the user will enter their token correctly
+        var token = appointmentKey?.Trim();
+        var appointment = string.IsNullOrEmpty(token)
+            ? null
+            : await dbContext.Appointments.AsNoTracking().SingleOrDefaultAsync(a =>
+                    a.Customer == customerId && a.Token == token && a.RoleProviderId == accessService.RoleProviderId,
+                cancellationToken);
+        return appointment;
     }
 
     private AppointmentKeyModel GetAppointmentKeyModel(Uri requestOrigin, AccessService accessService,

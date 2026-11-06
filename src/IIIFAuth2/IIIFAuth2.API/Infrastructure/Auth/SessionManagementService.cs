@@ -9,6 +9,7 @@ using LazyCache;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using Z.EntityFramework.Plus;
 
 namespace IIIFAuth2.API.Infrastructure.Auth;
 
@@ -78,11 +79,11 @@ public class SessionManagementService : SessionManagerBase
                     sa => sa.SessionUserId == session.Id && sa.AppointmentId == appointmentId, cancellationToken);
                 if (!alreadyHeld)
                 {
-                    // Appointments are queried per request, not cached with the session, so no cache to invalidate
                     DbContext.SessionAppointments.Add(new SessionAppointment
                         { SessionUserId = session.Id, AppointmentId = appointmentId });
                     await SaveChangesWithRowCountCheck("Add appointment to session",
                         cancellationToken: cancellationToken);
+                    QueryCacheManager.ExpireTag(CacheKeys.SessionAppointments(session.Id));
                 }
 
                 Logger.LogDebug("Added appointment {AppointmentId} to existing session {SessionId}", appointmentId,

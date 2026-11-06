@@ -5,9 +5,12 @@ using IIIFAuth2.API.Tests.TestingInfrastructure;
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
 using IIIFAuth2.Core.Models.Domain;
+using IIIFAuth2.API.Settings;
 using IIIFAuth2.Tests.Common;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Z.EntityFramework.Plus;
 
 namespace IIIFAuth2.API.Tests.Infrastructure.Auth;
 
@@ -32,7 +35,8 @@ public class AppointmentRoleEvaluatorTests
         context.Request.Host = new HostString("dlcs.test.example");
         var contextAccessor = A.Fake<IHttpContextAccessor>();
         A.CallTo(() => contextAccessor.HttpContext).Returns(context);
-        sut = new AppointmentRoleEvaluator(dbContext, contextAccessor, logger);
+        sut = new AppointmentRoleEvaluator(dbContext, contextAccessor, Options.Create(new AuthSettings()),
+            logger);
     }
 
     [Fact]
@@ -218,6 +222,26 @@ public class AppointmentRoleEvaluatorTests
 
         result.AppointmentRoles.Should().BeEquivalentTo(unprefixed);
         AssertMismatchLogged(2);
+    }
+
+    [Fact]
+    public async Task Evaluate_CachesSessionAppointments_UntilTagExpired()
+    {
+        const int customer = 9115;
+        var role = await AddRole(customer, "appointment:a", AppointmentConfig());
+        var session = await AddSession(customer, NewAppointment(customer, role));
+        (await sut.Evaluate(customer, Space, [role], session, null)).GrantedRoles.Should().BeEquivalentTo(role);
+
+        // Changes to stored appointment aren't seen until cache expires
+        var stored = dbContext.Appointments.Single(a => a.Customer == customer);
+        stored.Active = false;
+        await dbContext.SaveChangesAsync();
+
+        (await sut.Evaluate(customer, Space, [role], session, null)).GrantedRoles.Should().BeEquivalentTo(role);
+
+        QueryCacheManager.ExpireTag(CacheKeys.SessionAppointments(session.Id));
+        (await sut.Evaluate(customer, Space, [role], session, null)).Reason.Should()
+            .Be(AppointmentDenialReason.NotActive);
     }
 
     private void AssertMismatchLogged(int times)
