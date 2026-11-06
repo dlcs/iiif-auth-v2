@@ -5,6 +5,8 @@ public static class CacheKeys
     public static string Customer(int customerId) => $"c:{customerId}";
     
     public static string AuthAspect(string aspectValue, string? origin = null) => $"aa:{aspectValue}:{origin}";
+
+    public static string SessionAppointments(Guid sessionUserId) => $"sa:{sessionUserId}";
     
     public static readonly string AccessService = "accessServices";
 
