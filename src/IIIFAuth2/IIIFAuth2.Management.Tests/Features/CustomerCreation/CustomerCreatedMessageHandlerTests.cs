@@ -191,7 +191,8 @@ public class CustomerCreatedMessageHandlerTests
 
     private async Task ShouldOnlyContainSeededAccessServices()
         => (await dbContext.AccessServices.Select(a => a.Id).ToListAsync())
-            .Should().BeEquivalentTo([dbFixture.ClickthroughAccessId, dbFixture.OidcAccessId, dbFixture.IpRestrictionAccessId]);
+            .Should().BeEquivalentTo([dbFixture.ClickthroughAccessId, dbFixture.OidcAccessId, dbFixture.IpRestrictionAccessId,
+                dbFixture.AppointmentAccessId]);
 
     private async Task ShouldHaveClickthroughRecordCounts(int customerId, int expected)
     {

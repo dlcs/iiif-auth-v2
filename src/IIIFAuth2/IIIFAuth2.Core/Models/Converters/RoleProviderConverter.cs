@@ -41,6 +41,8 @@ public class RoleProviderConverter : JsonConverter<IProviderConfiguration>
                 return new OidcConfiguration();
             case RoleProviderType.IpRestriction:
                 return new IpRestrictionConfiguration();
+            case RoleProviderType.Appointment:
+                return new AppointmentConfiguration();
             case RoleProviderType.Unknown:
             default:
                 throw new ArgumentOutOfRangeException(

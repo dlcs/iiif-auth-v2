@@ -88,6 +88,87 @@ namespace IIIFAuth2.Core.Data.Migrations
                     b.ToTable("access_services", (string)null);
                 });
 
+            modelBuilder.Entity("IIIFAuth2.Core.Data.Entities.Appointment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Active")
+                        .HasColumnType("boolean")
+                        .HasColumnName("active");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasColumnType("text")
+                        .HasColumnName("approved_by");
+
+                    b.Property<string>("AssetPatterns")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("asset_patterns");
+
+                    b.Property<DateTime>("Created")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created")
+                        .HasDefaultValueSql("now()");
+
+                    b.Property<int>("Customer")
+                        .HasColumnType("integer")
+                        .HasColumnName("customer");
+
+                    b.Property<DateTime?>("DateApproved")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("date_approved");
+
+                    b.Property<string>("Email")
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<DateTime>("End")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("end");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("notes");
+
+                    b.Property<Guid>("RoleProviderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("role_provider_id");
+
+                    b.Property<string>("Roles")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("roles");
+
+                    b.Property<DateTime>("Start")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("start");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("token");
+
+                    b.HasKey("Id")
+                        .HasName("pk_appointments");
+
+                    b.HasIndex("RoleProviderId")
+                        .HasDatabaseName("ix_appointments_role_provider_id");
+
+                    b.HasIndex("Customer", "Token")
+                        .IsUnique()
+                        .HasDatabaseName("ix_appointments_customer_token");
+
+                    b.ToTable("appointments", (string)null);
+                });
+
             modelBuilder.Entity("IIIFAuth2.Core.Data.Entities.CustomerCookieDomain", b =>
                 {
                     b.Property<int>("Customer")
@@ -192,6 +273,25 @@ namespace IIIFAuth2.Core.Data.Migrations
                     b.ToTable("role_provision_tokens", (string)null);
                 });
 
+            modelBuilder.Entity("IIIFAuth2.Core.Data.Entities.SessionAppointment", b =>
+                {
+                    b.Property<Guid>("SessionUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("session_user_id");
+
+                    b.Property<Guid>("AppointmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("appointment_id");
+
+                    b.HasKey("SessionUserId", "AppointmentId")
+                        .HasName("pk_session_appointments");
+
+                    b.HasIndex("AppointmentId")
+                        .HasDatabaseName("ix_session_appointments_appointment_id");
+
+                    b.ToTable("session_appointments", (string)null);
+                });
+
             modelBuilder.Entity("IIIFAuth2.Core.Data.Entities.SessionUser", b =>
                 {
                     b.Property<Guid>("Id")
@@ -253,9 +353,47 @@ namespace IIIFAuth2.Core.Data.Migrations
                     b.Navigation("RoleProvider");
                 });
 
+            modelBuilder.Entity("IIIFAuth2.Core.Data.Entities.Appointment", b =>
+                {
+                    b.HasOne("IIIFAuth2.Core.Data.Entities.RoleProvider", "RoleProvider")
+                        .WithMany()
+                        .HasForeignKey("RoleProviderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_appointments_role_providers_role_provider_id");
+
+                    b.Navigation("RoleProvider");
+                });
+
+            modelBuilder.Entity("IIIFAuth2.Core.Data.Entities.SessionAppointment", b =>
+                {
+                    b.HasOne("IIIFAuth2.Core.Data.Entities.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_session_appointments_appointments_appointment_id");
+
+                    b.HasOne("IIIFAuth2.Core.Data.Entities.SessionUser", "SessionUser")
+                        .WithMany("SessionAppointments")
+                        .HasForeignKey("SessionUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_session_appointments_session_users_session_user_id");
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("SessionUser");
+                });
+
             modelBuilder.Entity("IIIFAuth2.Core.Data.Entities.RoleProvider", b =>
                 {
                     b.Navigation("AccessServices");
+                });
+
+            modelBuilder.Entity("IIIFAuth2.Core.Data.Entities.SessionUser", b =>
+                {
+                    b.Navigation("SessionAppointments");
                 });
 #pragma warning restore 612, 618
         }

@@ -37,4 +37,10 @@ public class SessionUser : IHaveCustomer
     /// List of roles this session has access to
     /// </summary>
     public List<string> Roles { get; set; } = new();
+
+    /// <summary>
+    /// Appointments this session holds. Roles granted by these are evaluated per request, never added to
+    /// <see cref="Roles"/>
+    /// </summary>
+    public List<SessionAppointment> SessionAppointments { get; set; } = new();
 }

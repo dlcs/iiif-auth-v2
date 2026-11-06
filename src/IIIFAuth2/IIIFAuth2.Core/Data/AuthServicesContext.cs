@@ -23,7 +23,9 @@ public class AuthServicesContext : DbContext
     public DbSet<CustomerCookieDomain> CustomerCookieDomains { get; set; }
     
     public DbSet<RoleProvisionToken> RoleProvisionTokens { get; set; }
-    
+    public DbSet<Appointment> Appointments { get; set; }
+    public DbSet<SessionAppointment> SessionAppointments { get; set; }
+
     private static readonly JsonSerializerSettings JsonSettings = new()
     {
         ContractResolver = new CamelCasePropertyNamesContractResolver(),
@@ -85,6 +87,38 @@ public class AuthServicesContext : DbContext
                 .HasDefaultValueSql("now()");
         });
         
+        modelBuilder.Entity<Appointment>(builder =>
+        {
+            builder
+                .Property(a => a.AssetPatterns)
+                .HasColumnType("jsonb")
+                .HasConversion(
+                    modelValue => JsonConvert.SerializeObject(modelValue, JsonSettings),
+                    dbValue => JsonConvert.DeserializeObject<AssetPatterns>(dbValue, JsonSettings) ?? new AssetPatterns(),
+                    new ValueComparer<AssetPatterns>(
+                        (p1, p2) => JsonConvert.SerializeObject(p1, JsonSettings) == JsonConvert.SerializeObject(p2, JsonSettings),
+                        p => JsonConvert.SerializeObject(p, JsonSettings).GetHashCode(),
+                        p => JsonConvert.DeserializeObject<AssetPatterns>(JsonConvert.SerializeObject(p, JsonSettings), JsonSettings)));
+
+            builder
+                .Property(a => a.Created)
+                .HasDefaultValueSql("now()");
+
+            builder
+                .HasIndex(a => new { a.Customer, a.Token })
+                .IsUnique();
+        });
+
+        modelBuilder.Entity<SessionAppointment>(builder =>
+        {
+            builder.HasKey(sa => new { sa.SessionUserId, sa.AppointmentId });
+
+            builder
+                .HasOne(sa => sa.SessionUser)
+                .WithMany(su => su.SessionAppointments)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         modelBuilder.Entity<RoleProvisionToken>()
             .Property(b => b.Version)
             .IsRowVersion();

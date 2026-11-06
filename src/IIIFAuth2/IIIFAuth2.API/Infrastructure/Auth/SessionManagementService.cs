@@ -9,6 +9,7 @@ using LazyCache;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
+using Z.EntityFramework.Plus;
 
 namespace IIIFAuth2.API.Infrastructure.Auth;
 
@@ -59,6 +60,43 @@ public class SessionManagementService : SessionManagerBase
     /// </summary>
     public Task<SessionUser> CreateSessionForRoles(int customerId, IReadOnlyCollection<string> roles, string origin, CancellationToken cancellationToken)
         => CreateSessionAndIssueCookie(customerId, roles, origin, "Create session-user", 1, cancellationToken);
+
+    /// <summary>
+    /// Add appointment to the user's current session, if there is a valid session for customer + origin. Otherwise a
+    /// new session, with no roles, is created for the appointment. Cookie is issued in both cases.
+    /// </summary>
+    public async Task<SessionUser> AddAppointmentToSession(int customerId, Guid appointmentId, string origin,
+        CancellationToken cancellationToken)
+    {
+        if (TryGetCookieId(customerId, out var cookieId, out _))
+        {
+            var existing = await GetSessionUser(su => su.CookieId == cookieId && su.Customer == customerId,
+                customerId, cookieId, origin, cancellationToken);
+            if (existing.IsSuccessWithSession())
+            {
+                var session = existing.SessionUser!;
+                var alreadyHeld = await DbContext.SessionAppointments.AnyAsync(
+                    sa => sa.SessionUserId == session.Id && sa.AppointmentId == appointmentId, cancellationToken);
+                if (!alreadyHeld)
+                {
+                    DbContext.SessionAppointments.Add(new SessionAppointment
+                        { SessionUserId = session.Id, AppointmentId = appointmentId });
+                    await SaveChangesWithRowCountCheck("Add appointment to session",
+                        cancellationToken: cancellationToken);
+                    QueryCacheManager.ExpireTag(CacheKeys.SessionAppointments(session.Id));
+                }
+
+                Logger.LogDebug("Added appointment {AppointmentId} to existing session {SessionId}", appointmentId,
+                    session.Id);
+                await AuthAspectManager.IssueCookie(session);
+                return session;
+            }
+        }
+
+        const int expectedRowCount = 2;
+        return await CreateSessionAndIssueCookie(customerId, [], origin, "Create session for appointment",
+            expectedRowCount, cancellationToken, appointmentId);
+    }
 
     /// <summary>
     /// Validate the provided roleProvisionToken - this will validate whether it has timed out or been used.
@@ -214,10 +252,15 @@ public class SessionManagementService : SessionManagerBase
     }
 
     private async Task<SessionUser> CreateSessionAndIssueCookie(int customerId, IReadOnlyCollection<string> roles,
-        string origin, string operation, int expectedRowCount, CancellationToken cancellationToken)
+        string origin, string operation, int expectedRowCount, CancellationToken cancellationToken,
+        Guid? appointmentId = null)
     {
-        // TODO - handle user already having a session 
+        // TODO - handle user already having a session (only handled for appointments, see AddAppointmentToSession)
         var sessionUser = await CreateAndAddSessionUser(customerId, roles, origin, cancellationToken);
+        if (appointmentId.HasValue)
+        {
+            sessionUser.SessionAppointments.Add(new SessionAppointment { AppointmentId = appointmentId.Value });
+        }
         await SaveChangesWithRowCountCheck(operation, expectedRowCount, cancellationToken: cancellationToken);
 
         await AuthAspectManager.IssueCookie(sessionUser);

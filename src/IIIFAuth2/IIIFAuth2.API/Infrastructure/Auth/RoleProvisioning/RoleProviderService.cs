@@ -1,4 +1,5 @@
-﻿using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
+﻿using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Appointments;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Utils;
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
@@ -14,6 +15,7 @@ public class RoleProviderService
     private readonly AuthServicesContext dbContext;
     private readonly ClickThroughProviderHandler clickthroughRoleHandler;
     private readonly OidcRoleProviderHandler oidcRoleProviderHandler;
+    private readonly AppointmentProviderHandler appointmentProviderHandler;
     private readonly IHttpContextAccessor httpContextAccessor;
     private readonly ILogger<RoleProviderService> logger;
 
@@ -21,12 +23,14 @@ public class RoleProviderService
         AuthServicesContext dbContext,
         ClickThroughProviderHandler clickthroughRoleHandler,
         OidcRoleProviderHandler oidcRoleProviderHandler,
+        AppointmentProviderHandler appointmentProviderHandler,
         IHttpContextAccessor httpContextAccessor,
         ILogger<RoleProviderService> logger)
     {
         this.dbContext = dbContext;
         this.clickthroughRoleHandler = clickthroughRoleHandler;
         this.oidcRoleProviderHandler = oidcRoleProviderHandler;
+        this.appointmentProviderHandler = appointmentProviderHandler;
         this.httpContextAccessor = httpContextAccessor;
         this.logger = logger;
     }
@@ -67,6 +71,10 @@ public class RoleProviderService
                 return HandleRoleProvisionResponse.Error(
                     $"Access service '{accessService.Name}' is not interactive", 400);
             }
+            case RoleProviderType.Appointment:
+                // Render form for user to enter appointment key, the session is created when that is posted
+                return appointmentProviderHandler.InitiateRequest(requestOrigin, accessService,
+                    providerConfiguration);
             default:
                 throw new ArgumentOutOfRangeException(nameof(providerConfiguration.Config),
                     $"Role provider configuration type {providerConfiguration.Config} unknown");
@@ -85,6 +93,28 @@ public class RoleProviderService
         var result = await oidcRoleProviderHandler.HandleLoginCallback(customerId, roleProvisionToken, authCode,
             accessService, providerConfiguration, cancellationToken);
         return result;
+    }
+
+    /// <summary>
+    /// Handle appointment key posted from appointment key form. Returns null if access service not found or is not an
+    /// Appointment access service
+    /// </summary>
+    public async Task<HandleRoleProvisionResponse?> HandleAppointmentKey(int customerId, string accessServiceName,
+        string? appointmentKey, Uri requestOrigin, CancellationToken cancellationToken = default)
+    {
+        var accessService = await GetAccessServices(customerId, accessServiceName);
+        if (accessService == null) return null;
+
+        var providerConfiguration = GetProviderConfigurationForHost(accessService);
+        if (providerConfiguration is not AppointmentConfiguration)
+        {
+            logger.LogDebug("Appointment key posted to non-appointment AccessService '{AccessServiceId}'",
+                accessService.Id);
+            return null;
+        }
+
+        return await appointmentProviderHandler.CompleteRequest(customerId, appointmentKey, requestOrigin,
+            accessService, providerConfiguration, cancellationToken);
     }
 
     private async Task<AccessService?> GetAccessServices(int customerId, string accessServiceName)
