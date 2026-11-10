@@ -197,6 +197,26 @@ public class AppointmentRoleEvaluatorTests
     }
 
     [Fact]
+    public async Task Evaluate_AssetNotMatched_IfNotStartedAppointmentDoesNotCoverAsset()
+    {
+        const int customer = 9116;
+        var role = await AddRole(customer, "appointment:a", AppointmentConfig());
+        var otherSpace = new AssetPatterns { Space = [Space + 1] };
+        var session = await AddSession(customer,
+            NewAppointment(customer, role, a => a.AssetPatterns = otherSpace),
+            NewAppointment(customer, role, a =>
+            {
+                a.AssetPatterns = otherSpace;
+                a.Start = DateTime.UtcNow.AddDays(1);
+            }));
+
+        var result = await sut.Evaluate(customer, Space, [role], session, null);
+
+        result.Reason.Should().Be(AppointmentDenialReason.AssetNotMatched);
+        result.Start.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Evaluate_ReportsHighestPriorityReason()
     {
         const int customer = 9113;

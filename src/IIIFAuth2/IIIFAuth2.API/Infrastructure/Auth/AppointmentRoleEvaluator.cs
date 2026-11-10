@@ -106,10 +106,11 @@ public class AppointmentRoleEvaluator(
     private static AppointmentDenialReason? GetDenialReason(Appointment appointment, DateTime now, int customerId,
         int space, AssetMetadata? asset)
     {
+        // Patterns first: an appointment that never covers the asset mustn't report when it starts/ends
+        if (!appointment.AssetPatterns.Matches(customerId, space, asset)) return AppointmentDenialReason.AssetNotMatched;
         if (appointment.Start > now) return AppointmentDenialReason.NotStarted;
         if (!appointment.Active) return AppointmentDenialReason.NotActive;
         if (appointment.End <= now) return AppointmentDenialReason.Ended;
-        if (!appointment.AssetPatterns.Matches(customerId, space, asset)) return AppointmentDenialReason.AssetNotMatched;
         return null;
     }
 }
