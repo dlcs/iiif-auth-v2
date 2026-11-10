@@ -1,4 +1,4 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 using IIIFAuth2.TestUI.Infrastructure;
@@ -13,6 +13,7 @@ public static class FakeOrchestratorEndpoints
 {
     public const string CorsPolicy = "FakeOrchestrator";
     private const string AuthContext = "http://iiif.io/api/auth/2/context.json";
+    private const string Auth2CookieNameFormat = "dlcs-auth2-{0}";
 
     public static void MapFakeOrchestrator(this WebApplication app)
     {
@@ -23,19 +24,15 @@ public static class FakeOrchestratorEndpoints
     }
 
     /// <summary>
-    /// Simulates Orchestrator ProbeService - see ProbeServiceSupport.HandleProbeRequest in Orchestrator
+    /// Simulates Orchestrator ProbeService - see ProbeServiceSupport.HandleProbeRequest in Orchestrator.
+    /// This includes proposed IpRestriction changes: the deliverable is looked up before checking for a bearer token,
+    /// as probe_internal is called without a token if there are any IP roles. Client IP is sent as x-forwarded-for
+    /// if there are any IP roles
     /// </summary>
     private static async Task<IResult> ProbeService(string deliverableId, HttpRequest request,
-        DeliverableStore deliverableStore, AuthServiceClient authServiceClient, ILogger<Deliverable> logger,
-        CancellationToken cancellationToken)
+        DeliverableStore deliverableStore, AuthServiceClient authServiceClient, SimulatedClientIp simulatedClientIp,
+        ILogger<Deliverable> logger, CancellationToken cancellationToken)
     {
-        var accessToken = GetBearerToken(request);
-        if (string.IsNullOrWhiteSpace(accessToken))
-        {
-            logger.LogInformation("Probe for {DeliverableId} has no bearer token", deliverableId);
-            return ProbeResult(401, "Missing credentials", "Authorising credentials not found");
-        }
-
         if (!deliverableStore.TryGet(deliverableId, out var deliverable))
         {
             logger.LogInformation("Probe for unknown {DeliverableId}", deliverableId);
@@ -48,9 +45,17 @@ public static class FakeOrchestratorEndpoints
             return ProbeResult(200);
         }
 
+        var accessToken = GetBearerToken(request);
+        if (string.IsNullOrWhiteSpace(accessToken) && !deliverable.HasIpRole)
+        {
+            logger.LogInformation("Probe for {DeliverableId} has no bearer token", deliverableId);
+            return ProbeResult(401, "Missing credentials", "Authorising credentials not found");
+        }
+
         try
         {
-            using var response = await authServiceClient.ProbeInternal(deliverable, accessToken, cancellationToken);
+            using var response = await authServiceClient.ProbeInternal(deliverable, accessToken,
+                GetForwardedFor(deliverable, request, simulatedClientIp), cancellationToken);
             response.EnsureSuccessStatusCode();
             var body = await response.Content.ReadAsStringAsync(cancellationToken);
             return Results.Text(body, "application/json");
@@ -65,10 +70,13 @@ public static class FakeOrchestratorEndpoints
     /// <summary>
     /// Simulates Orchestrator handling a request for an access-controlled image/file, using cookie to verify access.
     /// Returns an SVG image summarising result.
+    /// As Orchestrator AssetAccessValidator, verifyaccess is only called if there is an auth2 cookie for customer or,
+    /// per proposed IpRestriction changes, there are any IP roles. Client IP is sent as x-forwarded-for if there are
+    /// any IP roles
     /// </summary>
     private static async Task<IResult> ContentResource(string deliverableId, HttpRequest request,
-        DeliverableStore deliverableStore, AuthServiceClient authServiceClient, ILogger<Deliverable> logger,
-        CancellationToken cancellationToken)
+        DeliverableStore deliverableStore, AuthServiceClient authServiceClient, SimulatedClientIp simulatedClientIp,
+        ILogger<Deliverable> logger, CancellationToken cancellationToken)
     {
         if (!deliverableStore.TryGet(deliverableId, out var deliverable))
         {
@@ -80,10 +88,15 @@ public static class FakeOrchestratorEndpoints
             return Svg(HttpStatusCode.OK, deliverableId, "Open - no roles");
         }
 
+        if (!HasAuth2Cookie(deliverable, request) && !deliverable.HasIpRole)
+        {
+            return Svg(HttpStatusCode.Unauthorized, deliverableId, "Access denied (no auth2 cookie, no IP roles)");
+        }
+
         try
         {
-            using var response =
-                await authServiceClient.VerifyAccess(deliverable, request.Headers.Cookie.ToString(), cancellationToken);
+            using var response = await authServiceClient.VerifyAccess(deliverable, request.Headers.Cookie.ToString(),
+                GetForwardedFor(deliverable, request, simulatedClientIp), cancellationToken);
             return response.IsSuccessStatusCode
                 ? Svg(HttpStatusCode.OK, deliverableId, $"Access granted (verifyaccess {(int)response.StatusCode})")
                 : Svg(HttpStatusCode.Unauthorized, deliverableId,
@@ -172,6 +185,15 @@ public static class FakeOrchestratorEndpoints
             return null;
         }
     }
+
+    private static string? GetForwardedFor(Deliverable deliverable, HttpRequest request,
+        SimulatedClientIp simulatedClientIp)
+        => deliverable.HasIpRole ? simulatedClientIp.GetClientIp(request) : null;
+
+    private static bool HasAuth2Cookie(Deliverable deliverable, HttpRequest request)
+        // Unparseable customer - pass through to iiif-auth-v2 to test handling
+        => deliverable.Customer is not { } customer ||
+           request.Cookies.ContainsKey(string.Format(Auth2CookieNameFormat, customer));
 
     private static string? GetBearerToken(HttpRequest request)
         => AuthenticationHeaderValue.TryParse(request.Headers.Authorization, out var parsed) &&

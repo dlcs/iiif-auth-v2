@@ -19,7 +19,7 @@ services:
       context: ./nginx
       dockerfile: Dockerfile
     ports:
-      - "5040:443"
+      - "5041:443"
       - "5039:80"
     extra_hosts:
       - "host.docker.internal:host-gateway"

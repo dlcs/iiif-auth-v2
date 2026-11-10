@@ -28,6 +28,12 @@ public class DatabaseFixture : IAsyncLifetime
     public Guid OidcRoleProviderId; 
     public const string ClickthroughRoleUri = "http://dlcs.test/99/clickthrough";
     public const string OidcRoleUri = "http://dlcs.test/99/oidc";
+    public const string IpRestrictionService = "reading-room";
+    public Guid IpRestrictionAccessId;
+    public Guid IpRestrictionRoleProviderId;
+    public const string IpRestrictionRoleUri = "http://dlcs.test/99/ip:reading-room";
+    public const string IpRestrictionLocationPhrase = "in the Research Centre";
+    public static readonly string[] IpRestrictionRanges = ["10.0.0.0/24", "2001:db8:1007::/48"];
 
     public DatabaseFixture()
     {
@@ -64,9 +70,9 @@ public class DatabaseFixture : IAsyncLifetime
     public void CleanUp()
     {
         DbContext.Database.ExecuteSqlRaw("DELETE FROM session_users;");
-        DbContext.Database.ExecuteSqlRaw($"DELETE FROM roles WHERE access_service_id not in ('{ClickthroughAccessId.ToString()}', '{OidcAccessId.ToString()}');");
-        DbContext.Database.ExecuteSqlRaw($"DELETE FROM access_services WHERE id not in ('{ClickthroughAccessId.ToString()}', '{OidcAccessId.ToString()}');");
-        DbContext.Database.ExecuteSqlRaw($"DELETE FROM role_providers WHERE id not in ('{ClickthroughRoleProviderId.ToString()}', '{OidcRoleProviderId.ToString()}');");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM roles WHERE access_service_id not in ('{ClickthroughAccessId.ToString()}', '{OidcAccessId.ToString()}', '{IpRestrictionAccessId.ToString()}');");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM access_services WHERE id not in ('{ClickthroughAccessId.ToString()}', '{OidcAccessId.ToString()}', '{IpRestrictionAccessId.ToString()}');");
+        DbContext.Database.ExecuteSqlRaw($"DELETE FROM role_providers WHERE id not in ('{ClickthroughRoleProviderId.ToString()}', '{OidcRoleProviderId.ToString()}', '{IpRestrictionRoleProviderId.ToString()}');");
         DbContext.Database.ExecuteSqlRaw($"DELETE FROM customer_cookie_domains WHERE customer != '{Customer}';");
     }
 
@@ -98,14 +104,26 @@ public class DatabaseFixture : IAsyncLifetime
                 }
             }
         };
-        DbContext.RoleProviders.AddRange(clickthroughRoleProvider, oidcRoleProvider);
+        var ipRestrictionRoleProvider = new RoleProvider
+        {
+            Customer = Customer,
+            Configuration = new RoleProviderConfiguration
+            {
+                [RoleProviderConfiguration.DefaultKey] = new IpRestrictionConfiguration
+                {
+                    Config = RoleProviderType.IpRestriction, Ranges = IpRestrictionRanges,
+                    LocationPhrase = IpRestrictionLocationPhrase
+                }
+            }
+        };
+        DbContext.RoleProviders.AddRange(clickthroughRoleProvider, oidcRoleProvider, ipRestrictionRoleProvider);
         
         var clickthroughAccessService = new AccessService
         {
             Customer = Customer,
             Id = ClickthroughAccessId,
             Name = ClickthroughService,
-            Profile = "active",
+            Profile = AccessServiceProfiles.Active,
             RoleProvider = clickthroughRoleProvider
         };
         var oidcAccessService = new AccessService
@@ -113,10 +131,18 @@ public class DatabaseFixture : IAsyncLifetime
             Customer = Customer,
             Id = OidcAccessId,
             Name = OidcService,
-            Profile = "active",
+            Profile = AccessServiceProfiles.Active,
             RoleProvider = oidcRoleProvider
         };
-        DbContext.AccessServices.AddRange(clickthroughAccessService, oidcAccessService);
+        var ipRestrictionAccessService = new AccessService
+        {
+            Customer = Customer,
+            Id = IpRestrictionAccessId,
+            Name = IpRestrictionService,
+            Profile = AccessServiceProfiles.External,
+            RoleProvider = ipRestrictionRoleProvider
+        };
+        DbContext.AccessServices.AddRange(clickthroughAccessService, oidcAccessService, ipRestrictionAccessService);
 
         DbContext.Roles.AddRange(new Role
         {
@@ -130,11 +156,19 @@ public class DatabaseFixture : IAsyncLifetime
             Id = OidcRoleUri,
             Name = "oid-role",
             AccessServiceId = oidcAccessService.Id
+        }, new Role
+        {
+            Customer = Customer,
+            Id = IpRestrictionRoleUri,
+            Name = "ip-role",
+            AccessServiceId = ipRestrictionAccessService.Id
         });
         ClickthroughAccessId = clickthroughAccessService.Id;
         ClickthroughRoleProviderId = clickthroughAccessService.RoleProviderId!.Value;
         OidcAccessId = oidcAccessService.Id;
         OidcRoleProviderId = oidcAccessService.RoleProviderId!.Value;
+        IpRestrictionAccessId = ipRestrictionAccessService.Id;
+        IpRestrictionRoleProviderId = ipRestrictionAccessService.RoleProviderId!.Value;
 
         DbContext.CustomerCookieDomains.Add(new CustomerCookieDomain
         {

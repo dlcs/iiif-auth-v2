@@ -27,6 +27,7 @@ try
         .ConfigureOptions(builder.Configuration)
         .AddHttpContextAccessor()
         .AddScoped<IUrlPathProvider, UrlPathProvider>()
+        .AddSingleton<IClientIpProvider, ClientIpProvider>()
         .AddAuthServices()
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
@@ -34,7 +35,7 @@ try
         .AddCaching()
         .AddAws(builder.Configuration)
         .ConfigureAspnetMvc()
-        .ConfigureForwardedHeaders(builder.Configuration)
+        .ConfigureForwardedHeaders()
         .AddSwagger();
 
     var apiSettings = builder.Configuration.Get<ApiSettings>()!;
@@ -42,7 +43,7 @@ try
     var app = builder.Build();
     app
         .UseSerilogRequestLogging()
-        .UseForwardedHeaders()
+        .UseForwardedHeadersWithClientIp()
         .HandlePathBase(apiSettings.PathBase, app.Logger)
         .UseRouting();
 

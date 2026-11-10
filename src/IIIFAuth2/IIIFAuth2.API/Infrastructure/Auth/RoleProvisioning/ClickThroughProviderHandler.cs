@@ -34,7 +34,8 @@ public class ClickThroughProviderHandler
         IProviderConfiguration providerConfiguration,
         CancellationToken cancellationToken = default)
     {
-        return roleProvisionGranter.CompleteRequest(customerId, requestOrigin, providerConfiguration,
+        var configuration = providerConfiguration.SafelyGetTypedConfig<ClickthroughConfiguration>();
+        return roleProvisionGranter.CompleteRequest(customerId, requestOrigin, configuration,
             () => GetRolesToBeGranted(customerId, accessService), cancellationToken);
     }
 

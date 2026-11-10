@@ -249,6 +249,25 @@ public class AccessServiceTests : IClassFixture<AuthWebApplicationFactory>
     }
 
     [Fact]
+    public async Task AccessService_IpRestriction_RendersWindowClose()
+    {
+        // Arrange
+        var path = $"/access/99/{DatabaseFixture.IpRestrictionService}?origin={httpClient.BaseAddress}";
+
+        // Act
+        var response = await httpClient.GetAsync(path);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var htmlParser = new HtmlParser();
+        var document = htmlParser.ParseDocument(await response.Content.ReadAsStreamAsync());
+        var label = document.QuerySelector("p:nth-child(2)") as IHtmlParagraphElement;
+        label.TextContent.Should().Be("This window should close automatically...");
+        (await dbContext.SessionUsers.AnyAsync()).Should().BeFalse("no session created for IpRestriction");
+    }
+
+    [Fact]
     public async Task AccessService_Oidc_ReturnsRedirectToLoginUrl()
     {
         // Arrange
