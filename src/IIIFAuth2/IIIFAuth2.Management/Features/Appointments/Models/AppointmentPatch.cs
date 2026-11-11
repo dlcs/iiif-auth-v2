@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using IIIFAuth2.Core.Models.Domain;
 
 namespace IIIFAuth2.Management.Features.Appointments.Models;
@@ -8,7 +9,7 @@ namespace IIIFAuth2.Management.Features.Appointments.Models;
 public class AppointmentPatch : IAppointmentFields
 {
     public string? Name { get; set; }
-    public string? Email { get; set; }
+    [EmailAddress] public string? Email { get; set; }
     public string? Notes { get; set; }
     public DateTime? Start { get; set; }
     public DateTime? End { get; set; }

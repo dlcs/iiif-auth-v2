@@ -92,7 +92,8 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
 
     public static TheoryData<string, string> InvalidBodies => new()
     {
-        { """{"email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["r"],"assetPatterns":{}}""", "The Name field is required" },
+        { """{"email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["r"],"assetPatterns":{}}""", "The name field is required" },
+        { """{"name":"a","email":"not-an-email","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "The email field is not a valid e-mail address" },
         { """{"name":"a","email":"a@b.c","start":"2026-07-01T12:00:00Z","end":"2026-07-01T09:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "end must be after start" },
         { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":true,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "approvedBy is required" },
         { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"approvedBy":"x","roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "approvedBy can only be set" },
@@ -196,6 +197,18 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         json["active"]!.GetValue<bool>().Should().BeFalse();
         json["approvedBy"]!.GetValue<string>().Should().Be("jb");
         json["dateApproved"]!.GetValue<string>().Should().Be(approvedJson["dateApproved"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public async Task Patch_Returns400_IfEmailInvalid()
+    {
+        var token = (await Create())["token"]!.GetValue<string>();
+
+        var response = await httpClient.PatchAsJsonAsync($"{Path}/{token}", new { email = "not-an-email" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadFromJsonAsync<JsonNode>())!["detail"]!.GetValue<string>().Should()
+            .Contain("email");
     }
 
     [Fact]

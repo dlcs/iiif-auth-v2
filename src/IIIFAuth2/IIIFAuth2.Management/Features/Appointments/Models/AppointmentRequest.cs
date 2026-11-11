@@ -11,7 +11,7 @@ namespace IIIFAuth2.Management.Features.Appointments.Models;
 public class AppointmentRequest : IAppointmentFields
 {
     [Required] public string? Name { get; set; }
-    [Required] public string? Email { get; set; }
+    [Required, EmailAddress] public string? Email { get; set; }
     public string? Notes { get; set; }
     [Required] public DateTime? Start { get; set; }
     [Required] public DateTime? End { get; set; }

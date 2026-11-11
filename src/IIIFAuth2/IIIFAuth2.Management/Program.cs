@@ -43,7 +43,9 @@ try
         .AddDelegatedAuthHandler(opts => opts.Realm = "DLCS-API");
 
     builder.Services.AddAuthorization();
-    builder.Services.AddControllers()
+    // Validation errors use JSON (camelCase) property names, matching request bodies
+    builder.Services
+        .AddControllers(opts => opts.ModelMetadataDetailsProviders.Add(new CamelCaseDisplayMetadataProvider()))
         .AddJsonOptions(opts => opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)
         .ConfigureApiBehaviorOptions(opts => opts.InvalidModelStateResponseFactory = context =>
             Error.ToResult(400, "Bad request",
