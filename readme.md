@@ -181,6 +181,8 @@ The following appSetting configuration values are supported by `IIIFAuth2.Manage
 | Dlcs__ApiRoot            | Base URI for DLCS API, used to validate incoming credentials                |         |
 | Dlcs__ApiDefaultTimeoutMs | Timeout for requests to DLCS API, in ms                                    | 30000   |
 | AuthCacheTtl             | How long to cache successful credential checks for, in secs                 | 60      |
+| DefaultPageSize          | Page size for paged collections if `pageSize` not specified                 | 50      |
+| MaxPageSize              | Maximum `pageSize` for paged collections, larger values are capped          | 200     |
 | RunMigrations            | If true, EF migrations will be run when app runs                            | `false` |
 | AWS__SQS__CustomerCreatedQueueName | Name of SQS queue receiving DLCS customer-created notifications. Listener not started if empty |  |
 | AWS__SQS__WaitTimeSecs   | Long-polling wait time for SQS receive, in secs                             | 20      |

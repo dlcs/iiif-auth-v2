@@ -1,6 +1,10 @@
+using System.Text.Json.Serialization;
 using IIIFAuth2.Core.Data;
+using IIIFAuth2.Management.Features.Appointments;
 using IIIFAuth2.Management.Infrastructure;
 using IIIFAuth2.Management.Infrastructure.Aws;
+using IIIFAuth2.Management.Infrastructure.Hydra;
+using Microsoft.AspNetCore.Http.Extensions;
 using IIIFAuth2.Management.Settings;
 using Serilog;
 
@@ -29,6 +33,7 @@ try
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
         .AddMediatR(config => config.RegisterServicesFromAssemblyContaining<Program>())
+        .AddScoped<AppointmentRules>()
         .AddLazyCache()
         .AddDlcsApiClient(managementSettings.Dlcs)
         .AddSwagger()
@@ -37,7 +42,12 @@ try
         .AddDelegatedAuthHandler(opts => opts.Realm = "DLCS-API");
 
     builder.Services.AddAuthorization();
-    builder.Services.AddControllers();
+    builder.Services.AddControllers()
+        .AddJsonOptions(opts => opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)
+        .ConfigureApiBehaviorOptions(opts => opts.InvalidModelStateResponseFactory = context =>
+            Error.ToResult(400, "Bad request",
+                string.Join("; ", context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)),
+                context.HttpContext.Request.GetDisplayUrl()));
 
     var app = builder.Build();
     app

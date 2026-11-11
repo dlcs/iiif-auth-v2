@@ -8,6 +8,16 @@ public class ManagementSettings
     /// How long, in secs, to cache successful auth checks against DLCS API
     /// </summary>
     public int AuthCacheTtl { get; set; } = 60;
+
+    /// <summary>
+    /// Page size used for paged collections if pageSize isn't specified
+    /// </summary>
+    public int DefaultPageSize { get; set; } = 50;
+
+    /// <summary>
+    /// Maximum page size for paged collections, a larger requested pageSize is capped to this
+    /// </summary>
+    public int MaxPageSize { get; set; } = 200;
 }
 
 public class DlcsSettings
