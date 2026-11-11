@@ -191,7 +191,11 @@ The following appSetting configuration values are supported by `IIIFAuth2.Manage
 | AWS__UseLocalStack       | If true, and environment is Development, use LocalStack for SQS             | `false` |
 | AWS__SQS__ServiceUrl     | SQS service URL, only used with LocalStack                                  | `http://localhost:4566/` |
 
-When a customer-created notification is received, a default `clickthrough` role-provider, access-service and role are created for that customer (see [bootstrap.sql](scripts/sql/bootstrap.sql) for equivalent SQL). The role id is `https://api.dlcs.io/customers/{id}/roles/clickthrough`. This is a no-op if the customer already has a `clickthrough` access-service.
+When a customer-created notification is received, default role-providers, access-services and roles are created for that customer:
+* `clickthrough` access-service with role `https://api.dlcs.io/customers/{id}/roles/clickthrough` (see [bootstrap.sql](scripts/sql/bootstrap.sql) for equivalent SQL).
+* `appointment` access-service with role `https://api.dlcs.io/customers/{id}/roles/appointment:token-based` (see [appointment.sql](scripts/sql/appointment.sql) for equivalent SQL, minus the sample appointment).
+
+Each is skipped if the customer already has an access-service with that name.
 
 All management routes are in the format `/customers/{customerId}/...`. Requests are authenticated by forwarding the provided `Authorization` header to DLCS API `/customers/{customerId}` - a 200 response means the request is authenticated.
 

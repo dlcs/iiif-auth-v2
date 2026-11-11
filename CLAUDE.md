@@ -29,7 +29,7 @@ Local infra (repo root): `docker compose -f docker-compose.db.yml up` (Postgres 
 ## Projects
 
 - **IIIFAuth2.API** - public IIIF Auth 2 service (Dockerfile). Does **not** run migrations.
-- **IIIFAuth2.Management** - internal management API (Dockerfile.Management). Owns migrations (applied at startup when `RunMigrations=true`), listens to an SQS customer-created queue to seed a default `clickthrough` role-provider/access-service/role per customer.
+- **IIIFAuth2.Management** - internal management API (Dockerfile.Management). Owns migrations (applied at startup when `RunMigrations=true`), listens to an SQS customer-created queue to seed default `clickthrough` and `appointment` role-provider/access-service/role per customer.
 - **IIIFAuth2.Core** - shared `AuthServicesContext`, entities, migrations and domain models (e.g. `RoleProviderConfiguration`).
 - **IIIFAuth2.TestUI** - Razor Pages app acting as fake Orchestrator + IIIF client for local end-to-end testing against the API without nginx/Orchestrator.
 - **IIIFAuth2.Tests.Common** - `DatabaseFixture` (Postgres container, applies migrations, seeds customer 99 with clickthrough + oidc services).
