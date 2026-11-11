@@ -178,6 +178,7 @@ The following appSetting configuration values are supported by `IIIFAuth2.Manage
 
 | Name                     | Description                                                                 | Default |
 | ------------------------ | --------------------------------------------------------------------------- | ------- |
+| PathBase                 | Path prefix app is served under, without leading slash. Empty for none      | `auth`  |
 | Dlcs__ApiRoot            | Base URI for DLCS API, used to validate incoming credentials                |         |
 | Dlcs__ApiDefaultTimeoutMs | Timeout for requests to DLCS API, in ms                                    | 30000   |
 | AuthCacheTtl             | How long to cache successful credential checks for, in secs                 | 60      |

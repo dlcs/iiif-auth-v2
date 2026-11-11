@@ -5,6 +5,11 @@ public class ManagementSettings
     public DlcsSettings Dlcs { get; set; } = new();
 
     /// <summary>
+    /// Optional path prefix the app is served under, without leading slash
+    /// </summary>
+    public string? PathBase { get; set; } = "auth";
+
+    /// <summary>
     /// How long, in secs, to cache successful auth checks against DLCS API
     /// </summary>
     public int AuthCacheTtl { get; set; } = 60;

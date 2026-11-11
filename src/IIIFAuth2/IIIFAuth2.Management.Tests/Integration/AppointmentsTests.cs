@@ -119,6 +119,18 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     }
 
     [Fact]
+    public async Task Get_UnderPathBase_IncludesPathBaseInId()
+    {
+        var token = (await Create())["token"]!.GetValue<string>();
+
+        var response = await httpClient.GetAsync($"/auth{Path}/{token}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = (await response.Content.ReadFromJsonAsync<JsonNode>())!;
+        json["@id"]!.GetValue<string>().Should().EndWith($"/auth{Path}/{token}");
+    }
+
+    [Fact]
     public async Task Get_Returns404_IfUnknown_OrOtherCustomer()
     {
         var token = (await Create())["token"]!.GetValue<string>();

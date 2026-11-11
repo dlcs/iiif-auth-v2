@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Infrastructure;
 using IIIFAuth2.Management.Features.Appointments;
 using IIIFAuth2.Management.Infrastructure;
 using IIIFAuth2.Management.Infrastructure.Aws;
@@ -52,6 +53,7 @@ try
     var app = builder.Build();
     app
         .UseSerilogRequestLogging()
+        .HandlePathBase(managementSettings.PathBase, app.Logger)
         .UseRouting()
         .UseAuthentication()
         .UseAuthorization()
