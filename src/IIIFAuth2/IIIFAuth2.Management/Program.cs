@@ -6,6 +6,7 @@ using IIIFAuth2.Management.Infrastructure;
 using IIIFAuth2.Management.Infrastructure.Aws;
 using IIIFAuth2.Management.Infrastructure.Hydra;
 using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.HttpOverrides;
 using IIIFAuth2.Management.Settings;
 using Serilog;
 
@@ -42,6 +43,14 @@ try
         .AddBackgroundServices(awsSettings)
         .AddDelegatedAuthHandler(opts => opts.Realm = "DLCS-API");
 
+    // Only host + proto, used to build "@id" links. Client IP isn't used so accepting from any proxy is safe
+    builder.Services.Configure<ForwardedHeadersOptions>(opts =>
+    {
+        opts.ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto;
+        opts.KnownIPNetworks.Clear();
+        opts.KnownProxies.Clear();
+    });
+
     builder.Services.AddAuthorization();
     // Validation errors use JSON (camelCase) property names, matching request bodies
     builder.Services
@@ -55,6 +64,7 @@ try
     var app = builder.Build();
     app
         .UseSerilogRequestLogging()
+        .UseForwardedHeaders()
         .HandlePathBase(managementSettings.PathBase, app.Logger)
         .UseRouting()
         .UseAuthentication()
