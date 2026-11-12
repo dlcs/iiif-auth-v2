@@ -38,7 +38,7 @@ public class AuthenticationTests : IClassFixture<ManagementWebApplicationFactory
     [Fact]
     public async Task Ping_Returns401_IfNoCredentials()
     {
-        var response = await httpClient.GetAsync($"/customers/{DatabaseFixture.Customer}/ping");
+        var response = await httpClient.GetAsync($"/customers/{DatabaseFixture.Customer}/auth/ping");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         response.Headers.WwwAuthenticate.Should().ContainSingle(h => h.Scheme == "Basic");
@@ -48,7 +48,7 @@ public class AuthenticationTests : IClassFixture<ManagementWebApplicationFactory
     public async Task Ping_Returns401_IfDlcsRejectsCredentials()
     {
         // Fake DLCS client only accepts credentials for DatabaseFixture.Customer
-        var request = new HttpRequestMessage(HttpMethod.Get, "/customers/100/ping");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/customers/100/auth/ping");
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic", ValidCredentials);
 
         var response = await httpClient.SendAsync(request);
@@ -59,7 +59,7 @@ public class AuthenticationTests : IClassFixture<ManagementWebApplicationFactory
     [Fact]
     public async Task Ping_Returns200_IfValidCredentials()
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, $"/customers/{DatabaseFixture.Customer}/ping");
+        var request = new HttpRequestMessage(HttpMethod.Get, $"/customers/{DatabaseFixture.Customer}/auth/ping");
         request.Headers.Authorization = new AuthenticationHeaderValue("Basic", ValidCredentials);
 
         var response = await httpClient.SendAsync(request);

@@ -7,7 +7,7 @@ public class ManagementSettings
     /// <summary>
     /// Optional path prefix the app is served under, without leading slash
     /// </summary>
-    public string? PathBase { get; set; } = "auth";
+    public string? PathBase { get; set; }
 
     /// <summary>
     /// How long, in secs, to cache successful auth checks against DLCS API

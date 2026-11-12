@@ -13,7 +13,7 @@ namespace IIIFAuth2.Management.Features.Appointments;
 /// Management of customer appointments
 /// </summary>
 [ApiController]
-[Route("customers/{customerId:int}/appointments")]
+[Route("customers/{customerId:int}/auth/appointments")]
 public class AppointmentsController(IMediator mediator, IOptions<ManagementSettings> settings)
     : HydraController(mediator, settings)
 {

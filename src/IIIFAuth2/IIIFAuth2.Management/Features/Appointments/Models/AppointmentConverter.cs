@@ -10,7 +10,7 @@ public static class AppointmentConverter
     public static HydraAppointment ToHydra(this Appointment appointment, string baseUrl)
         => new()
         {
-            Id = $"{baseUrl}/customers/{appointment.Customer}/appointments/{appointment.Token}",
+            Id = $"{baseUrl}/customers/{appointment.Customer}/auth/appointments/{appointment.Token}",
             Token = appointment.Token,
             Name = appointment.Name,
             Email = appointment.Email,

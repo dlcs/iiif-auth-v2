@@ -19,7 +19,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
 {
     private readonly HttpClient httpClient;
     private readonly DatabaseFixture dbFixture;
-    private const string Path = "/customers/99/appointments";
+    private const string Path = "/customers/99/auth/appointments";
 
     public AppointmentsTests(ManagementWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
@@ -120,24 +120,12 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Get_UnderPathBase_IncludesPathBaseInId()
-    {
-        var token = (await Create())["token"]!.GetValue<string>();
-
-        var response = await httpClient.GetAsync($"/auth{Path}/{token}");
-
-        response.StatusCode.Should().Be(HttpStatusCode.OK);
-        var json = (await response.Content.ReadFromJsonAsync<JsonNode>())!;
-        json["@id"]!.GetValue<string>().Should().EndWith($"/auth{Path}/{token}");
-    }
-
-    [Fact]
     public async Task Get_Returns404_IfUnknown_OrOtherCustomer()
     {
         var token = (await Create())["token"]!.GetValue<string>();
 
         (await httpClient.GetAsync($"{Path}/unknown")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await httpClient.GetAsync($"/customers/100/appointments/{token}")).StatusCode.Should()
+        (await httpClient.GetAsync($"/customers/100/auth/appointments/{token}")).StatusCode.Should()
             .Be(HttpStatusCode.NotFound);
         (await httpClient.GetAsync($"{Path}/{token}")).StatusCode.Should().Be(HttpStatusCode.OK);
     }

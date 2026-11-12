@@ -58,7 +58,7 @@ Deliverable ids are `{customer}/{space}/{asset}` or with an adjunct suffix.
 
 ### Management auth
 
-All management routes are `/customers/{customerId}/...` and require authorization. A delegated auth handler forwards the incoming `Authorization` header to DLCS API `/customers/{customerId}` (`Dlcs:ApiRoot`); a 200 means authenticated, cached for `AuthCacheTtl`. Management won't start without `Dlcs:ApiRoot`.
+All management routes are `/customers/{customerId}/auth/...` (shares a host with DLCS API, routed by prefix) and require authorization. A delegated auth handler forwards the incoming `Authorization` header to DLCS API `/customers/{customerId}` (`Dlcs:ApiRoot`); a 200 means authenticated, cached for `AuthCacheTtl`. Management won't start without `Dlcs:ApiRoot`.
 
 ## Conventions
 
