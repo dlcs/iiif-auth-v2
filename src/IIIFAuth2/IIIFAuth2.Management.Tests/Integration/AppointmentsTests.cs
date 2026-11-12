@@ -168,7 +168,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Patch_Approve_ThenDeactivate_KeepsApproval()
+    public async Task Patch_Approve_ThenDeactivate_KeepsApprovedBy_ClearsDateApproved()
     {
         var token = (await Create())["token"]!.GetValue<string>();
 
@@ -184,7 +184,12 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         var json = (await deactivated.Content.ReadFromJsonAsync<JsonNode>())!;
         json["active"]!.GetValue<bool>().Should().BeFalse();
         json["approvedBy"]!.GetValue<string>().Should().Be("jb");
-        json["dateApproved"]!.GetValue<string>().Should().Be(approvedJson["dateApproved"]!.GetValue<string>());
+        json["dateApproved"].Should().BeNull();
+
+        var reapproved = await httpClient.PatchAsJsonAsync($"{Path}/{token}", new { active = true, approvedBy = "other" });
+        var reapprovedJson = (await reapproved.Content.ReadFromJsonAsync<JsonNode>())!;
+        reapprovedJson["dateApproved"]!.GetValue<string>().Should()
+            .NotBe(approvedJson["dateApproved"]!.GetValue<string>());
     }
 
     [Fact]

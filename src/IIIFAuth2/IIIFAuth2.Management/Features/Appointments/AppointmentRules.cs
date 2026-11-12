@@ -47,6 +47,11 @@ public class AppointmentRules(AuthServicesContext dbContext)
             var now = DateTime.UtcNow;
             appointment.DateApproved = now.AddTicks(-(now.Ticks % 10));
         }
+        else if (!appointment.Active)
+        {
+            // Cleared so re-approving sets a fresh date
+            appointment.DateApproved = null;
+        }
 
         return null;
     }
