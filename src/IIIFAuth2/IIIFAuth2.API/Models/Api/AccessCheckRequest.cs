@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using IIIFAuth2.Core.Models.Domain;
 
 namespace IIIFAuth2.API.Models.Api;
@@ -8,9 +9,11 @@ namespace IIIFAuth2.API.Models.Api;
 public class AccessCheckRequest
 {
     /// <summary>
-    /// Roles that the asset has, any of which grants access
+    /// Role entries that the asset has, any of which grants access if all of its roles are met. Each element is a
+    /// string array (one entry) or a string (one entry, "+" or whitespace separating roles)
     /// </summary>
-    public string[]? Roles { get; set; }
+    [JsonConverter(typeof(RoleEntriesJsonConverter))]
+    public RoleEntry[]? Roles { get; set; }
 
     /// <summary>
     /// Optional asset metadata, used to evaluate appointment asset patterns. Only expected if any role is an

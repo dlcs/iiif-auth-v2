@@ -53,8 +53,8 @@ public class ProbeController : AuthBaseController
         CancellationToken cancellationToken)
         => HandleProbeRequest(() =>
             {
-                var roles = body?.Roles?.Select(RoleEntry.Parse).Where(e => e.Roles.Count > 0).ToList();
-                return roles is not { Count: > 0 }
+                var roles = body?.Roles;
+                return roles is not { Length: > 0 }
                     ? null
                     : new GetProbeServiceDescription(deliverableId, roles,
                         body!.Asset?.ToAssetMetadata());

@@ -192,6 +192,44 @@ public class RoleCombinationTests : IClassFixture<AuthWebApplicationFactory>
         response.StatusCode.Should().Be(expected);
     }
 
+    [Theory]
+    [InlineData("[[\"bar\"],[\"{ip}\",\"foo\"]]", InRange, 200)] // nested entries
+    [InlineData("[[\"bar\"],[\"{ip}\",\"foo\"]]", OutOfRange, 403)]
+    [InlineData("[\"bar\",\"foo\"]", OutOfRange, 200)] // legacy flat array, OR
+    [InlineData("[\"bar\",[\"{ip}\",\"foo\"]]", InRange, 200)] // mixed
+    [InlineData("[\"{ip}+foo\"]", InRange, 200)] // string element containing +
+    [InlineData("[\"{ip}+foo\"]", OutOfRange, 403)]
+    [InlineData("[[\" foo \",\"\"]]", OutOfRange, 200)] // trimmed, empties dropped
+    public async Task Post_EvaluatesEntries(string roles, string clientIp, int expected)
+    {
+        var token = await AddSession($"{nameof(Post_EvaluatesEntries)}{Guid.NewGuid()}");
+        var body = $"{{\"roles\":{roles.Replace("{ip}", DatabaseFixture.IpRestrictionRoleUri)}}}";
+
+        var result = await PostProbe(body, token, clientIp);
+        var verifyResponse = await Post("verifyaccess/99/2/foo", body, clientIp, cookieId: token);
+
+        result.Status.Should().Be(expected);
+        ((int)verifyResponse.StatusCode).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("[1]")]
+    [InlineData("[[1]]")]
+    [InlineData("[[[\"foo\"]]]")]
+    [InlineData("[{}]")]
+    [InlineData("{}")]
+    [InlineData("[[],[\" \"]]")]
+    public async Task Post_400_IfRolesInvalid(string roles)
+    {
+        var body = $"{{\"roles\":{roles}}}";
+
+        var result = await PostProbe(body, null, InRange);
+        var verifyResponse = await Post("verifyaccess/99/2/foo", body, InRange);
+
+        result.Status.Should().Be(400);
+        verifyResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
     private static void AssertLocation(AuthProbeResult2 result)
     {
         result.Status.Should().Be(403);
@@ -207,6 +245,26 @@ public class RoleCombinationTests : IClassFixture<AuthWebApplicationFactory>
         var response = await httpClient.SendAsync(request);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         return (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+    }
+
+    private async Task<AuthProbeResult2> PostProbe(string body, string? accessToken, string clientIp)
+    {
+        var response = await Post("probe_internal/99/2/foo", body, clientIp, accessToken);
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeResult2>();
+    }
+
+    private Task<HttpResponseMessage> Post(string path, string body, string clientIp, string? accessToken = null,
+        string? cookieId = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+        };
+        if (accessToken != null) request.Headers.Add("Authorization", $"Bearer {accessToken}");
+        if (cookieId != null) request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+        request.Headers.Add("X-Forwarded-For", clientIp);
+        return httpClient.SendAsync(request);
     }
 
     /// <summary>

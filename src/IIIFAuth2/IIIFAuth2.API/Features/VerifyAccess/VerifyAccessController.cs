@@ -46,8 +46,8 @@ public class VerifyAccessController : AuthBaseController
         [FromBody] AccessCheckRequest body,
         CancellationToken cancellationToken)
     {
-        var roles = body.Roles?.Select(RoleEntry.Parse).Where(e => e.Roles.Count > 0).ToList();
-        if (roles is not { Count: > 0 }) return Task.FromResult<IActionResult>(BadRequest("Required roles missing"));
+        var roles = body.Roles;
+        if (roles is not { Length: > 0 }) return Task.FromResult<IActionResult>(BadRequest("Required roles missing"));
 
         var asset = body.Asset?.ToAssetMetadata();
         return SendTestAccessRequest(() => new TestAccessRequest(deliverableId, roles, asset), cancellationToken);
