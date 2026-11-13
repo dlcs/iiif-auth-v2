@@ -43,6 +43,7 @@
                 const status = call.statusCode ?? `failed: ${call.error}`;
                 log(`↳ downstream ${call.method} ${call.url} → ${status} (${call.durationMs}ms)`, {
                     requestHeaders: call.requestHeaders,
+                    requestBody: tryParseJson(call.requestBody) ?? undefined,
                     responseHeaders: call.responseHeaders,
                     body: tryParseJson(call.responseBody) ?? call.error
                 }, "downstream");

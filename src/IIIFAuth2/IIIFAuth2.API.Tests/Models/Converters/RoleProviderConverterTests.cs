@@ -229,4 +229,49 @@ public class RoleProviderConverterTests
 
         JToken.DeepEquals(expected, actual).Should().BeTrue($"{actual} should equal {expected}");
     }
+
+    [Fact]
+    public void CanDeserialise_Appointment()
+    {
+        // Arrange
+        var expected = new AppointmentConfiguration
+        {
+            Config = RoleProviderType.Appointment,
+            GestureTitle = "Use your appointment key",
+            GestureMessage = "Enter the key from your appointment confirmation",
+        };
+
+        var json =
+            "{\"config\":\"Appointment\", \"gestureTitle\":\"Use your appointment key\", \"gestureMessage\":\"Enter the key from your appointment confirmation\"}";
+
+        // Act
+        var actual = JsonConvert.DeserializeObject<IProviderConfiguration>(json, jsonSerialiser);
+
+        // Assert
+        actual.Should().BeOfType<AppointmentConfiguration>().And.BeEquivalentTo(expected);
+    }
+
+    [Fact]
+    public void CanSerialise_Appointment()
+    {
+        // Arrange
+        var config = new AppointmentConfiguration
+        {
+            Config = RoleProviderType.Appointment,
+            GestureTitle = "Use your appointment key",
+            GestureMessage = "Enter the key from your appointment confirmation",
+        };
+
+        var json =
+            "{\"config\":\"Appointment\", \"gestureTitle\":\"Use your appointment key\", \"gestureMessage\":\"Enter the key from your appointment confirmation\"}";
+        var expected = JObject.Parse(json);
+
+        // Act
+        var serialised = JsonConvert.SerializeObject(config, Formatting.None, jsonSerialiser);
+
+        // Assert
+        var actual = JObject.Parse(serialised);
+
+        JToken.DeepEquals(expected, actual).Should().BeTrue($"{actual} should equal {expected}");
+    }
 }

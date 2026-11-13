@@ -14,6 +14,19 @@ public class IndexModel(DeliverableStore deliverableStore, RoleLookup roleLookup
 
     [BindProperty] public string? AdditionalRoles { get; set; }
 
+    /// <summary>Comma separated</summary>
+    [BindProperty] public string? Scopes { get; set; }
+
+    /// <summary>Comma separated</summary>
+    [BindProperty] public string? Tags { get; set; }
+
+    [BindProperty] public string? String1 { get; set; }
+    [BindProperty] public string? String2 { get; set; }
+    [BindProperty] public string? String3 { get; set; }
+    [BindProperty] public int? Number1 { get; set; }
+    [BindProperty] public int? Number2 { get; set; }
+    [BindProperty] public int? Number3 { get; set; }
+
     public RoleLookupResult KnownRoles { get; private set; } = new([], null);
 
     public IReadOnlyCollection<Deliverable> Deliverables => deliverableStore.All();
@@ -26,6 +39,11 @@ public class IndexModel(DeliverableStore deliverableStore, RoleLookup roleLookup
         {
             DeliverableId = existing.Id;
             SelectedRoles = existing.Roles.ToList();
+            var asset = existing.Asset;
+            Scopes = asset.Scopes == null ? null : string.Join(", ", asset.Scopes);
+            Tags = asset.Tags == null ? null : string.Join(", ", asset.Tags);
+            (String1, String2, String3) = (asset.String1, asset.String2, asset.String3);
+            (Number1, Number2, Number3) = (asset.Number1, asset.Number2, asset.Number3);
         }
 
         KnownRoles = await roleLookup.GetRoles(cancellationToken);
@@ -48,9 +66,20 @@ public class IndexModel(DeliverableStore deliverableStore, RoleLookup roleLookup
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var roles = SelectedRoles.Concat(additional).Distinct().ToList();
 
-        var deliverable = deliverableStore.Register(DeliverableId, roles);
+        var asset = new DeliverableAsset(SplitList(Scopes), SplitList(Tags), NullIfEmpty(String1),
+            NullIfEmpty(String2), NullIfEmpty(String3), Number1, Number2, Number3);
+        var deliverable = deliverableStore.Register(DeliverableId, roles, asset);
         return RedirectToPage("Flow", new { id = deliverable.Id });
     }
+
+    private static string[]? SplitList(string? value)
+    {
+        var values = (value ?? "").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return values.Length == 0 ? null : values;
+    }
+
+    // Not trimmed, so whitespace can be tested
+    private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
 
     public IActionResult OnPostDelete(string id)
     {

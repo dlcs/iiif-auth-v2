@@ -11,6 +11,7 @@ public record CallLogEntry(
     string Method,
     string Url,
     Dictionary<string, string> RequestHeaders,
+    string? RequestBody,
     int? StatusCode,
     Dictionary<string, string> ResponseHeaders,
     string? ResponseBody,

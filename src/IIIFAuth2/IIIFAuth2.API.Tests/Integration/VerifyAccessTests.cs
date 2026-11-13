@@ -2,6 +2,7 @@
 using IIIFAuth2.API.Tests.TestingInfrastructure;
 using IIIFAuth2.Core.Data;
 using IIIFAuth2.Core.Data.Entities;
+using IIIFAuth2.Core.Models.Domain;
 using IIIFAuth2.Tests.Common;
 
 namespace IIIFAuth2.API.Tests.Integration;
@@ -14,6 +15,8 @@ public class VerifyAccessTests : IClassFixture<AuthWebApplicationFactory>
     private readonly AuthServicesContext dbContext;
     private readonly string connectionString;
     private static readonly string IpRole = Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri);
+    private static readonly string AppointmentRole = Uri.EscapeDataString(DatabaseFixture.AppointmentRoleUri);
+    private readonly DatabaseFixture dbFixture;
 
     /// <summary>
     /// KnownNetworks for proxy (e.g. Orchestrator) tests. Deliberately within the IpRestriction range (10.0.0.0/24) to
@@ -25,6 +28,7 @@ public class VerifyAccessTests : IClassFixture<AuthWebApplicationFactory>
     public VerifyAccessTests(AuthWebApplicationFactory factory, DatabaseFixture dbFixture)
     {
         dbContext = dbFixture.DbContext;
+        this.dbFixture = dbFixture;
         connectionString = dbFixture.ConnectionString;
         httpClient = factory
             .WithConnectionString(dbFixture.ConnectionString)
@@ -526,4 +530,192 @@ public class VerifyAccessTests : IClassFixture<AuthWebApplicationFactory>
             Origin = origin,
             LastChecked = lastChecked
         };
+    [Fact]
+    public async Task VerifyAccess_Returns401_IfAppointmentRole_NoCookie()
+    {
+        var response = await httpClient.GetAsync($"verifyaccess/99/2/foo?roles={AppointmentRole}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task VerifyAccess_Returns401_IfAppointmentRole_SessionHasNoAppointment()
+    {
+        // Arrange
+        const string cookieId = nameof(VerifyAccess_Returns401_IfAppointmentRole_SessionHasNoAppointment);
+        await AddSessionWithAppointment(cookieId, null);
+
+        // Act
+        var response = await GetVerifyAccess($"verifyaccess/99/2/foo?roles={AppointmentRole}", cookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task VerifyAccess_Returns200_IfSessionHasMatchingAppointment()
+    {
+        // Arrange
+        const string cookieId = nameof(VerifyAccess_Returns200_IfSessionHasMatchingAppointment);
+        await AddSessionWithAppointment(cookieId, a => a.AssetPatterns = new AssetPatterns { Space = [2] });
+
+        // Act
+        var response = await GetVerifyAccess($"verifyaccess/99/2/foo?roles={AppointmentRole}", cookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task VerifyAccess_Returns403_IfAppointmentDoesNotMatchAsset()
+    {
+        // Arrange
+        const string cookieId = nameof(VerifyAccess_Returns403_IfAppointmentDoesNotMatchAsset);
+        await AddSessionWithAppointment(cookieId,
+            a => a.AssetPatterns = new AssetPatterns { String1 = ["LIDDLE/*"] });
+
+        // Act
+        var response = await GetVerifyAccess($"verifyaccess/99/2/foo?roles={AppointmentRole}", cookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task VerifyAccess_Returns403_IfAppointmentEnded()
+    {
+        // Arrange
+        const string cookieId = nameof(VerifyAccess_Returns403_IfAppointmentEnded);
+        await AddSessionWithAppointment(cookieId, a => a.End = DateTime.UtcNow.AddMinutes(-1));
+
+        // Act
+        var response = await GetVerifyAccess($"verifyaccess/99/2/foo?roles={AppointmentRole}", cookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    private Task<HttpResponseMessage> GetVerifyAccess(string path, string cookieId)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Get, path);
+        request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+        return httpClient.SendAsync(request);
+    }
+
+    /// <summary>
+    /// Add a session with "clickthrough" role, holding an appointment for the appointment role (unless configure is
+    /// null)
+    /// </summary>
+    private async Task AddSessionWithAppointment(string cookieId, Action<Appointment>? configure)
+    {
+        var session = CreateSessionUser(cookieId);
+        session.AccessToken = cookieId;
+        if (configure != null)
+        {
+            var appointment = new Appointment
+            {
+                Id = Guid.NewGuid(),
+                Customer = 99,
+                RoleProviderId = dbFixture.AppointmentRoleProviderId,
+                Token = cookieId,
+                Roles = [DatabaseFixture.AppointmentRoleUri],
+                Start = DateTime.UtcNow.AddHours(-1),
+                End = DateTime.UtcNow.AddHours(1),
+                Active = true,
+            };
+            configure(appointment);
+            session.SessionAppointments.Add(new SessionAppointment { Appointment = appointment });
+        }
+
+        await using var context = dbFixture.CreateNewAuthServiceContext();
+        await context.SessionUsers.AddAsync(session);
+        await context.SaveChangesAsync();
+    }
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("{\"roles\":[]}")]
+    [InlineData("{\"roles\":\"not-an-array\"}")]
+    [InlineData("not-json")]
+    public async Task PostVerifyAccess_Returns400_IfRolesMissingOrBodyInvalid(string body)
+    {
+        var response = await PostVerifyAccess("verifyaccess/99/2/foo", body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PostVerifyAccess_Returns400_IfAssetIdInvalid()
+    {
+        var response = await PostVerifyAccess("verifyaccess/12345", "{\"roles\":[\"clickthrough\"]}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task PostVerifyAccess_Returns401_IfNoCookie()
+    {
+        var response = await PostVerifyAccess("verifyaccess/99/2/foo", "{\"roles\":[\"clickthrough\"]}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task PostVerifyAccess_Returns200_IfCookieValid_AndHasRequiredRoles()
+    {
+        // Arrange
+        const string cookieId = nameof(PostVerifyAccess_Returns200_IfCookieValid_AndHasRequiredRoles);
+        await AddSessionWithAppointment(cookieId, null);
+
+        // Act
+        var response = await PostVerifyAccess("verifyaccess/99/2/foo", "{\"roles\":[\"clickthrough\"]}", cookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Theory]
+    [InlineData("LIDDLE/WW2/HFIU/003", HttpStatusCode.OK)]
+    [InlineData("LIDDLE/WW2/EVAC/014", HttpStatusCode.Forbidden)]
+    public async Task PostVerifyAccess_EvaluatesAppointmentPatterns_AgainstBodyAsset(string string1,
+        HttpStatusCode expected)
+    {
+        // Arrange
+        var cookieId = $"{nameof(PostVerifyAccess_EvaluatesAppointmentPatterns_AgainstBodyAsset)}{string1}";
+        await AddSessionWithAppointment(cookieId,
+            a => a.AssetPatterns = new AssetPatterns { String1 = ["LIDDLE/WW2/HFIU/*"] });
+        var body = $"{{\"roles\":[\"{DatabaseFixture.AppointmentRoleUri}\"],\"asset\":{{\"string1\":\"{string1}\"}}}}";
+
+        // Act
+        var response = await PostVerifyAccess("verifyaccess/99/2/foo", body, cookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("scopes")]
+    [InlineData("manifests")]
+    public async Task PostVerifyAccess_ReadsScopesOrManifests(string propertyName)
+    {
+        // Arrange
+        var cookieId = $"{nameof(PostVerifyAccess_ReadsScopesOrManifests)}{propertyName}";
+        await AddSessionWithAppointment(cookieId, a => a.AssetPatterns = new AssetPatterns { Scopes = ["b76hr45e"] });
+        var body = $"{{\"roles\":[\"{DatabaseFixture.AppointmentRoleUri}\"],\"asset\":{{\"{propertyName}\":[\"b76hr45e\"]}}}}";
+
+        // Act
+        var response = await PostVerifyAccess("verifyaccess/99/2/foo", body, cookieId);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    private Task<HttpResponseMessage> PostVerifyAccess(string path, string body, string? cookieId = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, path)
+        {
+            Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json")
+        };
+        if (cookieId != null) request.Headers.Add("Cookie", $"dlcs-auth2-99=id={cookieId};");
+        return httpClient.SendAsync(request);
+    }
 }

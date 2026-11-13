@@ -15,6 +15,7 @@ public class CallLoggingHandler(CallLog callLog, ILogger<CallLoggingHandler> log
         var timestamp = DateTime.UtcNow;
         var url = request.RequestUri?.ToString() ?? "";
         var requestHeaders = ToDictionary(request.Headers);
+        var requestBody = request.Content == null ? null : await request.Content.ReadAsStringAsync(cancellationToken);
         var stopwatch = Stopwatch.StartNew();
 
         try
@@ -25,7 +26,7 @@ public class CallLoggingHandler(CallLog callLog, ILogger<CallLoggingHandler> log
             stopwatch.Stop();
 
             var responseHeaders = ToDictionary(response.Headers.Concat(response.Content.Headers));
-            callLog.Add(new CallLogEntry(id, timestamp, request.Method.Method, url, requestHeaders,
+            callLog.Add(new CallLogEntry(id, timestamp, request.Method.Method, url, requestHeaders, requestBody,
                 (int)response.StatusCode, responseHeaders, body, stopwatch.ElapsedMilliseconds, null));
             logger.LogInformation("{Method} {Url} returned {StatusCode} in {Elapsed}ms", request.Method, url,
                 (int)response.StatusCode, stopwatch.ElapsedMilliseconds);
@@ -34,7 +35,7 @@ public class CallLoggingHandler(CallLog callLog, ILogger<CallLoggingHandler> log
         catch (Exception ex)
         {
             stopwatch.Stop();
-            callLog.Add(new CallLogEntry(id, timestamp, request.Method.Method, url, requestHeaders, null, new(),
+            callLog.Add(new CallLogEntry(id, timestamp, request.Method.Method, url, requestHeaders, requestBody, null, new(),
                 null, stopwatch.ElapsedMilliseconds, ex.Message));
             logger.LogWarning(ex, "{Method} {Url} failed", request.Method, url);
             throw;

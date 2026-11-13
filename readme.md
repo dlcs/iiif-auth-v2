@@ -28,9 +28,46 @@ The following role provider types are supported, this will be extended over time
 
 Omit it if the location shouldn't be advertised, and generic wording ("Only available from permitted locations") will be used. Generic wording is also used in probe responses if *any* of the asset's IP role providers has no `locationPhrase`, as listing only some locations would be incomplete. Setting `UseGenericLocationWording` uses generic wording everywhere, for all providers. IP ranges are never output.
 
+* `appointment` - the user enters an appointment key in the access service window. Each appointment grants its roles, between its `start` and `end`, for assets matching its asset patterns (space, scopes, tags, string1-3, number1-3). The key form submission is the significant gesture; if the user already has a session for the customer the appointment is added to it, otherwise a new session is created. Appointment roles are never stored in the session, they are evaluated on each request. By convention, roles granted by an appointment have a final path segment prefixed `appointment:` (e.g. `https://api.dlcs.io/customers/2/roles/appointment:token-based`). Appointments are currently created via SQL (see `scripts/sql/appointment.sql`). The access service can't be named `gesture`, as `access/{customerId}/gesture` is the significant gesture postback. Configuration:
+
+```json
+{
+  "default": {
+    "config": "Appointment",
+    "gestureTitle": "Use your appointment key",
+    "gestureMessage": "Enter the key from your appointment confirmation"
+  }
+}
+```
+
+`gestureTitle` and `gestureMessage` are optional and are used as the title and message of the key form, falling back to the default significant gesture wording.
+
 IpRestriction providers should only have a `default` configuration. Host-specific keys are looked up using the request host, but IP roles are evaluated on `probe_internal` and `verifyaccess`, which Orchestrator calls internally. So the host is the one Orchestrator uses to call this service, not the public host, unless Orchestrator forwards `x-forwarded-host`. The `external` access service's default label and token service errors always use `default`.
 
 Roles granted by an IpRestriction provider should belong to an access service with `external` profile. These are output first in services descriptions, without a logout service. They have an `id`, which the spec says "should not" be present and clients must ignore, so the service can be referenced, e.g. declared once in a Manifest and referenced by id. Opening it returns a "not interactive" error.
+
+Appointment asset patterns are stored as jsonb (`appointments.asset_patterns`), e.g. `{"space": [1], "string1": ["LIDDLE/WW2/HFIU/*"]}`. All fields given must match, and a field matches if any of its values match. Fields are `customer`, `space`, `number1-3` (equality), `scopes`, `tags` (exact, any of the asset's values) and `string1-3`. `string1-3` match exactly, unless the value ends with `*`, which matches anything starting with the value before it (`LIDDLE/*` matches `LIDDLE/WW2` but not `LIDDLE`). `*` elsewhere, and `/`, are literal. `customer` and `space` come from the deliverable id; other fields need asset metadata, so they never match a GET request. DLCS number references default to 0, so `number1-3` can't distinguish 0 from unset: a pattern of `0` matches assets with no value. Orchestrator sends empty string references as null, so they never match.
+
+## Probe and VerifyAccess requests
+
+Orchestrator calls `probe_internal/{deliverableId}` and `verifyaccess/{deliverableId}`. Both accept:
+
+* `GET ?roles={comma-separated-roles}` - retained for compatibility, no asset metadata.
+* `POST` with a JSON body, roles plus optional asset metadata. `asset` is only needed if any role is an `appointment:` role:
+
+```json
+{
+  "roles": [ "https://api.dlcs.io/customers/2/roles/appointment:token-based" ],
+  "asset": {
+    "scopes": [ "b76hr45e" ],
+    "tags": [ "ww2" ],
+    "string1": "LIDDLE/WW2/HFIU/003", "string2": null, "string3": null,
+    "number1": 10, "number2": null, "number3": null
+  }
+}
+```
+
+Protagonist currently calls scopes `manifests`, so `asset.manifests` is read if `asset.scopes` isn't provided. This allows Protagonist to rename it without a coordinated deployment. Adjuncts send their parent asset's metadata. Missing or empty `roles`, or an invalid body, is a 400: in the probe result `status` for `probe_internal` (HTTP 200, as for GET), as the HTTP status for `verifyaccess`.
 
 ## Projects
 
@@ -200,6 +237,13 @@ If a deliverable has an `ip:` role, `X-Forwarded-For` is sent to `/probe_interna
 1. Run `scripts/sql/ip_restriction.sql` (edit the customer as required and remove the `rollback`), then restart IIIFAuth2.API as role and access-service records are cached.
 2. Register a deliverable, e.g. `7/1/foo`, with the `ip:reading-room` role (optionally with a clickthrough role too).
 3. On the Auth flow page, leave the client IP blank (localhost is in range) or set an IP in/out of the configured ranges, then run the flow. The probe returns 200 without a token if in range, else 403 "Not available at your location" (or 401 if there are other roles). Downstream calls show the `X-Forwarded-For` header sent.
+
+`/probe_internal/` and `/verifyaccess/` are POSTed with a JSON body of `roles`, plus `asset` metadata if any role is an `appointment:` role, simulating the proposed Orchestrator changes for [appointments](#probe-and-verifyaccess-requests). Asset metadata is set when registering the deliverable; scopes are sent as `manifests`, as current Protagonist names them. To test:
+
+1. Run `scripts/sql/appointment.sql` (edit the customer as required and remove the `rollback`), then restart IIIFAuth2.API. This creates an `appointment` access service and an appointment with key `a5rf65ne99pa` for assets with `string1` starting `LIDDLE/WW2/HFIU/`.
+2. Register a deliverable, e.g. `7/1/foo`, with the `appointment:token-based` role and `string1` = `LIDDLE/WW2/HFIU/003`.
+3. Run the flow. The probe returns 401 (no token), the appointment key form opens, enter `a5rf65ne99pa`, the window closes, a token is obtained and the probe returns 200. Downstream calls show the POST body sent.
+4. Register `7/1/bar` with `string1` = `LIDDLE/WW2/EVAC/014` and run the flow again: the probe returns 403 "Not part of your appointment". A wrong key re-renders the form with an error. Edit the appointment row (`active = false`, a future `start` or a past `end`) and probe again to see the other 403 reasons; a session's appointments are cached for `RefreshThreshold` seconds, so changes can take that long to show.
 
 Configured via `AuthServiceRoot` (default `https://localhost:7049/auth/v2/`) and `ConnectionStrings:Postgres` appSettings. The test UI needs to run on https on the same host as iiif-auth-v2 so the browser sends the auth cookie to the fake image endpoint (cookies ignore ports).
 

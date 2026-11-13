@@ -2,6 +2,7 @@
 using Amazon.SecretsManager.Extensions.Caching;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning;
+using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Appointments;
 using IIIFAuth2.API.Infrastructure.Auth.RoleProvisioning.Oidc;
 using IIIFAuth2.API.Settings;
 using IIIFAuth2.API.Utils;
@@ -85,8 +86,11 @@ public static class ServiceCollectionX
             .AddScoped<IJwtTokenHandler, JwtTokenHandler>()
             .AddScoped<OidcRoleProviderHandler>()
             .AddScoped<ClickThroughProviderHandler>()
+            .AddScoped<AppointmentProviderHandler>()
             .AddScoped<SessionManagementService>()
             .AddScoped<IpRoleEvaluator>()
+            .AddScoped<AppointmentRoleEvaluator>()
+            .AddScoped<AccessEvaluator>()
             .AddSingleton<ClaimsConverter>()
             .AddScoped<SessionCleaner>();
 

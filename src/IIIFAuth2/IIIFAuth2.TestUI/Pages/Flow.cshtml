@@ -13,6 +13,8 @@
 <h1>Auth flow: <code>@Model.Deliverable.Id</code></h1>
 <p class="hint">
     Roles: @(Model.Deliverable.Roles.Count == 0 ? "none (open)" : Model.Deliverable.RolesString)
+    | Asset metadata: @Model.Deliverable.Asset
+    (@(Model.Deliverable.HasAppointmentRole ? "sent, has appointment: role" : "not sent, no appointment: role"))
     | <a href="/manifest/@Model.Deliverable.Id" target="_blank">Manifest</a>
     | <a asp-page="/Index" asp-route-id="@Model.Deliverable.Id">Edit</a>
 </p>

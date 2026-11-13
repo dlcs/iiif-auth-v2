@@ -27,7 +27,9 @@ public static class FakeOrchestratorEndpoints
     /// Simulates Orchestrator ProbeService - see ProbeServiceSupport.HandleProbeRequest in Orchestrator.
     /// This includes proposed IpRestriction changes: the deliverable is looked up before checking for a bearer token,
     /// as probe_internal is called without a token if there are any IP roles. Client IP is sent as x-forwarded-for
-    /// if there are any IP roles
+    /// if there are any IP roles.
+    /// Also includes proposed Appointment changes: probe_internal is POSTed with roles, plus asset metadata if there
+    /// are any appointment roles. Appointment roles need a token, so the no-token shortcut is unchanged for them
     /// </summary>
     private static async Task<IResult> ProbeService(string deliverableId, HttpRequest request,
         DeliverableStore deliverableStore, AuthServiceClient authServiceClient, SimulatedClientIp simulatedClientIp,
@@ -72,7 +74,8 @@ public static class FakeOrchestratorEndpoints
     /// Returns an SVG image summarising result.
     /// As Orchestrator AssetAccessValidator, verifyaccess is only called if there is an auth2 cookie for customer or,
     /// per proposed IpRestriction changes, there are any IP roles. Client IP is sent as x-forwarded-for if there are
-    /// any IP roles
+    /// any IP roles. verifyaccess is POSTed with the same body as probe_internal (roles, plus asset metadata if there
+    /// are any appointment roles)
     /// </summary>
     private static async Task<IResult> ContentResource(string deliverableId, HttpRequest request,
         DeliverableStore deliverableStore, AuthServiceClient authServiceClient, SimulatedClientIp simulatedClientIp,

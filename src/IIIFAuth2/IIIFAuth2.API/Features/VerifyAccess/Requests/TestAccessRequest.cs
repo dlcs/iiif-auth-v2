@@ -1,6 +1,7 @@
 ﻿using System.Net;
 using IIIFAuth2.API.Infrastructure.Auth;
 using IIIFAuth2.API.Models.Domain;
+using IIIFAuth2.Core.Models.Domain;
 using MediatR;
 
 namespace IIIFAuth2.API.Features.VerifyAccess.Requests;
@@ -14,38 +15,41 @@ public class TestAccessRequest : IRequest<HttpStatusCode>
 
     public IReadOnlyCollection<string> Roles { get; }
 
+    /// <summary>
+    /// Optional asset metadata, used to evaluate appointment asset patterns
+    /// </summary>
+    public AssetMetadata? Asset { get; }
+
     public TestAccessRequest(string deliverableId, string roles)
+        : this(deliverableId, roles.Split(",", StringSplitOptions.RemoveEmptyEntries), null)
+    {
+    }
+
+    public TestAccessRequest(string deliverableId, IReadOnlyCollection<string> roles, AssetMetadata? asset)
     {
         DeliverableId = DeliverableId.FromString(deliverableId);
-        Roles = roles.Split(",", StringSplitOptions.RemoveEmptyEntries);
+        Roles = roles;
+        Asset = asset;
     }
 }
 
 public class GetAccessTestResultHandler : IRequestHandler<TestAccessRequest, HttpStatusCode>
 {
     private readonly SessionManagementService sessionManagementService;
-    private readonly IpRoleEvaluator ipRoleEvaluator;
+    private readonly AccessEvaluator accessEvaluator;
 
     public GetAccessTestResultHandler(SessionManagementService sessionManagementService,
-        IpRoleEvaluator ipRoleEvaluator)
+        AccessEvaluator accessEvaluator)
     {
         this.sessionManagementService = sessionManagementService;
-        this.ipRoleEvaluator = ipRoleEvaluator;
+        this.accessEvaluator = accessEvaluator;
     }
 
     public async Task<HttpStatusCode> Handle(TestAccessRequest request, CancellationToken cancellationToken)
     {
-        // IP roles are evaluated first as they don't require a session
-        var ipRoleEvaluation = await ipRoleEvaluator.Evaluate(request.DeliverableId.Customer, request.Roles);
-        var ipStatusCode = AccessStatusCodeHelpers.GetIpStatusCode(ipRoleEvaluation, request.Roles);
-        if (ipStatusCode.HasValue) return ipStatusCode.Value;
-
-        // Next try cookie based
-        var tryGetSessionResponse =
-            await sessionManagementService.TryGetSessionUserForCookie(request.DeliverableId.Customer, null,
-                cancellationToken);
-
-        var statusCode = AccessStatusCodeHelpers.GetStatusCode(tryGetSessionResponse, request.Roles);
-        return statusCode;
+        var decision = await accessEvaluator.Evaluate(request.DeliverableId, request.Roles, request.Asset,
+            ct => sessionManagementService.TryGetSessionUserForCookie(request.DeliverableId.Customer, null, ct),
+            cancellationToken);
+        return decision.StatusCode;
     }
 }
