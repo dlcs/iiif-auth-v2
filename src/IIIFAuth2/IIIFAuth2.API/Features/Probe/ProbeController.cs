@@ -4,6 +4,7 @@ using IIIF.Presentation.V3.Strings;
 using IIIFAuth2.API.Features.Probe.Requests;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Api;
+using IIIFAuth2.Core.Models.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -52,8 +53,8 @@ public class ProbeController : AuthBaseController
         CancellationToken cancellationToken)
         => HandleProbeRequest(() =>
             {
-                var roles = body?.Roles?.Where(r => !string.IsNullOrWhiteSpace(r)).ToArray();
-                return roles is not { Length: > 0 }
+                var roles = body?.Roles?.Select(RoleEntry.Parse).Where(e => e.Roles.Count > 0).ToList();
+                return roles is not { Count: > 0 }
                     ? null
                     : new GetProbeServiceDescription(deliverableId, roles,
                         body!.Asset?.ToAssetMetadata());
