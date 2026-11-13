@@ -40,7 +40,7 @@ public class AppointmentRoleEvaluator(
 
         if (session == null)
             return new AppointmentRoleEvaluation(appointmentRoles, new HashSet<string>(),
-                AppointmentDenialReason.NoAppointment);
+                appointmentRoles.ToDictionary(r => r, _ => AppointmentDenial.NoAppointment));
 
         var relevant = await GetSessionAppointments(session.Id, appointmentRoles, cancellationToken);
 
@@ -52,29 +52,29 @@ public class AppointmentRoleEvaluator(
             .SelectMany(r => r.Appointment.Roles)
             .Where(appointmentRoles.Contains)
             .ToHashSet();
+        var denials = appointmentRoles
+            .Where(role => !granted.Contains(role))
+            .ToDictionary(role => role,
+                role => BuildDenial(results.Where(r => r.Appointment.Roles.Contains(role)).ToList()));
 
         logger.LogDebug(
             "Session {SessionId} granted {GrantedCount} of {AppointmentRoleCount} appointment roles from {AppointmentCount} appointments",
             session.Id, granted.Count, appointmentRoles.Count, relevant.Count);
 
-        return granted.Count > 0
-            ? new AppointmentRoleEvaluation(appointmentRoles, granted)
-            : BuildDenial(appointmentRoles, results);
+        return new AppointmentRoleEvaluation(appointmentRoles, granted, denials);
     }
 
     /// <summary>
-    /// Build denial from the highest priority reason, with start/end of the relevant appointments if applicable
+    /// Build denial for a role from the highest priority reason of the held appointments with that role, with
+    /// start/end of the relevant appointments if applicable
     /// </summary>
-    private static AppointmentRoleEvaluation BuildDenial(IReadOnlySet<string> appointmentRoles,
-        List<(Appointment Appointment, AppointmentDenialReason? Reason)> results)
+    private static AppointmentDenial BuildDenial(List<(Appointment Appointment, AppointmentDenialReason? Reason)> results)
     {
-        if (results.Count == 0)
-            return new AppointmentRoleEvaluation(appointmentRoles, new HashSet<string>(),
-                AppointmentDenialReason.NoAppointment);
+        if (results.Count == 0) return AppointmentDenial.NoAppointment;
 
         var reason = results.Min(r => r.Reason!.Value);
         var withReason = results.Where(r => r.Reason == reason).Select(r => r.Appointment).ToList();
-        return new AppointmentRoleEvaluation(appointmentRoles, new HashSet<string>(), reason,
+        return new AppointmentDenial(reason,
             reason == AppointmentDenialReason.NotStarted ? withReason.Min(a => a.Start) : null,
             reason == AppointmentDenialReason.Ended ? withReason.Max(a => a.End) : null);
     }

@@ -14,7 +14,10 @@ public class GetProbeServiceDescription : IRequest<AuthProbeResult2>
 {
     public DeliverableId DeliverableId { get; }
 
-    public IReadOnlyCollection<string> Roles { get; }
+    /// <summary>
+    /// Role entries, any one of which grants access if all of its roles are met
+    /// </summary>
+    public IReadOnlyList<RoleEntry> Roles { get; }
 
     /// <summary>
     /// Optional asset metadata, used to evaluate appointment asset patterns
@@ -22,11 +25,11 @@ public class GetProbeServiceDescription : IRequest<AuthProbeResult2>
     public AssetMetadata? Asset { get; }
 
     public GetProbeServiceDescription(string deliverableId, string roles)
-        : this(deliverableId, roles.Split(",", StringSplitOptions.RemoveEmptyEntries), null)
+        : this(deliverableId, RoleEntry.ParseList(roles), null)
     {
     }
 
-    public GetProbeServiceDescription(string deliverableId, IReadOnlyCollection<string> roles, AssetMetadata? asset)
+    public GetProbeServiceDescription(string deliverableId, IReadOnlyList<RoleEntry> roles, AssetMetadata? asset)
     {
         DeliverableId = DeliverableId.FromString(deliverableId);
         Roles = roles;

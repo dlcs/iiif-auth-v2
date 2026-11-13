@@ -1,6 +1,7 @@
 ﻿using IIIFAuth2.API.Features.VerifyAccess.Requests;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Api;
+using IIIFAuth2.Core.Models.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -45,8 +46,8 @@ public class VerifyAccessController : AuthBaseController
         [FromBody] AccessCheckRequest body,
         CancellationToken cancellationToken)
     {
-        var roles = body.Roles?.Where(r => !string.IsNullOrWhiteSpace(r)).ToArray();
-        if (roles is not { Length: > 0 }) return Task.FromResult<IActionResult>(BadRequest("Required roles missing"));
+        var roles = body.Roles?.Select(RoleEntry.Parse).Where(e => e.Roles.Count > 0).ToList();
+        if (roles is not { Count: > 0 }) return Task.FromResult<IActionResult>(BadRequest("Required roles missing"));
 
         var asset = body.Asset?.ToAssetMetadata();
         return SendTestAccessRequest(() => new TestAccessRequest(deliverableId, roles, asset), cancellationToken);

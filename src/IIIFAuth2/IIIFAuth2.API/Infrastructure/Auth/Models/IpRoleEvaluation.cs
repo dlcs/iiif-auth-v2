@@ -15,15 +15,4 @@ public record IpRoleEvaluation(
     IReadOnlyCollection<string> LocationPhrases)
 {
     public static readonly IpRoleEvaluation Empty = new(new HashSet<string>(), new HashSet<string>(), []);
-
-    /// <summary>
-    /// Whether the client IP address is granted at least one of the requested roles
-    /// </summary>
-    public bool HasGrantedRole => GrantedRoles.Count > 0;
-
-    /// <summary>
-    /// Whether every one of specified roles is granted by an IpRestriction role-provider
-    /// </summary>
-    public bool AreAllIpRoles(IReadOnlyCollection<string> roles)
-        => roles.Count > 0 && roles.All(IpRoles.Contains);
 }

@@ -5,21 +5,24 @@ namespace IIIFAuth2.API.Infrastructure.Auth.Models;
 /// </summary>
 /// <param name="AppointmentRoles">Requested roles that are granted by an Appointment role-provider</param>
 /// <param name="GrantedRoles">Requested roles granted by an appointment held by the session, for this asset</param>
-/// <param name="Reason">Why no role was granted, null if any were granted or there are no appointment roles</param>
-/// <param name="Start">Start of the appointment, if <see cref="Reason"/> is NotStarted</param>
-/// <param name="End">End of the appointment, if <see cref="Reason"/> is Ended</param>
+/// <param name="Denials">Why each appointment role that wasn't granted was denied, keyed by role</param>
 public record AppointmentRoleEvaluation(
     IReadOnlySet<string> AppointmentRoles,
     IReadOnlySet<string> GrantedRoles,
-    AppointmentDenialReason? Reason = null,
-    DateTime? Start = null,
-    DateTime? End = null)
+    IReadOnlyDictionary<string, AppointmentDenial> Denials)
 {
-    public static readonly AppointmentRoleEvaluation Empty = new(new HashSet<string>(), new HashSet<string>());
+    public static readonly AppointmentRoleEvaluation Empty =
+        new(new HashSet<string>(), new HashSet<string>(), new Dictionary<string, AppointmentDenial>());
+}
 
-    public bool HasAppointmentRoles => AppointmentRoles.Count > 0;
-
-    public bool HasGrantedRole => GrantedRoles.Count > 0;
+/// <summary>
+/// Why an appointment role was not granted
+/// </summary>
+/// <param name="Start">Start of the appointment, if <see cref="Reason"/> is NotStarted</param>
+/// <param name="End">End of the appointment, if <see cref="Reason"/> is Ended</param>
+public record AppointmentDenial(AppointmentDenialReason Reason, DateTime? Start = null, DateTime? End = null)
+{
+    public static readonly AppointmentDenial NoAppointment = new(AppointmentDenialReason.NoAppointment);
 }
 
 /// <summary>
@@ -27,7 +30,7 @@ public record AppointmentRoleEvaluation(
 /// </summary>
 public enum AppointmentDenialReason
 {
-    /// <summary>Session holds no appointment granting any requested role</summary>
+    /// <summary>Session holds no appointment granting the role</summary>
     NoAppointment,
     NotStarted,
     NotActive,

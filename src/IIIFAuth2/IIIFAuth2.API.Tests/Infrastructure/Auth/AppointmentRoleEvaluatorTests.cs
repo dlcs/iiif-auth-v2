@@ -61,7 +61,7 @@ public class AppointmentRoleEvaluatorTests
 
         result.AppointmentRoles.Should().BeEquivalentTo(role);
         result.GrantedRoles.Should().BeEmpty();
-        result.Reason.Should().Be(AppointmentDenialReason.NoAppointment);
+        result.Denials[role].Reason.Should().Be(AppointmentDenialReason.NoAppointment);
     }
 
     [Fact]
@@ -73,7 +73,7 @@ public class AppointmentRoleEvaluatorTests
 
         var result = await sut.Evaluate(customer, Space, [role], session, null);
 
-        result.Reason.Should().Be(AppointmentDenialReason.NoAppointment);
+        result.Denials[role].Reason.Should().Be(AppointmentDenialReason.NoAppointment);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class AppointmentRoleEvaluatorTests
         var result = await sut.Evaluate(customer, Space, [requested], session, null);
 
         result.AppointmentRoles.Should().BeEquivalentTo(requested);
-        result.Reason.Should().Be(AppointmentDenialReason.NoAppointment);
+        result.Denials[requested].Reason.Should().Be(AppointmentDenialReason.NoAppointment);
     }
 
     [Fact]
@@ -107,7 +107,7 @@ public class AppointmentRoleEvaluatorTests
 
         result.AppointmentRoles.Should().BeEquivalentTo(role);
         result.GrantedRoles.Should().BeEquivalentTo(role);
-        result.Reason.Should().BeNull();
+        result.Denials.Should().BeEmpty();
         AssertMismatchLogged(0);
     }
 
@@ -135,9 +135,9 @@ public class AppointmentRoleEvaluatorTests
 
         var result = await sut.Evaluate(customer, Space, [role], session, null);
 
-        result.Reason.Should().Be(AppointmentDenialReason.NotStarted);
-        result.Start.Should().BeCloseTo(start, TimeSpan.FromMilliseconds(1));
-        result.End.Should().BeNull();
+        result.Denials[role].Reason.Should().Be(AppointmentDenialReason.NotStarted);
+        result.Denials[role].Start.Should().BeCloseTo(start, TimeSpan.FromMilliseconds(1));
+        result.Denials[role].End.Should().BeNull();
     }
 
     [Fact]
@@ -149,7 +149,7 @@ public class AppointmentRoleEvaluatorTests
 
         var result = await sut.Evaluate(customer, Space, [role], session, null);
 
-        result.Reason.Should().Be(AppointmentDenialReason.NotActive);
+        result.Denials[role].Reason.Should().Be(AppointmentDenialReason.NotActive);
     }
 
     [Fact]
@@ -162,9 +162,9 @@ public class AppointmentRoleEvaluatorTests
 
         var result = await sut.Evaluate(customer, Space, [role], session, null);
 
-        result.Reason.Should().Be(AppointmentDenialReason.Ended);
-        result.End.Should().BeCloseTo(end, TimeSpan.FromMilliseconds(1));
-        result.Start.Should().BeNull();
+        result.Denials[role].Reason.Should().Be(AppointmentDenialReason.Ended);
+        result.Denials[role].End.Should().BeCloseTo(end, TimeSpan.FromMilliseconds(1));
+        result.Denials[role].Start.Should().BeNull();
     }
 
     [Theory]
@@ -180,7 +180,7 @@ public class AppointmentRoleEvaluatorTests
         var result = await sut.Evaluate(customer, Space, [role], session,
             string1 == null ? null : new AssetMetadata { String1 = string1 });
 
-        result.Reason.Should().Be(AppointmentDenialReason.AssetNotMatched);
+        result.Denials[role].Reason.Should().Be(AppointmentDenialReason.AssetNotMatched);
     }
 
     [Fact]
@@ -193,7 +193,7 @@ public class AppointmentRoleEvaluatorTests
 
         var result = await sut.Evaluate(customer, Space, [role], session, null);
 
-        result.Reason.Should().Be(AppointmentDenialReason.AssetNotMatched);
+        result.Denials[role].Reason.Should().Be(AppointmentDenialReason.AssetNotMatched);
     }
 
     [Fact]
@@ -212,8 +212,8 @@ public class AppointmentRoleEvaluatorTests
 
         var result = await sut.Evaluate(customer, Space, [role], session, null);
 
-        result.Reason.Should().Be(AppointmentDenialReason.AssetNotMatched);
-        result.Start.Should().BeNull();
+        result.Denials[role].Reason.Should().Be(AppointmentDenialReason.AssetNotMatched);
+        result.Denials[role].Start.Should().BeNull();
     }
 
     [Fact]
@@ -228,7 +228,26 @@ public class AppointmentRoleEvaluatorTests
 
         var result = await sut.Evaluate(customer, Space, [role], session, null);
 
-        result.Reason.Should().Be(AppointmentDenialReason.NotActive);
+        result.Denials[role].Reason.Should().Be(AppointmentDenialReason.NotActive);
+    }
+
+    [Fact]
+    public async Task Evaluate_DenialsArePerRole()
+    {
+        const int customer = 9117;
+        var granted = await AddRole(customer, "appointment:a", AppointmentConfig());
+        var ended = await AddRole(customer, "appointment:b", AppointmentConfig());
+        var notHeld = await AddRole(customer, "appointment:c", AppointmentConfig());
+        var session = await AddSession(customer,
+            NewAppointment(customer, granted),
+            NewAppointment(customer, ended, a => a.End = DateTime.UtcNow.AddMinutes(-1)));
+
+        var result = await sut.Evaluate(customer, Space, [granted, ended, notHeld], session, null);
+
+        result.GrantedRoles.Should().BeEquivalentTo(granted);
+        result.Denials.Keys.Should().BeEquivalentTo(ended, notHeld);
+        result.Denials[ended].Reason.Should().Be(AppointmentDenialReason.Ended);
+        result.Denials[notHeld].Reason.Should().Be(AppointmentDenialReason.NoAppointment);
     }
 
     [Fact]
@@ -260,7 +279,7 @@ public class AppointmentRoleEvaluatorTests
         (await sut.Evaluate(customer, Space, [role], session, null)).GrantedRoles.Should().BeEquivalentTo(role);
 
         QueryCacheManager.ExpireTag(CacheKeys.SessionAppointments(session.Id));
-        (await sut.Evaluate(customer, Space, [role], session, null)).Reason.Should()
+        (await sut.Evaluate(customer, Space, [role], session, null)).Denials[role].Reason.Should()
             .Be(AppointmentDenialReason.NotActive);
     }
 
