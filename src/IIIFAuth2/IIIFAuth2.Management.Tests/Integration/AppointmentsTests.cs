@@ -36,7 +36,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", "dmFsaWQ6Y3JlZHM=");
     }
 
-    private static object ValidBody(bool active = false) => new
+    private static object ValidBody(bool active = false, object? assetPatterns = null) => new
     {
         name = "Alice Smith",
         email = "alice@example.com",
@@ -46,7 +46,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         active,
         approvedBy = active ? "jbloggs" : null,
         roles = new[] { DatabaseFixture.AppointmentRoleUri },
-        assetPatterns = new { string1 = new[] { "ExampleItem/2/1" } },
+        assetPatterns = assetPatterns ?? new { string1 = new[] { "ExampleItem/2/1" } },
     };
 
     private async Task<JsonNode> Create(object? body = null)
@@ -80,6 +80,31 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         stored.AssetPatterns.Customer.Should().BeEquivalentTo([DatabaseFixture.Customer], "customer defaulted");
         stored.AssetPatterns.String1.Should().BeEquivalentTo("ExampleItem/2/1");
     }
+    
+    [Fact]
+    public async Task Create_Returns201_WithGeneratedToken_AndStores_SetsCustomerFromRequestIfEmptyAssetPattern()
+    {
+        var response = await httpClient.PostAsJsonAsync(Path, ValidBody(assetPatterns: new { }));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        var json = (await response.Content.ReadFromJsonAsync<JsonNode>())!;
+        var token = json["token"]!.GetValue<string>();
+        token.Should().MatchRegex("^[a-z0-9]{12}$");
+        json["@id"]!.GetValue<string>().Should().EndWith($"{Path}/{token}");
+        json["@type"]!.GetValue<string>().Should().Be("Appointment");
+        json["@context"]!.GetValue<string>().Should().Be("http://www.w3.org/ns/hydra/context.jsonld");
+        json["start"]!.GetValue<string>().Should().Be("2026-07-01T09:00:00Z");
+        json["created"].Should().NotBeNull();
+        json["approvedBy"].Should().BeNull("nulls are omitted");
+        json["dateApproved"].Should().BeNull();
+        response.Headers.Location!.ToString().Should().Be(json["@id"]!.GetValue<string>());
+
+        var stored = await dbFixture.DbContext.Appointments.AsNoTracking().SingleAsync(a => a.Token == token);
+        stored.Customer.Should().Be(DatabaseFixture.Customer);
+        stored.RoleProviderId.Should().Be(dbFixture.AppointmentRoleProviderId);
+        stored.AssetPatterns.Customer.Should().BeEquivalentTo([DatabaseFixture.Customer], "customer defaulted");
+        stored.AssetPatterns.String1.Should().BeNull("default ValidBody() adds string1 so this confirms reset");
+    }
 
     [Fact]
     public async Task Create_Active_SetsDateApproved()
@@ -103,6 +128,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/clickthrough","http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "same Appointment role-provider" },
         { """{"name":"a","email":"a@b.c","start":"not-a-date"}""", "start" },
         { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{"customer":[99,2]}}""", "assetPatterns.customer can only be 99" },
+        { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"]}""", "The assetPatterns field is required." },
     };
 
     [Theory]
