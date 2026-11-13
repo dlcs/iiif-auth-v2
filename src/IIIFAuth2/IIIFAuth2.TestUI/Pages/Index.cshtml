@@ -45,7 +45,9 @@
             }
         }
 
-        <label for="AdditionalRoles">Additional roles (one per line). Use these to simulate roles not known to iiif-auth-v2.</label>
+        <label for="AdditionalRoles">Additional role entries (one per line, or comma separated). Join roles with <code>+</code> to require all of them,
+            e.g. <code>ip-role+appointment-role</code>. Ticked roles are single-role entries. Use these to simulate
+            combinations, or roles not known to iiif-auth-v2.</label>
         <textarea asp-for="AdditionalRoles" rows="3" placeholder="https://api.dlcs.io/customers/1/roles/unknown"></textarea>
         <div class="hint">No roles = an open asset (the fake Orchestrator doesn't call iiif-auth-v2).</div>
     </fieldset>

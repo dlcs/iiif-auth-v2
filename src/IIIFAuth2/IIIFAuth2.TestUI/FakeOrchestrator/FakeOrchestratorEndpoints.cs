@@ -91,9 +91,11 @@ public static class FakeOrchestratorEndpoints
             return Svg(HttpStatusCode.OK, deliverableId, "Open - no roles");
         }
 
-        if (!HasAuth2Cookie(deliverable, request) && !deliverable.HasIpRole)
+        // Without a cookie only an entry made entirely of IP roles could grant access
+        if (!HasAuth2Cookie(deliverable, request) && !deliverable.HasIpOnlyEntry)
         {
-            return Svg(HttpStatusCode.Unauthorized, deliverableId, "Access denied (no auth2 cookie, no IP roles)");
+            return Svg(HttpStatusCode.Unauthorized, deliverableId,
+                "Access denied (no auth2 cookie, no entry of only IP roles)");
         }
 
         try

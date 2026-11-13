@@ -38,11 +38,18 @@ public record DeliverableAsset(
 }
 
 /// <summary>
-/// A deliverable (Asset or Adjunct) and the roles it requires, as Orchestrator would have stored in DLCS db
+/// A deliverable (Asset or Adjunct) and the role entries it requires, as Orchestrator would have stored in DLCS db.
+/// Each of <see cref="Roles"/> is an entry: access is granted if all of its "+" separated roles are met
 /// </summary>
 public record Deliverable(string Id, IReadOnlyList<string> Roles, DateTime Registered, DeliverableAsset Asset)
 {
     public string RolesString => string.Join(",", Roles);
+
+    /// <summary>Roles of each entry</summary>
+    public IReadOnlyList<string[]> Entries => Roles
+        .Select(e => e.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        .Where(e => e.Length > 0)
+        .ToList();
 
     /// <summary>
     /// Whether any role is an IP role, i.e. the final path segment starts with "ip:"
@@ -51,19 +58,26 @@ public record Deliverable(string Id, IReadOnlyList<string> Roles, DateTime Regis
     /// Mirrors RoleX.IsIpRole in IIIFAuth2.Core. Duplicated rather than referenced as Orchestrator, which this app
     /// stands in for, won't reference IIIFAuth2.Core
     /// </remarks>
-    public bool HasIpRole => Roles.Any(r => HasRolePrefix(r, "ip:"));
+    public bool HasIpRole => Entries.Any(e => e.Any(IsIpRole));
+
+    /// <summary>
+    /// Whether any entry is made entirely of IP roles, so could be met without a cookie
+    /// </summary>
+    public bool HasIpOnlyEntry => Entries.Any(e => e.All(IsIpRole));
 
     /// <summary>
     /// Whether any role is an appointment role, i.e. the final path segment starts with "appointment:". Asset
     /// metadata is only sent to iiif-auth-v2 if so
     /// </summary>
     /// <remarks>Mirrors RoleX.IsAppointmentRole in IIIFAuth2.Core, duplicated as for <see cref="HasIpRole"/></remarks>
-    public bool HasAppointmentRole => Roles.Any(r => HasRolePrefix(r, "appointment:"));
+    public bool HasAppointmentRole => Entries.Any(e => e.Any(r => HasRolePrefix(r, "appointment:")));
 
     /// <summary>
     /// Customer id, from first segment of deliverable id. Null if not an int, as ids aren't validated
     /// </summary>
     public int? Customer => int.TryParse(Id.Split('/')[0], out var customer) ? customer : null;
+
+    private static bool IsIpRole(string role) => HasRolePrefix(role, "ip:");
 
     private static bool HasRolePrefix(string role, string prefix)
     {

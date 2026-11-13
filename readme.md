@@ -234,14 +234,14 @@ You'll need to setup an access service and role provider locally, see [bootstrap
 
 `IIIFAuth2.TestUI` is a Razor Pages app that replaces Orchestrator + a IIIF client for local testing. Run it alongside IIIFAuth2.API (`https://localhost:7050`, no nginx or Orchestrator required):
 
-* **Setup** (`/`) - register a deliverable id (`1/2/foo` or `99/100/page1.jpg/mets.xml`) and its roles. Roles are read from the `roles` table, or can be free-typed to simulate unknown roles. Deliverables are held in memory.
+* **Setup** (`/`) - register a deliverable id (`1/2/foo` or `99/100/page1.jpg/mets.xml`) and its role entries. Roles are read from the `roles` table (each ticked role is a single-role entry), or can be free-typed as entries to simulate combinations (`a+b`) or unknown roles. Deliverables are held in memory.
 * **Auth flow** (`/Flow?id=...`) - a browser client that loads a fake manifest and runs probe -> access service -> token service -> probe -> content, logging each step along with downstream calls to iiif-auth-v2.
 * **Downstream calls** (`/Calls`) - every request the fake Orchestrator made to iiif-auth-v2, with headers and bodies.
 
 Fake Orchestrator endpoints:
 * `/manifest/{deliverableId}` - single-canvas manifest, auth services from `/services/` endpoint.
 * `/auth/v2/probe/{deliverableId}` - calls `/probe_internal/`, passing bearer token. Set iiif-auth-v2 `"OrchestratorRoot": "https://localhost:7050"` to have probe service ids point here, or leave the "send probe requests to this Test UI" option ticked. Returns 401 without calling iiif-auth-v2 if there's no bearer token, unless the deliverable has an `ip:` role.
-* `/fake-image/{deliverableId}` - calls `/verifyaccess/`, forwarding the request `Cookie` header, returns an SVG showing result. Returns 401 without calling iiif-auth-v2 if there's no auth2 cookie for the customer, unless the deliverable has an `ip:` role.
+* `/fake-image/{deliverableId}` - calls `/verifyaccess/`, forwarding the request `Cookie` header, returns an SVG showing result. Returns 401 without calling iiif-auth-v2 if there's no auth2 cookie for the customer, unless the deliverable has an entry made entirely of `ip:` roles.
 
 If a deliverable has an `ip:` role, `X-Forwarded-For` is sent to `/probe_internal/` and `/verifyaccess/`, simulating the proposed Orchestrator changes for [IpRestriction roles](#role-provider-types). The value is the request IP, or a simulated client IP set on the Auth flow page (applies to all deliverables, held in memory). To test:
 
@@ -255,6 +255,12 @@ If a deliverable has an `ip:` role, `X-Forwarded-For` is sent to `/probe_interna
 2. Register a deliverable, e.g. `7/1/foo`, with the `appointment:token-based` role and `string1` = `LIDDLE/WW2/HFIU/003`.
 3. Run the flow. The probe returns 401 (no token), the appointment key form opens, enter `a5rf65ne99pa`, the window closes, a token is obtained and the probe returns 200. Downstream calls show the POST body sent.
 4. Register `7/1/bar` with `string1` = `LIDDLE/WW2/EVAC/014` and run the flow again: the probe returns 403 "Not part of your appointment". A wrong key re-renders the form with an error. Edit the appointment row (`active = false`, a future `start` or a past `end`) and probe again to see the other 403 reasons; a session's appointments are cached for `RefreshThreshold` seconds, so changes can take that long to show.
+
+Role entries are sent as nested arrays in POST bodies and with `%2B` joining roles in `/services/` query strings, simulating the proposed Orchestrator changes for [role combinations](#probe-and-verifyaccess-requests). To test, with both the scripts above applied:
+
+1. Register `7/1/foo` with the free-text entry `{ip:reading-room role}+{appointment:token-based role}` and `string1` = `LIDDLE/WW2/HFIU/003`.
+2. Run the flow with the client IP in range. The manifest has the appointment service but no `external` service, as the location alone doesn't grant access. The probe returns 401, enter the key and the probe returns 200.
+3. Set the client IP out of range and probe again: 403 "Not available at your location". The fake image follows the same results.
 
 Configured via `AuthServiceRoot` (default `https://localhost:7049/auth/v2/`) and `ConnectionStrings:Postgres` appSettings. The test UI needs to run on https on the same host as iiif-auth-v2 so the browser sends the auth cookie to the fake image endpoint (cookies ignore ports).
 
