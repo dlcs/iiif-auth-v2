@@ -24,11 +24,6 @@ public class GetProbeServiceDescription : IRequest<AuthProbeResult2>
     /// </summary>
     public AssetMetadata? Asset { get; }
 
-    public GetProbeServiceDescription(string deliverableId, string roles)
-        : this(deliverableId, RoleEntry.ParseList(roles), null)
-    {
-    }
-
     public GetProbeServiceDescription(string deliverableId, IReadOnlyList<RoleEntry> roles, AssetMetadata? asset)
     {
         DeliverableId = DeliverableId.FromString(deliverableId);
