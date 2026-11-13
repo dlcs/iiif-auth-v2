@@ -1,6 +1,12 @@
+using System.Text.Json.Serialization;
 using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Infrastructure;
+using IIIFAuth2.Management.Features.Appointments;
 using IIIFAuth2.Management.Infrastructure;
 using IIIFAuth2.Management.Infrastructure.Aws;
+using IIIFAuth2.Management.Infrastructure.Hydra;
+using Microsoft.AspNetCore.Http.Extensions;
+using Microsoft.AspNetCore.HttpOverrides;
 using IIIFAuth2.Management.Settings;
 using Serilog;
 
@@ -29,6 +35,7 @@ try
         .AddAuthServicesContext(builder.Configuration)
         .AddAuthServicesHealthChecks()
         .AddMediatR(config => config.RegisterServicesFromAssemblyContaining<Program>())
+        .AddScoped<AppointmentRules>()
         .AddLazyCache()
         .AddDlcsApiClient(managementSettings.Dlcs)
         .AddSwagger()
@@ -36,12 +43,29 @@ try
         .AddBackgroundServices(awsSettings)
         .AddDelegatedAuthHandler(opts => opts.Realm = "DLCS-API");
 
+    // Only host + proto, used to build "@id" links. Client IP isn't used so accepting from any proxy is safe
+    builder.Services.Configure<ForwardedHeadersOptions>(opts =>
+    {
+        opts.ForwardedHeaders = ForwardedHeaders.XForwardedHost | ForwardedHeaders.XForwardedProto;
+        opts.KnownIPNetworks.Clear();
+        opts.KnownProxies.Clear();
+    });
+
     builder.Services.AddAuthorization();
-    builder.Services.AddControllers();
+    // Validation errors use JSON (camelCase) property names, matching request bodies
+    builder.Services
+        .AddControllers(opts => opts.ModelMetadataDetailsProviders.Add(new CamelCaseDisplayMetadataProvider()))
+        .AddJsonOptions(opts => opts.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)
+        .ConfigureApiBehaviorOptions(opts => opts.InvalidModelStateResponseFactory = context =>
+            Error.ToResult(400, "Bad request",
+                string.Join("; ", context.ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage)),
+                context.HttpContext.Request.GetDisplayUrl()));
 
     var app = builder.Build();
     app
         .UseSerilogRequestLogging()
+        .UseForwardedHeaders()
+        .HandlePathBase(managementSettings.PathBase, app.Logger)
         .UseRouting()
         .UseAuthentication()
         .UseAuthorization()

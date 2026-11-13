@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IIIFAuth2.Tests.Common", "I
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IIIFAuth2.Management.Tests", "IIIFAuth2.Management.Tests\IIIFAuth2.Management.Tests.csproj", "{4E1B777F-BED4-490D-B3B0-2279ABA7049D}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{3FB9B75F-C374-42EC-AEAD-760C582E682B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -111,5 +113,11 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{3AABE3F5-8193-4474-86BC-8ADC9A2FEBED} = {3FB9B75F-C374-42EC-AEAD-760C582E682B}
+		{980A6A4C-12F4-4BD3-8CBC-18A5220B0A23} = {3FB9B75F-C374-42EC-AEAD-760C582E682B}
+		{A5A11437-8E77-4971-9B66-20073642260A} = {3FB9B75F-C374-42EC-AEAD-760C582E682B}
+		{4E1B777F-BED4-490D-B3B0-2279ABA7049D} = {3FB9B75F-C374-42EC-AEAD-760C582E682B}
 	EndGlobalSection
 EndGlobal

@@ -2,6 +2,7 @@
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Settings;
 using IIIFAuth2.Core.Data;
+using IIIFAuth2.Core.Infrastructure;
 using JetBrains.Annotations;
 using Serilog;
 
