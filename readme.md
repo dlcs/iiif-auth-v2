@@ -52,12 +52,16 @@ Appointment asset patterns are stored as jsonb (`appointments.asset_patterns`), 
 
 Orchestrator calls `probe_internal/{deliverableId}` and `verifyaccess/{deliverableId}`. Both accept:
 
-* `GET ?roles={comma-separated-roles}` - retained for compatibility, no asset metadata.
-* `POST` with a JSON body, roles plus optional asset metadata. `asset` is only needed if any role is an `appointment:` role:
+* `GET ?roles={role-entries}` - retained for compatibility, no asset metadata.
+* `POST` with a JSON body, role entries plus optional asset metadata. `asset` is only needed if any role is an `appointment:` role.
+
+Roles are given as **entries**: access is granted if every role in any one entry is met (OR across entries, AND within an entry). In the query string, `,` separates entries and `+` (encoded as `%2B`) separates roles within an entry. An unencoded `+` decodes to a space, so whitespace also separates roles. For example `?roles=clickthrough,ip:reading-room%2Bappointment:token-based` (role URIs escaped). A list with no `+` is a flat OR list, as before.
+
+In a POST body, `roles` is an array of entries, each a string array: `[["clickthrough"], ["ip:reading-room", "appointment:token-based"]]`. A string element is also accepted and is one entry, parsed as in the query string, so a flat `string[]` is an OR list as before. Any other element type is a 400.
 
 ```json
 {
-  "roles": [ "https://api.dlcs.io/customers/2/roles/appointment:token-based" ],
+  "roles": [ [ "https://api.dlcs.io/customers/2/roles/appointment:token-based" ] ],
   "asset": {
     "scopes": [ "b76hr45e" ],
     "tags": [ "ww2" ],
