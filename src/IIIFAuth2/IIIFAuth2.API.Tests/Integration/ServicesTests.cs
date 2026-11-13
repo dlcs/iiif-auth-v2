@@ -326,6 +326,36 @@ public class ServicesTests : IClassFixture<AuthWebApplicationFactory>
         probeService.Should().BeEquivalentTo(expected, opts => opts.WithStrictOrdering());
     }
 
+    [Theory]
+    [InlineData("{ip}%2B{clickthrough}", new[] { "clickthrough" })]
+    [InlineData("{ip}+{clickthrough}", new[] { "clickthrough" })] // unencoded + decodes to space, also AND
+    [InlineData("{ip}%2Bunknown-role", new string[0])]
+    [InlineData("{ip}%2B{clickthrough},{ip}", new[] { "{ipService}", "clickthrough" })]
+    [InlineData("{clickthrough}%2B{oidc}", new[] { "clickthrough", "{oidcService}" })]
+    public async Task GetServicesDescription_ExternalService_OnlyForEntriesOfIpRoles(string roles, string[] expected)
+    {
+        var path = "services/99/2/asset?roles=" + roles
+            .Replace("{ip}", Uri.EscapeDataString(DatabaseFixture.IpRestrictionRoleUri))
+            .Replace("{clickthrough}", DatabaseFixture.ClickthroughRoleUri)
+            .Replace("{oidc}", DatabaseFixture.OidcRoleUri);
+
+        var response = await httpClient.GetAsync(path);
+
+        if (expected.Length == 0)
+        {
+            response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+            return;
+        }
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var probeService = (await response.Content.ReadAsStreamAsync()).FromJsonStream<AuthProbeService2>();
+        var expectedIds = expected.Select(e => "http://localhost/auth/v2/access/99/" + e
+            .Replace("{ipService}", DatabaseFixture.IpRestrictionService)
+            .Replace("{oidcService}", DatabaseFixture.OidcService)).ToList();
+        var ids = probeService.Service.Cast<AuthAccessService2>().Select(s => s.Id).ToList();
+        ids.Should().BeEquivalentTo(expectedIds);
+        if (expected[0] == "{ipService}") ids[0].Should().Be(expectedIds[0], "external service is first");
+    }
+
     [Fact]
     public async Task GetServicesDescription_ExternalService_UsesGenericLabel_IfNoLabelOrLocationPhrase()
     {
