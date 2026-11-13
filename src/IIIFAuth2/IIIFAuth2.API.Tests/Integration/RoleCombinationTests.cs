@@ -178,6 +178,20 @@ public class RoleCombinationTests : IClassFixture<AuthWebApplicationFactory>
     }
 
     [Theory]
+    [InlineData(",,")]
+    [InlineData("%2B")]
+    [InlineData("%20")]
+    [InlineData("+,")]
+    public async Task Get_400_IfNoRoleEntries(string roles)
+    {
+        var result = await Probe(roles, null, InRange);
+        var verifyResponse = await httpClient.GetAsync($"verifyaccess/99/2/foo?roles={roles}");
+
+        result.Status.Should().Be(400);
+        verifyResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Theory]
     [InlineData(InRange, HttpStatusCode.OK)]
     [InlineData(OutOfRange, HttpStatusCode.Forbidden)]
     public async Task VerifyAccess_EvaluatesEntries(string clientIp, HttpStatusCode expected)

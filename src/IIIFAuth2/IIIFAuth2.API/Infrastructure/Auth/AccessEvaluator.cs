@@ -70,7 +70,8 @@ public class AccessEvaluator(
             return session == null
                 ? GetNoSessionDecision(sessionResponse.Status,
                     achievable.Any(e => e.Any(r => appointments.AppointmentRoles.Contains(r.Role))))
-                // With a session, only an appointment role can still be achievable
+                // With a session, only an appointment role can still be achievable. Revisit if sessions accumulate
+                // roles (#10), as a missing clickthrough/oidc role would then also be achievable
                 : new AccessDecision(HttpStatusCode.Unauthorized, "Appointment required",
                     "Enter your appointment key");
         }

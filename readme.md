@@ -57,6 +57,9 @@ Orchestrator calls `probe_internal/{deliverableId}` and `verifyaccess/{deliverab
 
 Roles are given as **entries**: access is granted if every role in any one entry is met (OR across entries, AND within an entry). In the query string, `,` separates entries and `+` (encoded as `%2B`) separates roles within an entry. An unencoded `+` decodes to a space, so whitespace also separates roles. For example `?roles=clickthrough,ip:reading-room%2Bappointment:token-based` (role URIs escaped). A list with no `+` is a flat OR list, as before.
 
+> [!WARNING]
+> A session currently holds the roles from a single sign-in or gesture: signing in again replaces the session, and only appointments are added to an existing session (see [#10](https://github.com/dlcs/iiif-auth-v2/issues/10)). So an entry can contain **at most one** role from a clickthrough or OIDC provider, combined with any `ip:` and `appointment:` roles. An entry such as `clickthrough+oidc-role` can never be met. A clickthrough or OIDC role combined with an appointment role only works if the user completes the clickthrough/sign-in **before** entering the appointment key.
+
 In a POST body, `roles` is an array of entries, each a string array: `[["clickthrough"], ["ip:reading-room", "appointment:token-based"]]`. A string element is also accepted and is one entry, parsed as in the query string, so a flat `string[]` is an OR list as before. Any other element type is a 400.
 
 ```json

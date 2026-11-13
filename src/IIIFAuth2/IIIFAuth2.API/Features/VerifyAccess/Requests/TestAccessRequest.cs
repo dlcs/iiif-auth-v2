@@ -23,11 +23,6 @@ public class TestAccessRequest : IRequest<HttpStatusCode>
     /// </summary>
     public AssetMetadata? Asset { get; }
 
-    public TestAccessRequest(string deliverableId, string roles)
-        : this(deliverableId, RoleEntry.ParseList(roles), null)
-    {
-    }
-
     public TestAccessRequest(string deliverableId, IReadOnlyList<RoleEntry> roles, AssetMetadata? asset)
     {
         DeliverableId = DeliverableId.FromString(deliverableId);

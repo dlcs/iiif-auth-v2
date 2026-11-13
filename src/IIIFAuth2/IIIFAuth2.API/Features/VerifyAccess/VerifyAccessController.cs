@@ -31,7 +31,13 @@ public class VerifyAccessController : AuthBaseController
         [FromRoute] string deliverableId,
         [FromQuery] string roles,
         CancellationToken cancellationToken)
-        => SendTestAccessRequest(() => new TestAccessRequest(deliverableId, roles), cancellationToken);
+    {
+        // e.g. "roles=,," parses to no entries
+        var entries = RoleEntry.ParseList(roles);
+        if (entries.Count == 0) return Task.FromResult<IActionResult>(BadRequest("Required roles missing"));
+
+        return SendTestAccessRequest(() => new TestAccessRequest(deliverableId, entries, null), cancellationToken);
+    }
 
     /// <summary>
     /// Generate a status-code response by validating cookie associated with request, using roles and optional asset

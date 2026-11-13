@@ -34,9 +34,12 @@ public class ProbeController : AuthBaseController
         [FromRoute] string deliverableId,
         [FromQuery] string roles,
         CancellationToken cancellationToken)
-        => HandleProbeRequest(() => string.IsNullOrEmpty(roles)
-                ? null
-                : new GetProbeServiceDescription(deliverableId, roles),
+        => HandleProbeRequest(() =>
+            {
+                // e.g. "roles=,," parses to no entries
+                var entries = RoleEntry.ParseList(roles);
+                return entries.Count == 0 ? null : new GetProbeServiceDescription(deliverableId, entries, null);
+            },
             "Required roles query parameter missing", cancellationToken);
 
     /// <summary>
