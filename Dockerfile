@@ -11,7 +11,7 @@ RUN dotnet build "IIIFAuth2.API.csproj" -c Release -o /app/build
 FROM build AS publish
 RUN dotnet publish "IIIFAuth2.API.csproj" -c Release -o /app/publish
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:11.0 AS base
 
 RUN apt-get update && apt-get install -y libgssapi-krb5-2 libkrb5-3 krb5-user
 
