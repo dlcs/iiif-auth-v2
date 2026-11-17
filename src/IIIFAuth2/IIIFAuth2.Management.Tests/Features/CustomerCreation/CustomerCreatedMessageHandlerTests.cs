@@ -70,8 +70,7 @@ public class CustomerCreatedMessageHandlerTests
         var accessService = await dbContext.AccessServices
             .AsNoTracking()
             .Include(a => a.RoleProvider)
-            .SingleAsync(a => a.Customer == customerId);
-        accessService.Name.Should().Be("clickthrough");
+            .SingleAsync(a => a.Customer == customerId && a.Name == "clickthrough");
         accessService.Profile.Should().Be("active");
         accessService.Label.Should().BeEquivalentTo(new LanguageMap("en", "Confirm access"));
         accessService.Heading.Should().BeEquivalentTo(new LanguageMap("en", "Confirm access"));
@@ -90,10 +89,65 @@ public class CustomerCreatedMessageHandlerTests
         roleProvider.Configuration.GetConfiguration("any-host").Should().BeOfType<ClickthroughConfiguration>()
             .Which.Config.Should().Be(RoleProviderType.Clickthrough);
 
-        var role = await dbContext.Roles.AsNoTracking().SingleAsync(r => r.Customer == customerId);
+        var role = await dbContext.Roles.AsNoTracking().SingleAsync(r => r.AccessServiceId == accessService.Id);
         role.Id.Should().Be($"https://api.dlcs.io/customers/{customerId}/roles/clickthrough");
         role.Name.Should().Be("clickthrough");
-        role.AccessServiceId.Should().Be(accessService.Id);
+    }
+
+    [Fact]
+    public async Task HandleMessage_True_AndCreatesAppointment_IfNotExists()
+    {
+        // Arrange
+        const int customerId = -107;
+        var message = GetMessage(customerId);
+
+        // Act
+        (await sut.HandleMessage(message, CancellationToken.None)).Should().BeTrue();
+
+        // Assert
+        var accessService = await dbContext.AccessServices
+            .AsNoTracking()
+            .Include(a => a.RoleProvider)
+            .SingleAsync(a => a.Customer == customerId && a.Name == "appointment");
+        accessService.Profile.Should().Be("active");
+        accessService.Label.Should().BeEquivalentTo(new LanguageMap("en", "Appointment key"));
+        accessService.Heading.Should().BeEquivalentTo(new LanguageMap("en", "Viewing by appointment"));
+        accessService.Note.Should().BeEquivalentTo(new LanguageMap("en",
+            "Enter the key from your appointment confirmation."));
+        accessService.ConfirmLabel.Should().BeEquivalentTo(new LanguageMap("en", "Enter key"));
+        accessService.LogoutLabel.Should().BeEquivalentTo(new LanguageMap("en", "End appointment session"));
+
+        var configuration = accessService.RoleProvider!.Configuration.GetConfiguration("any-host")
+            .Should().BeOfType<AppointmentConfiguration>().Subject;
+        configuration.Config.Should().Be(RoleProviderType.Appointment);
+        configuration.GestureTitle.Should().Be("Use your appointment key");
+        configuration.GestureMessage.Should().Be("Enter the key from your appointment confirmation");
+
+        var role = await dbContext.Roles.AsNoTracking().SingleAsync(r => r.AccessServiceId == accessService.Id);
+        role.Id.Should().Be($"https://api.dlcs.io/customers/{customerId}/roles/appointment:token-based");
+        role.Name.Should().Be("appointment:token-based");
+        role.Customer.Should().Be(customerId);
+    }
+
+    [Fact]
+    public async Task HandleMessage_True_AndCreatesAppointmentOnly_IfCustomerAlreadyHasClickthrough()
+    {
+        // Arrange
+        const int customerId = -108;
+        dbContext.AccessServices.Add(new AccessService
+        {
+            Id = Guid.NewGuid(), Customer = customerId, Name = "clickthrough", Profile = "active"
+        });
+        await dbContext.SaveChangesAsync();
+
+        // Act
+        (await sut.HandleMessage(GetMessage(customerId), CancellationToken.None)).Should().BeTrue();
+
+        // Assert
+        (await dbContext.AccessServices.Where(a => a.Customer == customerId).Select(a => a.Name).ToListAsync())
+            .Should().BeEquivalentTo("clickthrough", "appointment");
+        (await dbContext.Roles.Where(r => r.Customer == customerId).Select(r => r.Name).ToListAsync())
+            .Should().BeEquivalentTo("appointment:token-based");
     }
 
     [Fact]
@@ -104,7 +158,7 @@ public class CustomerCreatedMessageHandlerTests
 
         (await sut.HandleMessage(message, CancellationToken.None)).Should().BeTrue();
 
-        (await dbContext.AccessServices.CountAsync(a => a.Customer == customerId)).Should().Be(1);
+        (await dbContext.AccessServices.CountAsync(a => a.Customer == customerId)).Should().Be(2);
     }
 
     [Fact]
@@ -115,7 +169,7 @@ public class CustomerCreatedMessageHandlerTests
 
         (await sut.HandleMessage(message, CancellationToken.None)).Should().BeTrue();
 
-        (await dbContext.AccessServices.CountAsync(a => a.Customer == customerId)).Should().Be(1);
+        (await dbContext.AccessServices.CountAsync(a => a.Customer == customerId)).Should().Be(2);
     }
 
     [Fact]
@@ -130,13 +184,13 @@ public class CustomerCreatedMessageHandlerTests
         (await sut.HandleMessage(message, CancellationToken.None)).Should().BeTrue();
 
         // Assert
-        await ShouldHaveClickthroughRecordCounts(customerId, 1);
+        await ShouldHaveDefaultRecordCounts(customerId, 2);
     }
 
     [Fact]
-    public async Task HandleMessage_True_AndNoOp_IfCustomerAlreadyHasClickthrough()
+    public async Task HandleMessage_True_AndNoOp_IfCustomerAlreadyHasClickthroughAndAppointment()
     {
-        // Arrange - DatabaseFixture seeds a "clickthrough" access-service for customer
+        // Arrange - DatabaseFixture seeds "clickthrough" and "appointment" access-services for customer
         const int customerId = DatabaseFixture.Customer;
         var accessServicesBefore = await dbContext.AccessServices.CountAsync(a => a.Customer == customerId);
         var roleProvidersBefore = await dbContext.RoleProviders.CountAsync(r => r.Customer == customerId);
@@ -151,6 +205,9 @@ public class CustomerCreatedMessageHandlerTests
         (await dbContext.Roles.CountAsync(r => r.Customer == customerId)).Should().Be(rolesBefore);
         (await dbContext.Roles.AnyAsync(r => r.Id == $"https://api.dlcs.io/customers/{customerId}/roles/clickthrough"))
             .Should().BeFalse("existing clickthrough has different role id, no new role should be created");
+        (await dbContext.Roles.AnyAsync(r =>
+                r.Id == $"https://api.dlcs.io/customers/{customerId}/roles/appointment:token-based"))
+            .Should().BeFalse("existing appointment has different role id, no new role should be created");
     }
 
     [Fact]
@@ -165,8 +222,8 @@ public class CustomerCreatedMessageHandlerTests
         (await sut.HandleMessage(GetMessage(customerId), CancellationToken.None)).Should().BeTrue();
 
         // Assert
-        await ShouldHaveClickthroughRecordCounts(customerId, 1);
-        await ShouldHaveClickthroughRecordCounts(otherCustomerId, 1);
+        await ShouldHaveDefaultRecordCounts(customerId, 2);
+        await ShouldHaveDefaultRecordCounts(otherCustomerId, 2);
     }
 
     [Fact]
@@ -185,8 +242,8 @@ public class CustomerCreatedMessageHandlerTests
 
         // Assert
         (await dbContext.AccessServices.Where(a => a.Customer == customerId).Select(a => a.Name).ToListAsync())
-            .Should().BeEquivalentTo("oidc", "clickthrough");
-        (await dbContext.Roles.CountAsync(r => r.Customer == customerId)).Should().Be(1);
+            .Should().BeEquivalentTo("oidc", "clickthrough", "appointment");
+        (await dbContext.Roles.CountAsync(r => r.Customer == customerId)).Should().Be(2);
     }
 
     private async Task ShouldOnlyContainSeededAccessServices()
@@ -194,7 +251,7 @@ public class CustomerCreatedMessageHandlerTests
             .Should().BeEquivalentTo([dbFixture.ClickthroughAccessId, dbFixture.OidcAccessId, dbFixture.IpRestrictionAccessId,
                 dbFixture.AppointmentAccessId]);
 
-    private async Task ShouldHaveClickthroughRecordCounts(int customerId, int expected)
+    private async Task ShouldHaveDefaultRecordCounts(int customerId, int expected)
     {
         (await dbContext.AccessServices.CountAsync(a => a.Customer == customerId)).Should().Be(expected);
         (await dbContext.RoleProviders.CountAsync(r => r.Customer == customerId)).Should().Be(expected);

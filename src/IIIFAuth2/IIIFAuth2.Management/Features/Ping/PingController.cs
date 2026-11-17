@@ -6,7 +6,7 @@ namespace IIIFAuth2.Management.Features.Ping;
 /// Minimal authenticated endpoint, verifies that provided credentials are valid for customer
 /// </summary>
 [ApiController]
-[Route("customers/{customerId:int}/ping")]
+[Route("customers/{customerId:int}/auth/ping")]
 public class PingController : ControllerBase
 {
     [HttpGet]
