@@ -15,9 +15,9 @@ public static class AppointmentQueryHelpers
         /// <summary>
         /// Get specified appointment for customer
         /// </summary>
-        public IQueryable<Appointment> GetAppointment(int customer, string token)
+        public IQueryable<Appointment> GetAppointment(int customer, Guid id)
             => query
                 .GetCustomerAppointments(customer)
-                .Where(a => a.Token == token);
+                .Where(a => a.Id == id);
     }
 }

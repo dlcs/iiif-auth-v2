@@ -56,6 +56,8 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         return (await response.Content.ReadFromJsonAsync<JsonNode>())!;
     }
 
+    private static string IdOf(JsonNode json) => json["@id"]!.GetValue<string>().Split('/').Last();
+
     [Fact]
     public async Task Create_Returns201_WithGeneratedToken_AndStores()
     {
@@ -65,7 +67,6 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         var json = (await response.Content.ReadFromJsonAsync<JsonNode>())!;
         var token = json["token"]!.GetValue<string>();
         token.Should().MatchRegex("^[a-z0-9]{12}$");
-        json["@id"]!.GetValue<string>().Should().EndWith($"{Path}/{token}");
         json["@type"]!.GetValue<string>().Should().Be("Appointment");
         json["@context"]!.GetValue<string>().Should().Be("http://www.w3.org/ns/hydra/context.jsonld");
         json["start"]!.GetValue<string>().Should().Be("2026-07-01T09:00:00Z");
@@ -75,6 +76,8 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         response.Headers.Location!.ToString().Should().Be(json["@id"]!.GetValue<string>());
 
         var stored = await dbFixture.DbContext.Appointments.AsNoTracking().SingleAsync(a => a.Token == token);
+        json["@id"]!.GetValue<string>().Should().EndWith($"{Path}/{stored.Id}");
+        json["@id"]!.GetValue<string>().Should().NotContain(token, "token is a secret so not used in URIs");
         stored.Customer.Should().Be(DatabaseFixture.Customer);
         stored.RoleProviderId.Should().Be(dbFixture.AppointmentRoleProviderId);
         stored.AssetPatterns.Customer.Should().BeEquivalentTo([DatabaseFixture.Customer], "customer defaulted");
@@ -90,7 +93,6 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         var json = (await response.Content.ReadFromJsonAsync<JsonNode>())!;
         var token = json["token"]!.GetValue<string>();
         token.Should().MatchRegex("^[a-z0-9]{12}$");
-        json["@id"]!.GetValue<string>().Should().EndWith($"{Path}/{token}");
         json["@type"]!.GetValue<string>().Should().Be("Appointment");
         json["@context"]!.GetValue<string>().Should().Be("http://www.w3.org/ns/hydra/context.jsonld");
         json["start"]!.GetValue<string>().Should().Be("2026-07-01T09:00:00Z");
@@ -100,6 +102,8 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         response.Headers.Location!.ToString().Should().Be(json["@id"]!.GetValue<string>());
 
         var stored = await dbFixture.DbContext.Appointments.AsNoTracking().SingleAsync(a => a.Token == token);
+        json["@id"]!.GetValue<string>().Should().EndWith($"{Path}/{stored.Id}");
+        json["@id"]!.GetValue<string>().Should().NotContain(token, "token is a secret so not used in URIs");
         stored.Customer.Should().Be(DatabaseFixture.Customer);
         stored.RoleProviderId.Should().Be(dbFixture.AppointmentRoleProviderId);
         stored.AssetPatterns.Customer.Should().BeEquivalentTo([DatabaseFixture.Customer], "customer defaulted");
@@ -146,14 +150,17 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     }
 
     [Fact]
-    public async Task Get_Returns404_IfUnknown_OrOtherCustomer()
+    public async Task Get_Returns404_IfUnknown_OrToken_OrOtherCustomer()
     {
-        var token = (await Create())["token"]!.GetValue<string>();
+        var created = await Create();
+        var id = IdOf(created);
 
-        (await httpClient.GetAsync($"{Path}/unknown")).StatusCode.Should().Be(HttpStatusCode.NotFound);
-        (await httpClient.GetAsync($"/customers/100/auth/appointments/{token}")).StatusCode.Should()
+        (await httpClient.GetAsync($"{Path}/{Guid.NewGuid()}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await httpClient.GetAsync($"{Path}/{created["token"]!.GetValue<string>()}")).StatusCode.Should()
+            .Be(HttpStatusCode.NotFound, "token can't be used as identifier");
+        (await httpClient.GetAsync($"/customers/100/auth/appointments/{id}")).StatusCode.Should()
             .Be(HttpStatusCode.NotFound);
-        (await httpClient.GetAsync($"{Path}/{token}")).StatusCode.Should().Be(HttpStatusCode.OK);
+        (await httpClient.GetAsync($"{Path}/{id}")).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
     [Fact]
@@ -161,6 +168,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     {
         var created = await Create();
         var token = created["token"]!.GetValue<string>();
+        var id = IdOf(created);
 
         var body = new
         {
@@ -169,7 +177,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
             assetPatterns = new { space = new[] { 4 }, customer = new[] { DatabaseFixture.Customer } },
             token = "ignored", created = "2020-01-01T00:00:00Z"
         };
-        var response = await httpClient.PutAsJsonAsync($"{Path}/{token}", body);
+        var response = await httpClient.PutAsJsonAsync($"{Path}/{id}", body);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = (await response.Content.ReadFromJsonAsync<JsonNode>())!;
@@ -185,34 +193,34 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     [Fact]
     public async Task Put_Returns400_IfMissingFields_And404_IfUnknown()
     {
-        var token = (await Create())["token"]!.GetValue<string>();
+        var id = IdOf(await Create());
 
-        (await httpClient.PutAsJsonAsync($"{Path}/{token}", new { name = "Bob" })).StatusCode.Should()
+        (await httpClient.PutAsJsonAsync($"{Path}/{id}", new { name = "Bob" })).StatusCode.Should()
             .Be(HttpStatusCode.BadRequest);
-        (await httpClient.PutAsJsonAsync($"{Path}/unknown", ValidBody())).StatusCode.Should()
+        (await httpClient.PutAsJsonAsync($"{Path}/{Guid.NewGuid()}", ValidBody())).StatusCode.Should()
             .Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
     public async Task Patch_Approve_ThenDeactivate_KeepsApprovedBy_ClearsDateApproved()
     {
-        var token = (await Create())["token"]!.GetValue<string>();
+        var id = IdOf(await Create());
 
-        var approved = await httpClient.PatchAsJsonAsync($"{Path}/{token}", new { active = true, approvedBy = "jb" });
+        var approved = await httpClient.PatchAsJsonAsync($"{Path}/{id}", new { active = true, approvedBy = "jb" });
         approved.StatusCode.Should().Be(HttpStatusCode.OK);
         var approvedJson = (await approved.Content.ReadFromJsonAsync<JsonNode>())!;
         approvedJson["dateApproved"].Should().NotBeNull();
         approvedJson["name"]!.GetValue<string>().Should().Be("Alice Smith", "omitted fields unchanged");
         approvedJson["notes"]!.GetValue<string>().Should().Be("PhD research");
 
-        var deactivated = await httpClient.PatchAsJsonAsync($"{Path}/{token}", new { active = false });
+        var deactivated = await httpClient.PatchAsJsonAsync($"{Path}/{id}", new { active = false });
         deactivated.StatusCode.Should().Be(HttpStatusCode.OK);
         var json = (await deactivated.Content.ReadFromJsonAsync<JsonNode>())!;
         json["active"]!.GetValue<bool>().Should().BeFalse();
         json["approvedBy"]!.GetValue<string>().Should().Be("jb");
         json["dateApproved"].Should().BeNull();
 
-        var reapproved = await httpClient.PatchAsJsonAsync($"{Path}/{token}", new { active = true, approvedBy = "other" });
+        var reapproved = await httpClient.PatchAsJsonAsync($"{Path}/{id}", new { active = true, approvedBy = "other" });
         var reapprovedJson = (await reapproved.Content.ReadFromJsonAsync<JsonNode>())!;
         reapprovedJson["dateApproved"]!.GetValue<string>().Should()
             .NotBe(approvedJson["dateApproved"]!.GetValue<string>());
@@ -221,9 +229,9 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     [Fact]
     public async Task Patch_Returns400_IfEmailInvalid()
     {
-        var token = (await Create())["token"]!.GetValue<string>();
+        var id = IdOf(await Create());
 
-        var response = await httpClient.PatchAsJsonAsync($"{Path}/{token}", new { email = "not-an-email" });
+        var response = await httpClient.PatchAsJsonAsync($"{Path}/{id}", new { email = "not-an-email" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadFromJsonAsync<JsonNode>())!["detail"]!.GetValue<string>().Should()
@@ -233,9 +241,9 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     [Fact]
     public async Task Patch_Returns400_IfResultInvalid()
     {
-        var token = (await Create())["token"]!.GetValue<string>();
+        var id = IdOf(await Create());
 
-        var response = await httpClient.PatchAsJsonAsync($"{Path}/{token}", new { end = "2026-01-01T00:00:00Z" });
+        var response = await httpClient.PatchAsJsonAsync($"{Path}/{id}", new { end = "2026-01-01T00:00:00Z" });
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
@@ -243,8 +251,8 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     [Fact]
     public async Task Delete_Returns204_ThenNotFound_AndRemovesSessionLinks()
     {
-        var token = (await Create())["token"]!.GetValue<string>();
-        var appointment = await dbFixture.DbContext.Appointments.AsNoTracking().SingleAsync(a => a.Token == token);
+        var id = IdOf(await Create());
+        var appointment = await dbFixture.DbContext.Appointments.AsNoTracking().SingleAsync(a => a.Id == Guid.Parse(id));
         var session = new SessionUser
         {
             Id = Guid.NewGuid(), Customer = DatabaseFixture.Customer, AccessToken = Guid.NewGuid().ToString(),
@@ -256,8 +264,8 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
             { SessionUserId = session.Id, AppointmentId = appointment.Id });
         await dbFixture.DbContext.SaveChangesAsync();
 
-        (await httpClient.DeleteAsync($"{Path}/{token}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
-        (await httpClient.DeleteAsync($"{Path}/{token}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await httpClient.DeleteAsync($"{Path}/{id}")).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await httpClient.DeleteAsync($"{Path}/{id}")).StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await dbFixture.DbContext.SessionAppointments.AnyAsync(sa => sa.AppointmentId == appointment.Id))
             .Should().BeFalse();
     }

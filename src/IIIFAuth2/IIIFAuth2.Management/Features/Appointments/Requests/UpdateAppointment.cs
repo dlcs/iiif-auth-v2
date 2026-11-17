@@ -14,7 +14,7 @@ namespace IIIFAuth2.Management.Features.Appointments.Requests;
 /// <remarks>
 /// API caches appointments per session for Auth:RefreshThreshold so changes can take that long to take effect
 /// </remarks>
-public record UpdateAppointment(int CustomerId, string Token, IAppointmentFields Request, bool IsPatch)
+public record UpdateAppointment(int CustomerId, Guid Id, IAppointmentFields Request, bool IsPatch)
     : IRequest<ModifyEntityResult<Appointment>>;
 
 public class UpdateAppointmentHandler(AuthServicesContext dbContext, AppointmentRules appointmentRules)
@@ -24,7 +24,7 @@ public class UpdateAppointmentHandler(AuthServicesContext dbContext, Appointment
         CancellationToken cancellationToken)
     {
         var appointment = await dbContext.Appointments
-            .GetAppointment(request.CustomerId, request.Token)
+            .GetAppointment(request.CustomerId, request.Id)
             .SingleOrDefaultAsync(cancellationToken);
         if (appointment == null) return new ModifyEntityResult<Appointment>(WriteResult.NotFound);
 

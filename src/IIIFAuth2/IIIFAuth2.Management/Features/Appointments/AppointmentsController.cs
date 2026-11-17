@@ -31,25 +31,25 @@ public class AppointmentsController(IMediator mediator, IOptions<ManagementSetti
         => HandleUpsert(new CreateAppointment(customerId, request), ToHydra, "Create appointment failed",
             cancellationToken);
 
-    [HttpGet("{token}")]
-    public Task<IActionResult> Get(int customerId, string token, CancellationToken cancellationToken)
-        => HandleFetch(new GetAppointment(customerId, token), ToHydra, cancellationToken);
+    [HttpGet("{id:guid}")]
+    public Task<IActionResult> Get(int customerId, Guid id, CancellationToken cancellationToken)
+        => HandleFetch(new GetAppointment(customerId, id), ToHydra, cancellationToken);
 
-    [HttpPut("{token}")]
-    public Task<IActionResult> Put(int customerId, string token, [FromBody] AppointmentRequest request,
+    [HttpPut("{id:guid}")]
+    public Task<IActionResult> Put(int customerId, Guid id, [FromBody] AppointmentRequest request,
         CancellationToken cancellationToken)
-        => HandleUpsert(new UpdateAppointment(customerId, token, request, false), ToHydra,
+        => HandleUpsert(new UpdateAppointment(customerId, id, request, false), ToHydra,
             "Update appointment failed", cancellationToken);
 
-    [HttpPatch("{token}")]
-    public Task<IActionResult> Patch(int customerId, string token, [FromBody] AppointmentPatch request,
+    [HttpPatch("{id:guid}")]
+    public Task<IActionResult> Patch(int customerId, Guid id, [FromBody] AppointmentPatch request,
         CancellationToken cancellationToken)
-        => HandleUpsert(new UpdateAppointment(customerId, token, request, true), ToHydra,
+        => HandleUpsert(new UpdateAppointment(customerId, id, request, true), ToHydra,
             "Update appointment failed", cancellationToken);
 
-    [HttpDelete("{token}")]
-    public Task<IActionResult> Delete(int customerId, string token, CancellationToken cancellationToken)
-        => HandleDelete(new DeleteAppointment(customerId, token), cancellationToken);
+    [HttpDelete("{id:guid}")]
+    public Task<IActionResult> Delete(int customerId, Guid id, CancellationToken cancellationToken)
+        => HandleDelete(new DeleteAppointment(customerId, id), cancellationToken);
 
     private HydraAppointment ToHydra(Appointment appointment) => appointment.ToHydra(BaseUrl);
 }

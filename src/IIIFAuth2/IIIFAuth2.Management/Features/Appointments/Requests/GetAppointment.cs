@@ -9,7 +9,7 @@ namespace IIIFAuth2.Management.Features.Appointments.Requests;
 /// <summary>
 /// Get single Appointment
 /// </summary>
-public record GetAppointment(int CustomerId, string Token) : IRequest<FetchEntityResult<Appointment>>;
+public record GetAppointment(int CustomerId, Guid Id) : IRequest<FetchEntityResult<Appointment>>;
 
 public class GetAppointmentHandler(AuthServicesContext dbContext)
     : IRequestHandler<GetAppointment, FetchEntityResult<Appointment>>
@@ -18,7 +18,7 @@ public class GetAppointmentHandler(AuthServicesContext dbContext)
         CancellationToken cancellationToken)
     {
         var appointment = await dbContext.Appointments.AsNoTracking()
-            .GetAppointment(request.CustomerId, request.Token)
+            .GetAppointment(request.CustomerId, request.Id)
             .SingleOrDefaultAsync(cancellationToken);
         return appointment == null
             ? FetchEntityResult<Appointment>.NotFound()
