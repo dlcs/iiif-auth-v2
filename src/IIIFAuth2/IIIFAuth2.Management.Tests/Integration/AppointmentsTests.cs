@@ -41,8 +41,8 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         name = "Alice Smith",
         email = "alice@example.com",
         notes = "PhD research",
-        start = "2026-07-01T09:00:00Z",
-        end = "2026-07-01T12:00:00Z",
+        start = "2099-07-01T09:00:00Z",
+        end = "2099-07-01T12:00:00Z",
         active,
         approvedBy = active ? "jbloggs" : null,
         roles = new[] { DatabaseFixture.AppointmentRoleUri },
@@ -69,7 +69,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         token.Should().MatchRegex("^[a-z0-9]{12}$");
         json["@type"]!.GetValue<string>().Should().Be("Appointment");
         json["@context"]!.GetValue<string>().Should().Be("http://www.w3.org/ns/hydra/context.jsonld");
-        json["start"]!.GetValue<string>().Should().Be("2026-07-01T09:00:00Z");
+        json["start"]!.GetValue<string>().Should().Be("2099-07-01T09:00:00Z");
         json["created"].Should().NotBeNull();
         json["approvedBy"].Should().BeNull("nulls are omitted");
         json["dateApproved"].Should().BeNull();
@@ -95,7 +95,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         token.Should().MatchRegex("^[a-z0-9]{12}$");
         json["@type"]!.GetValue<string>().Should().Be("Appointment");
         json["@context"]!.GetValue<string>().Should().Be("http://www.w3.org/ns/hydra/context.jsonld");
-        json["start"]!.GetValue<string>().Should().Be("2026-07-01T09:00:00Z");
+        json["start"]!.GetValue<string>().Should().Be("2099-07-01T09:00:00Z");
         json["created"].Should().NotBeNull();
         json["approvedBy"].Should().BeNull("nulls are omitted");
         json["dateApproved"].Should().BeNull();
@@ -121,18 +121,20 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
 
     public static TheoryData<string, string> InvalidBodies => new()
     {
-        { """{"email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["r"],"assetPatterns":{}}""", "The name field is required" },
-        { """{"name":"a","email":"not-an-email","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "The email field is not a valid e-mail address" },
-        { """{"name":"a","email":"a@b.c","start":"2026-07-01T12:00:00Z","end":"2026-07-01T09:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "end must be after start" },
-        { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":true,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "approvedBy is required" },
-        { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"approvedBy":"x","roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "approvedBy can only be set" },
-        { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":[],"assetPatterns":{}}""", "roles cannot be empty" },
-        { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/nope"],"assetPatterns":{}}""", "Unknown roles" },
-        { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/clickthrough"],"assetPatterns":{}}""", "Appointment role-provider" },
-        { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/clickthrough","http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "same Appointment role-provider" },
+        { """{"email":"a@b.c","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"roles":["r"],"assetPatterns":{}}""", "The name field is required" },
+        { """{"name":"a","email":"not-an-email","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "The email field is not a valid e-mail address" },
+        { """{"name":"a","email":"a@b.c","start":"2099-07-01T12:00:00Z","end":"2099-07-01T09:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "end must be after start" },
+        { """{"name":"a","email":"a@b.c","start":"2020-07-01T09:00:00Z","end":"2020-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "end cannot be in the past" },
+        { """{"name":"a","email":"a@b.c","start":"2020-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "start cannot be before today" },
+        { """{"name":"a","email":"a@b.c","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":true,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "approvedBy is required" },
+        { """{"name":"a","email":"a@b.c","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"approvedBy":"x","roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "approvedBy can only be set" },
+        { """{"name":"a","email":"a@b.c","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"roles":[],"assetPatterns":{}}""", "roles cannot be empty" },
+        { """{"name":"a","email":"a@b.c","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/nope"],"assetPatterns":{}}""", "Unknown roles" },
+        { """{"name":"a","email":"a@b.c","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/clickthrough"],"assetPatterns":{}}""", "Appointment role-provider" },
+        { """{"name":"a","email":"a@b.c","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/clickthrough","http://dlcs.test/99/appointment:token-based"],"assetPatterns":{}}""", "same Appointment role-provider" },
         { """{"name":"a","email":"a@b.c","start":"not-a-date"}""", "start" },
-        { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{"customer":[99,2]}}""", "assetPatterns.customer can only be 99" },
-        { """{"name":"a","email":"a@b.c","start":"2026-07-01T09:00:00Z","end":"2026-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"]}""", "The assetPatterns field is required." },
+        { """{"name":"a","email":"a@b.c","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"],"assetPatterns":{"customer":[99,2]}}""", "assetPatterns.customer can only be 99" },
+        { """{"name":"a","email":"a@b.c","start":"2099-07-01T09:00:00Z","end":"2099-07-01T12:00:00Z","active":false,"roles":["http://dlcs.test/99/appointment:token-based"]}""", "The assetPatterns field is required." },
     };
 
     [Theory]
@@ -147,6 +149,25 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         json["@type"]!.GetValue<string>().Should().Be("Error");
         json["status"]!.GetValue<int>().Should().Be(400);
         json["detail"]!.GetValue<string>().Should().Contain(expectedDetail);
+    }
+
+    [Fact]
+    public async Task Create_StartComparedByDay_AllowsEarlierToday_RejectsYesterday()
+    {
+        var today = DateTime.UtcNow.Date;
+        object Body(DateTime start) => new
+        {
+            name = "a", email = "a@b.c", start, end = today.AddDays(2), active = false,
+            roles = new[] { DatabaseFixture.AppointmentRoleUri }, assetPatterns = new { }
+        };
+
+        var todayResponse = await httpClient.PostAsJsonAsync(Path, Body(today));
+        var yesterdayResponse = await httpClient.PostAsJsonAsync(Path, Body(today.AddTicks(-1)));
+
+        todayResponse.StatusCode.Should().Be(HttpStatusCode.Created, "midnight today is allowed");
+        yesterdayResponse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await yesterdayResponse.Content.ReadFromJsonAsync<JsonNode>())!["detail"]!.GetValue<string>().Should()
+            .Contain("start cannot be before today");
     }
 
     [Fact]
@@ -172,7 +193,7 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
 
         var body = new
         {
-            name = "Bob", email = "bob@example.com", start = "2026-08-01T09:00:00Z", end = "2026-08-02T09:00:00Z",
+            name = "Bob", email = "bob@example.com", start = "2099-08-01T09:00:00Z", end = "2099-08-02T09:00:00Z",
             active = true, approvedBy = "jbloggs", roles = new[] { DatabaseFixture.AppointmentRoleUri },
             assetPatterns = new { space = new[] { 4 }, customer = new[] { DatabaseFixture.Customer } },
             token = "ignored", created = "2020-01-01T00:00:00Z"
@@ -227,6 +248,37 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
     }
 
     [Fact]
+    public async Task Patch_Deactivate_WithEmptyApprovedBy_ClearsApprovedBy()
+    {
+        // https://github.com/dlcs/iiif-auth-v2/issues/79
+        var id = IdOf(await Create());
+        (await httpClient.PatchAsJsonAsync($"{Path}/{id}", new { active = true, approvedBy = "jb" }))
+            .StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var deactivated = await httpClient.PatchAsJsonAsync($"{Path}/{id}", new { active = false, approvedBy = "" });
+
+        deactivated.StatusCode.Should().Be(HttpStatusCode.OK);
+        var json = (await deactivated.Content.ReadFromJsonAsync<JsonNode>())!;
+        json["active"]!.GetValue<bool>().Should().BeFalse();
+        json["approvedBy"].Should().BeNull();
+        json["dateApproved"].Should().BeNull();
+        var stored = await dbFixture.DbContext.Appointments.AsNoTracking().SingleAsync(a => a.Id == Guid.Parse(id));
+        stored.ApprovedBy.Should().BeNull("empty string is stored as null");
+    }
+
+    [Fact]
+    public async Task Patch_Activate_WithEmptyApprovedBy_Returns400()
+    {
+        var id = IdOf(await Create());
+
+        var response = await httpClient.PatchAsJsonAsync($"{Path}/{id}", new { active = true, approvedBy = " " });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.Content.ReadFromJsonAsync<JsonNode>())!["detail"]!.GetValue<string>().Should()
+            .Contain("approvedBy is required if active");
+    }
+
+    [Fact]
     public async Task Patch_Returns400_IfEmailInvalid()
     {
         var id = IdOf(await Create());
@@ -236,6 +288,17 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
         (await response.Content.ReadFromJsonAsync<JsonNode>())!["detail"]!.GetValue<string>().Should()
             .Contain("email");
+    }
+
+    [Fact]
+    public async Task Patch_CanSetEndInPast()
+    {
+        var id = IdOf(await Create());
+
+        var response = await httpClient.PatchAsJsonAsync($"{Path}/{id}",
+            new { start = "2020-01-01T00:00:00Z", end = "2020-01-02T00:00:00Z" });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, "past end only rejected on create");
     }
 
     [Fact]
@@ -314,7 +377,14 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
             name = "a", email = "a@b.c", start = future, end = future.AddHours(1), active = false,
             roles = new[] { DatabaseFixture.AppointmentRoleUri }, assetPatterns = new { }
         });
-        await Create(); // pending but ended (July 2026)
+        // Pending but ended - added directly as create doesn't allow past end
+        dbFixture.DbContext.Appointments.Add(new Appointment
+        {
+            Id = Guid.NewGuid(), Customer = DatabaseFixture.Customer, Token = "pendingended",
+            RoleProviderId = dbFixture.AppointmentRoleProviderId, Roles = [DatabaseFixture.AppointmentRoleUri],
+            Start = DateTime.UtcNow.AddDays(-2), End = DateTime.UtcNow.AddDays(-1), Name = "a", Email = "a@b.c"
+        });
+        await dbFixture.DbContext.SaveChangesAsync();
 
         var json = (await (await httpClient.GetAsync($"{Path}?awaitingApproval=true"))
             .Content.ReadFromJsonAsync<JsonNode>())!;

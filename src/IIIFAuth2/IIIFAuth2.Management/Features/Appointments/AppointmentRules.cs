@@ -64,7 +64,9 @@ public class AppointmentRules(AuthServicesContext dbContext)
         if (request.Start.HasValue) appointment.Start = request.Start.Value.ToUtc();
         if (request.End.HasValue) appointment.End = request.End.Value.ToUtc();
         if (request.Active.HasValue) appointment.Active = request.Active.Value;
-        if (replace || request.ApprovedBy != null) appointment.ApprovedBy = request.ApprovedBy;
+        // Empty approvedBy is an explicit clear, as null in a PATCH means unchanged
+        if (replace || request.ApprovedBy != null)
+            appointment.ApprovedBy = string.IsNullOrWhiteSpace(request.ApprovedBy) ? null : request.ApprovedBy;
         if (request.Roles != null) appointment.Roles = request.Roles.Distinct().ToList();
         if (request.AssetPatterns != null) appointment.AssetPatterns = request.AssetPatterns;
 
@@ -81,7 +83,7 @@ public class AppointmentRules(AuthServicesContext dbContext)
         if (appointment.End <= appointment.Start) errors.Add("end must be after start");
 
         // Checked against request, not entity, so a PATCH can deactivate without clearing who approved it
-        if (request.ApprovedBy != null && !appointment.Active) errors.Add("approvedBy can only be set if active");
+        if (!string.IsNullOrWhiteSpace(request.ApprovedBy) && !appointment.Active) errors.Add("approvedBy can only be set if active");
         if (appointment.Active && string.IsNullOrWhiteSpace(appointment.ApprovedBy))
             errors.Add("approvedBy is required if active");
         return errors;
