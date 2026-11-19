@@ -362,9 +362,6 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         var page2 = (await (await httpClient.GetAsync(next)).Content.ReadFromJsonAsync<JsonNode>())!;
         page2["member"]!.AsArray().Single()!["token"]!.GetValue<string>().Should()
             .Be(pending1["token"]!.GetValue<string>());
-
-        var wildcard = (await (await httpClient.GetAsync($"{Path}?name=%25")).Content.ReadFromJsonAsync<JsonNode>())!;
-        wildcard["totalItems"]!.GetValue<int>().Should().Be(0, "LIKE wildcards in search are matched literally");
     }
 
     [Fact]
@@ -392,5 +389,69 @@ public class AppointmentsTests : IClassFixture<ManagementWebApplicationFactory>
         json["totalItems"]!.GetValue<int>().Should().Be(1);
         json["member"]![0]!["token"]!.GetValue<string>().Should().Be(pending["token"]!.GetValue<string>());
         json["view"].Should().BeNull("single page");
+    }
+
+    // match contains the special character literally, decoy would match if the character were treated as a wildcard
+    // in order values are: field - search - match - decoy
+    public static TheoryData<string, string, string, string> SpecialCharacterSearches => new()
+    {
+        { "name", "100%", "Score 100% Smith", "Score 100X Smith" },
+        { "name", "a_b", "Alice a_b", "Alice aXb" },
+        { "name", @"a\b", @"Alice a\b", "Alice ab" },
+        { "email", "100%", "100%@example.com", "100X@example.com" },
+        { "email", "a_b", "a_b@example.com", "aXb@example.com" },
+        { "email", @"a\b", @"a\b@example.com", "ab@example.com" },
+        { "token", "100%", "tok100%en", "tok100Xen" },
+        { "token", "a_b", "toka_ben", "tokaXben" },
+        { "token", @"a\b", @"toka\ben", "tokaben" },
+    };
+
+    [Theory]
+    [MemberData(nameof(SpecialCharacterSearches))]
+    public async Task Search_MatchesLikeSpecialCharactersLiterally(string field, string search, string match,
+        string decoy)
+    {
+        var matchAppointment = AppointmentWith(field, match);
+        dbFixture.DbContext.Appointments.AddRange(matchAppointment, AppointmentWith(field, decoy));
+        await dbFixture.DbContext.SaveChangesAsync();
+
+        var json = (await (await httpClient.GetAsync($"{Path}?{field}={Uri.EscapeDataString(search)}"))
+            .Content.ReadFromJsonAsync<JsonNode>())!;
+
+        json["totalItems"]!.GetValue<int>().Should().Be(1);
+        json["member"]![0]!["token"]!.GetValue<string>().Should().Be(matchAppointment.Token);
+    }
+
+    [Theory]
+    [InlineData("%")]
+    [InlineData("_")]
+    [InlineData(@"\")]
+    public async Task Search_SpecialCharacterOnly_DoesNotMatchAll(string search)
+    {
+        dbFixture.DbContext.Appointments.Add(AppointmentWith("name", "Alice Smith"));
+        await dbFixture.DbContext.SaveChangesAsync();
+
+        var json = (await (await httpClient.GetAsync($"{Path}?name={Uri.EscapeDataString(search)}"))
+            .Content.ReadFromJsonAsync<JsonNode>())!;
+
+        json["totalItems"]!.GetValue<int>().Should().Be(0, "LIKE wildcards in search are matched literally");
+    }
+
+    private Appointment AppointmentWith(string field, string value)
+    {
+        var appointment = new Appointment
+        {
+            Id = Guid.NewGuid(), Customer = DatabaseFixture.Customer, Token = Guid.NewGuid().ToString("N"),
+            RoleProviderId = dbFixture.AppointmentRoleProviderId, Roles = [DatabaseFixture.AppointmentRoleUri],
+            Start = DateTime.UtcNow, End = DateTime.UtcNow.AddDays(1), Name = "Alice", Email = "alice@example.com"
+        };
+        switch (field)
+        {
+            case "name": appointment.Name = value; break;
+            case "email": appointment.Email = value; break;
+            case "token": appointment.Token = value; break;
+            default: throw new ArgumentOutOfRangeException(nameof(field), field, null);
+        }
+        return appointment;
     }
 }

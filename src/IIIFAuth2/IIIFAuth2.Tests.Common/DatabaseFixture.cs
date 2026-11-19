@@ -43,8 +43,7 @@ public class DatabaseFixture : IAsyncLifetime
 
     public DatabaseFixture()
     {
-        var postgresBuilder = new PostgreSqlBuilder()
-            .WithImage("postgres:18-alpine")
+        var postgresBuilder = new PostgreSqlBuilder("postgres:18-alpine")
             .WithDatabase("db")
             .WithUsername("postgres")
             .WithPassword("postgtes_pword")

@@ -39,20 +39,17 @@ public class SearchAppointmentsHandler(AuthServicesContext dbContext, ILogger<Se
 
         if (!string.IsNullOrEmpty(search.Token))
         {
-            var token = ContainsPattern(search.Token);
-            query = query.Where(a => EF.Functions.ILike(a.Token, token));
+            query = SafeLike(query, nameof(Appointment.Token), search.Token);
         }
 
         if (!string.IsNullOrEmpty(search.Name))
         {
-            var name = ContainsPattern(search.Name);
-            query = query.Where(a => EF.Functions.ILike(a.Name!, name));
+            query = SafeLike(query, nameof(Appointment.Name), search.Name);
         }
 
         if (!string.IsNullOrEmpty(search.Email))
         {
-            var email = ContainsPattern(search.Email);
-            query = query.Where(a => EF.Functions.ILike(a.Email!, email));
+            query = SafeLike(query, nameof(Appointment.Email), search.Email);
         }
 
         if (search.Active.HasValue) query = query.Where(a => a.Active == search.Active.Value);
@@ -70,11 +67,15 @@ public class SearchAppointmentsHandler(AuthServicesContext dbContext, ILogger<Se
     }
 
     /// <summary>
-    /// ILIKE pattern matching any value containing <paramref name="value"/>, with LIKE wildcards in value escaped
+    /// Filter to records where <paramref name="propertyName"/> contains <paramref name="value"/> (case-insensitive),
+    /// with LIKE wildcards in value escaped
     /// </summary>
-    private static string ContainsPattern(string value)
-        => $"%{value.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_")}%";
-    
+    private static IQueryable<Appointment> SafeLike(IQueryable<Appointment> query, string propertyName, string value)
+    {
+        var usableValue = $"%{value.Replace(@"\", @"\\").Replace("%", @"\%").Replace("_", @"\_")}%";
+        return query.Where(a => EF.Functions.ILike(EF.Property<string>(a, propertyName), usableValue, "\\"));
+    }
+
     private async Task<PageOf<Appointment>> GetPageOfAppointments(SearchAppointments request,
         IQueryable<Appointment> query, CancellationToken cancellationToken)
     {
