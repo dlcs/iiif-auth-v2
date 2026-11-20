@@ -57,6 +57,16 @@ public class AppointmentRoleEvaluator(
             "Session {SessionId} granted {GrantedCount} of {AppointmentRoleCount} appointment roles from {AppointmentCount} appointments",
             session.Id, granted.Count, appointmentRoles.Count, relevant.Count);
 
+        if (granted.Count == 0 && logger.IsEnabled(LogLevel.Trace))
+        {
+            foreach (var (appointment, _) in results.Where(r => r.Reason == AppointmentDenialReason.AssetNotMatched))
+            {
+                logger.LogTrace(
+                    "Session {SessionId} appointment {AppointmentId} patterns {@AssetPatterns} did not match {Customer}/{Space} asset {@Asset}",
+                    session.Id, appointment.Id, appointment.AssetPatterns, customerId, space, asset);
+            }
+        }
+
         return granted.Count > 0
             ? new AppointmentRoleEvaluation(appointmentRoles, granted)
             : BuildDenial(appointmentRoles, results);

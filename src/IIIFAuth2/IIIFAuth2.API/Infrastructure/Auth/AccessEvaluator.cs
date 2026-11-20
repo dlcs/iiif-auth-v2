@@ -22,7 +22,8 @@ public record AccessDecision(HttpStatusCode StatusCode, string? Heading = null, 
 public class AccessEvaluator(
     IpRoleEvaluator ipRoleEvaluator,
     AppointmentRoleEvaluator appointmentRoleEvaluator,
-    IOptions<ApiSettings> apiOptions)
+    IOptions<ApiSettings> apiOptions,
+    ILogger<AccessEvaluator> logger)
 {
     private readonly ApiSettings apiSettings = apiOptions.Value;
 
@@ -43,7 +44,8 @@ public class AccessEvaluator(
 
         var ipRoleEvaluation = await ipRoleEvaluator.Evaluate(customerId, roles);
         if (ipRoleEvaluation.HasGrantedRole) return AccessDecision.Granted;
-        if (ipRoleEvaluation.AreAllIpRoles(roles)) return GetLocationDecision(ipRoleEvaluation);
+        if (ipRoleEvaluation.AreAllIpRoles(roles))
+            return LogDenial(deliverableId, GetLocationDecision(ipRoleEvaluation), null, null);
 
         var sessionResponse = await getSession(cancellationToken);
         if (sessionResponse.CanUserAccessAtLeastOneRole(roles)) return AccessDecision.Granted;
@@ -53,11 +55,24 @@ public class AccessEvaluator(
             session, asset, cancellationToken);
         if (appointmentEvaluation.HasGrantedRole) return AccessDecision.Granted;
 
-        if (session == null) return GetNoSessionDecision(sessionResponse.Status, appointmentEvaluation);
+        var decision = session == null
+            ? GetNoSessionDecision(sessionResponse.Status, appointmentEvaluation)
+            : appointmentEvaluation.HasAppointmentRoles
+                ? GetAppointmentDecision(appointmentEvaluation)
+                : new AccessDecision(HttpStatusCode.Forbidden, "Forbidden", "Session does not have required roles");
+        return LogDenial(deliverableId, decision, session?.Id, appointmentEvaluation.Reason);
+    }
 
-        return appointmentEvaluation.HasAppointmentRoles
-            ? GetAppointmentDecision(appointmentEvaluation)
-            : new AccessDecision(HttpStatusCode.Forbidden, "Forbidden", "Session does not have required roles");
+    // Verify-access only returns a status code, so this is the only record of why access was denied
+    private AccessDecision LogDenial(DeliverableId deliverableId, AccessDecision decision, Guid? sessionId,
+        AppointmentDenialReason? appointmentReason)
+    {
+        if (!logger.IsEnabled(LogLevel.Trace)) return decision;
+        
+        logger.LogTrace(
+            "Access denied to {DeliverableId} for session {SessionId}: {StatusCode} '{Heading}' - '{Note}'. Appointment reason: {AppointmentReason}",
+            deliverableId, sessionId, (int)decision.StatusCode, decision.Heading, decision.Note, appointmentReason);
+        return decision;
     }
 
     private AccessDecision GetLocationDecision(IpRoleEvaluation ipRoleEvaluation)
