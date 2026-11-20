@@ -4,6 +4,7 @@ using IIIF.Presentation.V3.Strings;
 using IIIFAuth2.API.Features.Probe.Requests;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Api;
+using IIIFAuth2.Core.Models.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,9 +34,12 @@ public class ProbeController : AuthBaseController
         [FromRoute] string deliverableId,
         [FromQuery] string roles,
         CancellationToken cancellationToken)
-        => HandleProbeRequest(() => string.IsNullOrEmpty(roles)
-                ? null
-                : new GetProbeServiceDescription(deliverableId, roles),
+        => HandleProbeRequest(() =>
+            {
+                // e.g. "roles=,," parses to no entries
+                var entries = RoleEntry.ParseList(roles);
+                return entries.Count == 0 ? null : new GetProbeServiceDescription(deliverableId, entries, null);
+            },
             "Required roles query parameter missing", cancellationToken);
 
     /// <summary>
@@ -52,7 +56,7 @@ public class ProbeController : AuthBaseController
         CancellationToken cancellationToken)
         => HandleProbeRequest(() =>
             {
-                var roles = body?.Roles?.Where(r => !string.IsNullOrWhiteSpace(r)).ToArray();
+                var roles = body?.Roles;
                 return roles is not { Length: > 0 }
                     ? null
                     : new GetProbeServiceDescription(deliverableId, roles,

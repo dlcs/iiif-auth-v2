@@ -13,19 +13,17 @@ public class TestAccessRequest : IRequest<HttpStatusCode>
 {
     public DeliverableId DeliverableId { get; }
 
-    public IReadOnlyCollection<string> Roles { get; }
+    /// <summary>
+    /// Role entries, any one of which grants access if all of its roles are met
+    /// </summary>
+    public IReadOnlyList<RoleEntry> Roles { get; }
 
     /// <summary>
     /// Optional asset metadata, used to evaluate appointment asset patterns
     /// </summary>
     public AssetMetadata? Asset { get; }
 
-    public TestAccessRequest(string deliverableId, string roles)
-        : this(deliverableId, roles.Split(",", StringSplitOptions.RemoveEmptyEntries), null)
-    {
-    }
-
-    public TestAccessRequest(string deliverableId, IReadOnlyCollection<string> roles, AssetMetadata? asset)
+    public TestAccessRequest(string deliverableId, IReadOnlyList<RoleEntry> roles, AssetMetadata? asset)
     {
         DeliverableId = DeliverableId.FromString(deliverableId);
         Roles = roles;

@@ -44,7 +44,7 @@ Omit it if the location shouldn't be advertised, and generic wording ("Only avai
 
 IpRestriction providers should only have a `default` configuration. Host-specific keys are looked up using the request host, but IP roles are evaluated on `probe_internal` and `verifyaccess`, which Orchestrator calls internally. So the host is the one Orchestrator uses to call this service, not the public host, unless Orchestrator forwards `x-forwarded-host`. The `external` access service's default label and token service errors always use `default`.
 
-Roles granted by an IpRestriction provider should belong to an access service with `external` profile. These are output first in services descriptions, without a logout service. They have an `id`, which the spec says "should not" be present and clients must ignore, so the service can be referenced, e.g. declared once in a Manifest and referenced by id. Opening it returns a "not interactive" error.
+Roles granted by an IpRestriction provider should belong to an access service with `external` profile. These are output first in services descriptions, without a logout service. They have an `id`, which the spec says "should not" be present and clients must ignore, so the service can be referenced, e.g. declared once in a Manifest and referenced by id. Opening it returns a "not interactive" error. The `external` service is only output for [role entries](#probe-and-verifyaccess-requests) made entirely of IP roles. In an entry that also needs another role (e.g. `ip:reading-room+clickthrough`) only the other role's service is output: being at the location alone doesn't grant access, so the client must not treat the external service as sufficient. The probe explains the location requirement.
 
 Appointment asset patterns are stored as jsonb (`appointments.asset_patterns`), e.g. `{"space": [1], "string1": ["LIDDLE/WW2/HFIU/*"]}`. All fields given must match, and a field matches if any of its values match. Fields are `customer`, `space`, `number1-3` (equality), `scopes`, `tags` (exact, any of the asset's values) and `string1-3`. `string1-3` match exactly, unless the value ends with `*`, which matches anything starting with the value before it (`LIDDLE/*` matches `LIDDLE/WW2` but not `LIDDLE`). `*` elsewhere, and `/`, are literal. `customer` and `space` come from the deliverable id; other fields need asset metadata, so they never match a GET request. DLCS number references default to 0, so `number1-3` can't distinguish 0 from unset: a pattern of `0` matches assets with no value. Orchestrator sends empty string references as null, so they never match.
 
@@ -52,12 +52,19 @@ Appointment asset patterns are stored as jsonb (`appointments.asset_patterns`), 
 
 Orchestrator calls `probe_internal/{deliverableId}` and `verifyaccess/{deliverableId}`. Both accept:
 
-* `GET ?roles={comma-separated-roles}` - retained for compatibility, no asset metadata.
-* `POST` with a JSON body, roles plus optional asset metadata. `asset` is only needed if any role is an `appointment:` role:
+* `GET ?roles={role-entries}` - retained for compatibility, no asset metadata.
+* `POST` with a JSON body, role entries plus optional asset metadata. `asset` is only needed if any role is an `appointment:` role.
+
+Roles are given as **entries**: access is granted if every role in any one entry is met (OR across entries, AND within an entry). In the query string, `,` separates entries and `+` (encoded as `%2B`) separates roles within an entry. An unencoded `+` decodes to a space, so whitespace also separates roles. For example `?roles=clickthrough,ip:reading-room%2Bappointment:token-based` (role URIs escaped). A list with no `+` is a flat OR list, as before.
+
+> [!WARNING]
+> A session currently holds the roles from a single sign-in or gesture: signing in again replaces the session, and only appointments are added to an existing session (see [#10](https://github.com/dlcs/iiif-auth-v2/issues/10)). So an entry can contain **at most one** role from a clickthrough or OIDC provider, combined with any `ip:` and `appointment:` roles. An entry such as `clickthrough+oidc-role` can never be met. A clickthrough or OIDC role combined with an appointment role only works if the user completes the clickthrough/sign-in **before** entering the appointment key.
+
+In a POST body, `roles` is an array of entries, each a string array: `[["clickthrough"], ["ip:reading-room", "appointment:token-based"]]`. A string element is also accepted and is one entry, parsed as in the query string, so a flat `string[]` is an OR list as before. Any other element type is a 400.
 
 ```json
 {
-  "roles": [ "https://api.dlcs.io/customers/2/roles/appointment:token-based" ],
+  "roles": [ [ "https://api.dlcs.io/customers/2/roles/appointment:token-based" ] ],
   "asset": {
     "scopes": [ "b76hr45e" ],
     "tags": [ "ww2" ],
@@ -230,14 +237,14 @@ You'll need to setup an access service and role provider locally, see [bootstrap
 
 `IIIFAuth2.TestUI` is a Razor Pages app that replaces Orchestrator + a IIIF client for local testing. Run it alongside IIIFAuth2.API (`https://localhost:7050`, no nginx or Orchestrator required):
 
-* **Setup** (`/`) - register a deliverable id (`1/2/foo` or `99/100/page1.jpg/mets.xml`) and its roles. Roles are read from the `roles` table, or can be free-typed to simulate unknown roles. Deliverables are held in memory.
+* **Setup** (`/`) - register a deliverable id (`1/2/foo` or `99/100/page1.jpg/mets.xml`) and its role entries. Roles are read from the `roles` table (each ticked role is a single-role entry), or can be free-typed as entries to simulate combinations (`a+b`) or unknown roles. Deliverables are held in memory.
 * **Auth flow** (`/Flow?id=...`) - a browser client that loads a fake manifest and runs probe -> access service -> token service -> probe -> content, logging each step along with downstream calls to iiif-auth-v2.
 * **Downstream calls** (`/Calls`) - every request the fake Orchestrator made to iiif-auth-v2, with headers and bodies.
 
 Fake Orchestrator endpoints:
 * `/manifest/{deliverableId}` - single-canvas manifest, auth services from `/services/` endpoint.
 * `/auth/v2/probe/{deliverableId}` - calls `/probe_internal/`, passing bearer token. Set iiif-auth-v2 `"OrchestratorRoot": "https://localhost:7050"` to have probe service ids point here, or leave the "send probe requests to this Test UI" option ticked. Returns 401 without calling iiif-auth-v2 if there's no bearer token, unless the deliverable has an `ip:` role.
-* `/fake-image/{deliverableId}` - calls `/verifyaccess/`, forwarding the request `Cookie` header, returns an SVG showing result. Returns 401 without calling iiif-auth-v2 if there's no auth2 cookie for the customer, unless the deliverable has an `ip:` role.
+* `/fake-image/{deliverableId}` - calls `/verifyaccess/`, forwarding the request `Cookie` header, returns an SVG showing result. Returns 401 without calling iiif-auth-v2 if there's no auth2 cookie for the customer, unless the deliverable has an entry made entirely of `ip:` roles.
 
 If a deliverable has an `ip:` role, `X-Forwarded-For` is sent to `/probe_internal/` and `/verifyaccess/`, simulating the proposed Orchestrator changes for [IpRestriction roles](#role-provider-types). The value is the request IP, or a simulated client IP set on the Auth flow page (applies to all deliverables, held in memory). To test:
 
@@ -251,6 +258,12 @@ If a deliverable has an `ip:` role, `X-Forwarded-For` is sent to `/probe_interna
 2. Register a deliverable, e.g. `7/1/foo`, with the `appointment:token-based` role and `string1` = `LIDDLE/WW2/HFIU/003`.
 3. Run the flow. The probe returns 401 (no token), the appointment key form opens, enter `a5rf65ne99pa`, the window closes, a token is obtained and the probe returns 200. Downstream calls show the POST body sent.
 4. Register `7/1/bar` with `string1` = `LIDDLE/WW2/EVAC/014` and run the flow again: the probe returns 403 "Not part of your appointment". A wrong key re-renders the form with an error. Edit the appointment row (`active = false`, a future `start` or a past `end`) and probe again to see the other 403 reasons; a session's appointments are cached for `RefreshThreshold` seconds, so changes can take that long to show.
+
+Role entries are sent as nested arrays in POST bodies and with `%2B` joining roles in `/services/` query strings, simulating the proposed Orchestrator changes for [role combinations](#probe-and-verifyaccess-requests). To test, with both the scripts above applied:
+
+1. Register `7/1/foo` with the free-text entry `{ip:reading-room role}+{appointment:token-based role}` and `string1` = `LIDDLE/WW2/HFIU/003`.
+2. Run the flow with the client IP in range. The manifest has the appointment service but no `external` service, as the location alone doesn't grant access. The probe returns 401, enter the key and the probe returns 200.
+3. Set the client IP out of range and probe again: 403 "Not available at your location". The fake image follows the same results.
 
 Configured via `AuthServiceRoot` (default `https://localhost:7049/auth/v2/`) and `ConnectionStrings:Postgres` appSettings. The test UI needs to run on https on the same host as iiif-auth-v2 so the browser sends the auth cookie to the fake image endpoint (cookies ignore ports).
 

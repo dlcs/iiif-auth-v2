@@ -1,6 +1,7 @@
 ﻿using IIIFAuth2.API.Features.VerifyAccess.Requests;
 using IIIFAuth2.API.Infrastructure.Web;
 using IIIFAuth2.API.Models.Api;
+using IIIFAuth2.Core.Models.Domain;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
@@ -30,7 +31,13 @@ public class VerifyAccessController : AuthBaseController
         [FromRoute] string deliverableId,
         [FromQuery] string roles,
         CancellationToken cancellationToken)
-        => SendTestAccessRequest(() => new TestAccessRequest(deliverableId, roles), cancellationToken);
+    {
+        // e.g. "roles=,," parses to no entries
+        var entries = RoleEntry.ParseList(roles);
+        if (entries.Count == 0) return Task.FromResult<IActionResult>(BadRequest("Required roles missing"));
+
+        return SendTestAccessRequest(() => new TestAccessRequest(deliverableId, entries, null), cancellationToken);
+    }
 
     /// <summary>
     /// Generate a status-code response by validating cookie associated with request, using roles and optional asset
@@ -45,7 +52,7 @@ public class VerifyAccessController : AuthBaseController
         [FromBody] AccessCheckRequest body,
         CancellationToken cancellationToken)
     {
-        var roles = body.Roles?.Where(r => !string.IsNullOrWhiteSpace(r)).ToArray();
+        var roles = body.Roles;
         if (roles is not { Length: > 0 }) return Task.FromResult<IActionResult>(BadRequest("Required roles missing"));
 
         var asset = body.Asset?.ToAssetMetadata();

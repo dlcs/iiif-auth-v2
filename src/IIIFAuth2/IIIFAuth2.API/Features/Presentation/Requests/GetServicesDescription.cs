@@ -19,12 +19,12 @@ public class GetServicesDescription : IRequest<IIIFResourceResponse>
 {
     public DeliverableId DeliverableId { get; }
 
-    public IReadOnlyCollection<string> Roles { get; }
+    public IReadOnlyList<RoleEntry> Roles { get; }
 
     public GetServicesDescription(string deliverableId, string roles)
     {
         DeliverableId = DeliverableId.FromString(deliverableId);
-        Roles = roles.Split(",", StringSplitOptions.RemoveEmptyEntries);
+        Roles = RoleEntry.ParseList(roles);
     }
 }
 
@@ -50,11 +50,13 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
     public async Task<IIIFResourceResponse> Handle(GetServicesDescription request, CancellationToken cancellationToken)
     {
         var customerId = request.DeliverableId.Customer;
-        var rolesAccessServiceIds = await GetAccessServiceIdsForRoles(request, customerId);
+        var customerServices =
+            (await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService)).ToList();
+        var rolesAccessServiceIds = await GetAccessServiceIdsForRoles(request, customerId, customerServices);
         
         if (rolesAccessServiceIds.IsNullOrEmpty()) return IIIFResourceResponse.NotFound("Requested roles not found");
         
-        var accessServices = await GetAccessServices(customerId, rolesAccessServiceIds);
+        var accessServices = GetAccessServices(customerServices, rolesAccessServiceIds);
         
         if (accessServices.IsNullOrEmpty())
         {
@@ -82,20 +84,37 @@ public class GetServicesDescriptionHandler : IRequestHandler<GetServicesDescript
         }
     }
     
-    private async Task<ICollection<Guid>> GetAccessServiceIdsForRoles(GetServicesDescription request, int customerId)
+    /// <summary>
+    /// Get access services for the requested roles. An external (IP role) service is only included for entries made
+    /// entirely of IP roles: in an entry with other roles the user must also act, and the probe explains location
+    /// </summary>
+    private async Task<ICollection<Guid>> GetAccessServiceIdsForRoles(GetServicesDescription request, int customerId,
+        IEnumerable<AccessService> customerServices)
     {
         var customerRoles = await dbContext.Roles.GetCachedCustomerRecords(customerId, CacheKeys.Roles);
+        var roleServices = customerRoles.ToDictionary(r => r.Id, r => r.AccessServiceId);
+        
+        // NOTE - this assumes that all External services are IP based
+        var externalIds = customerServices
+            .Where(s => s.Profile == AccessServiceProfiles.External)
+            .Select(s => s.Id)
+            .ToHashSet();
 
-        var accessServiceIds = customerRoles
-            .Where(r => request.Roles.Contains(r.Id))
-            .Select(r => r.AccessServiceId);
-        return accessServiceIds.ToList();
+        var ids = new HashSet<Guid>();
+        foreach (var entry in request.Roles)
+        {
+            var entryIds = entry.Roles.Where(roleServices.ContainsKey).Select(r => roleServices[r]).ToList();
+            var ipOnly = entryIds.Count == entry.Roles.Count && entryIds.All(externalIds.Contains);
+            // in a mixed entry the location alone doesn't grant access, so don't advertise the external service
+            ids.UnionWith(ipOnly ? entryIds : entryIds.Where(id => !externalIds.Contains(id)));
+        }
+
+        return ids;
     }
 
-    private async Task<ICollection<AccessService>> GetAccessServices(int customerId, ICollection<Guid> accessServiceIds)
+    private static List<AccessService> GetAccessServices(IEnumerable<AccessService> customerServices,
+        ICollection<Guid> accessServiceIds)
     {
-        var customerServices = await dbContext.AccessServices.GetCachedCustomerRecords(customerId, CacheKeys.AccessService);
-        
         // external services are output first as some clients only use the first service
         var accessServices = customerServices
             .Where(s => accessServiceIds.Contains(s.Id))

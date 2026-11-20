@@ -10,7 +10,8 @@ namespace IIIFAuth2.TestUI.Infrastructure;
 /// callers can decide how to handle them.
 /// </summary>
 /// <remarks>
-/// probe_internal and verifyaccess are POSTed, simulating the proposed Orchestrator changes for appointment roles
+/// probe_internal and verifyaccess are POSTed, simulating the proposed Orchestrator changes for appointment roles.
+/// Roles are sent as entries (string[][]), simulating the proposed Orchestrator changes for role combinations
 /// </remarks>
 public class AuthServiceClient(HttpClient httpClient)
 {
@@ -69,7 +70,7 @@ public class AuthServiceClient(HttpClient httpClient)
         var asset = deliverable.Asset;
         return new
         {
-            roles = deliverable.Roles,
+            roles = deliverable.Entries,
             asset = deliverable.HasAppointmentRole
                 ? new
                 {
@@ -80,6 +81,7 @@ public class AuthServiceClient(HttpClient httpClient)
         };
     }
 
+    /// <summary>"," separates entries, encoded "+" (%2B) separates roles in an entry</summary>
     private static string GetRolesString(Deliverable deliverable)
-        => string.Join(",", deliverable.Roles.Select(Uri.EscapeDataString));
+        => string.Join(",", deliverable.Entries.Select(e => string.Join("%2B", e.Select(Uri.EscapeDataString))));
 }
